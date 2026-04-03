@@ -24,7 +24,7 @@ CORS(app)
 
 API_KEY      = "dc927c0f-918a-4c21-ae03-493acaa0608a"
 API_SECRET   = "21ebqgxrft"
-REDIRECT_URI = "http://localhost:5000/callback"
+REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 NIFTY_KEY    = "NSE_INDEX|Nifty 50"
 CACHE_TTL    = 300
 STRIKE_STEP  = 50
