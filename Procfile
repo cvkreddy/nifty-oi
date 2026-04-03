@@ -1,0 +1,1 @@
+web: gunicorn upstox_oi_server:app
