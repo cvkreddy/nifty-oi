@@ -1,21 +1,25 @@
 """
 ====================================================
-  NIFTY50 OI Server — Full Market Intelligence
-  Added:
-    - Price+OI trend matrix (4 conditions)
-    - PCR extreme zones with reversal signals
+  NIFTY50 OI Server — Full Intelligence Mode v2
+  Includes:
+    - Price+OI matrix per strike (4 conditions)
+    - PCR extreme zones + reversal signals
     - GEX (Gamma Exposure) per strike
     - OI Concentration ratio
-    - IV Skew (call vs put IV)
+    - IV Skew analysis
     - Support/Resistance strength score (0-100)
-    - Breakout Alert when OI drops at key strike
-    - Market state: TRENDING / RANGING / BREAKOUT IMMINENT
+    - Breakout alerts
+    - Market state engine
+    - EMA7 / EMA15 / EMA21 on 5min + 15min TF
+    - Supertrend per timeframe
+    - Per-strike LTP EMA technicals
+    - Per-strike OI flow classification
 ====================================================
 """
 
 import os, csv, time, math, threading
 from datetime import datetime, date, timedelta
-from flask import Flask, jsonify, request, redirect, render_template
+from flask import Flask, jsonify, request, redirect, send_file
 from flask_cors import CORS
 import requests
 
@@ -31,13 +35,15 @@ STRIKE_STEP  = 50
 ATM_RANGE    = 5
 SNAPSHOT_DIR = "snapshots"
 
-token_store    = {"access_token": None}
-oi_cache       = {"data": None}
-prev_oi        = {}
-baseline_oi    = {}
-prev_pcr       = None
-prev_spot      = None   # for price+OI matrix
-candle_cache   = []
+token_store     = {"access_token": None}
+oi_cache        = {"data": None}
+prev_oi         = {}
+baseline_oi     = {}
+prev_pcr        = None
+prev_spot       = None
+candle_cache    = []
+candle_cache_15 = []          # 15-min candles
+ltp_history     = {}          # {strike: {"call": [...], "put": [...]}}
 
 
 # ══════════════════════════════════════════════════
@@ -134,11 +140,37 @@ def fetch_candles():
                                    "low": float(c[3]), "close": float(c[4]),
                                    "volume": float(c[5]) if len(c) > 5 else 0})
             result.sort(key=lambda x: x["time"])
-            candle_cache = result[-30:]
-            print(f"[CANDLES] {len(candle_cache)} candles")
+            candle_cache = result[-40:]
+            print(f"[CANDLES-5m] {len(candle_cache)} candles")
             return candle_cache
     except Exception as e: print("[CANDLES ERROR]", e)
     return candle_cache
+
+def fetch_candles_15min():
+    global candle_cache_15
+    try:
+        url = f"https://api.upstox.com/v2/historical-candle/intraday/{NIFTY_KEY}/15minute"
+        r   = requests.get(url, headers=hdrs(), timeout=10)
+        if r.status_code != 200:
+            today = date.today().strftime("%Y-%m-%d")
+            url   = f"https://api.upstox.com/v2/historical-candle/{NIFTY_KEY}/15minute/{today}/{today}"
+            r     = requests.get(url, headers=hdrs(), timeout=10)
+        if r.status_code == 200:
+            raw = r.json()
+            cr  = raw.get("data", {})
+            if isinstance(cr, dict): cr = cr.get("candles", [])
+            result = []
+            for c in (cr if isinstance(cr, list) else []):
+                if len(c) >= 5:
+                    result.append({"time": c[0], "open": float(c[1]), "high": float(c[2]),
+                                   "low": float(c[3]), "close": float(c[4]),
+                                   "volume": float(c[5]) if len(c) > 5 else 0})
+            result.sort(key=lambda x: x["time"])
+            candle_cache_15 = result[-30:]
+            print(f"[CANDLES-15m] {len(candle_cache_15)} candles")
+            return candle_cache_15
+    except Exception as e: print("[CANDLES-15m ERROR]", e)
+    return candle_cache_15
 
 def get_expiry():
     try:
@@ -215,7 +247,7 @@ def get_indicators(candles):
     if not candles or len(candles)<16:
         return {"rsi":None,"adx":None,"pdi":None,"ndi":None,
                 "rsi_signal":"N/A","adx_signal":"N/A","adx_trend":"N/A",
-                "candle_count": len(candles)}
+                "candle_count": len(candles) if candles else 0}
     closes=[c["close"] for c in candles]
     rsi=calc_rsi(closes,14)
     adx,pdi,ndi=calc_adx(candles,14)
@@ -232,6 +264,284 @@ def get_indicators(candles):
     return {"rsi":rsi,"adx":adx,"pdi":pdi,"ndi":ndi,
             "rsi_signal":rs,"adx_signal":as2,"adx_trend":at,
             "candle_count": len(candles)}
+
+
+# ══════════════════════════════════════════════════
+#  EMA + SUPERTREND
+# ══════════════════════════════════════════════════
+
+def calc_ema(prices, period):
+    """Standard EMA. Returns None if not enough data."""
+    if not prices or len(prices) < period:
+        return None
+    k   = 2.0 / (period + 1)
+    ema = sum(prices[:period]) / period
+    for p in prices[period:]:
+        ema = p * k + ema * (1 - k)
+    return round(ema, 2)
+
+def calc_supertrend(candles, period=7, multiplier=3.0):
+    """Supertrend direction and value. Returns (direction, value, desc)."""
+    if len(candles) < period + 1:
+        return None, None, "Not enough candles"
+    highs  = [c["high"]  for c in candles]
+    lows   = [c["low"]   for c in candles]
+    closes = [c["close"] for c in candles]
+    trs = []
+    for i in range(1, len(candles)):
+        tr = max(highs[i]-lows[i], abs(highs[i]-closes[i-1]), abs(lows[i]-closes[i-1]))
+        trs.append(tr)
+    if len(trs) < period:
+        return None, None, "Not enough candles"
+    atr       = sum(trs[-period:]) / period
+    hl2       = (highs[-1] + lows[-1]) / 2
+    upper     = hl2 + multiplier * atr
+    lower     = hl2 - multiplier * atr
+    close     = closes[-1]
+    direction = "BULLISH" if close > lower else "BEARISH"
+    st_val    = round(lower if direction == "BULLISH" else upper, 2)
+    desc      = (f"Price above ST({st_val}) — uptrend confirmed" if direction == "BULLISH"
+                 else f"Price below ST({st_val}) — downtrend confirmed")
+    return direction, st_val, desc
+
+def compute_tf_signals(candles, label):
+    """EMA + Supertrend + RSI for one timeframe."""
+    if not candles:
+        return {"label": label, "candle_count": 0, "error": "No data"}
+    closes = [c["close"] for c in candles]
+    ema7   = calc_ema(closes, 7)
+    ema15  = calc_ema(closes, 15)
+    ema21  = calc_ema(closes, 21)
+    price  = closes[-1] if closes else None
+
+    price_above_ema7  = price > ema7  if (price and ema7)  else None
+    price_above_ema15 = price > ema15 if (price and ema15) else None
+    ema7_above_ema15  = ema7  > ema15 if (ema7  and ema15) else None
+
+    # Crossover detection (last 2 EMA values)
+    crossover = None
+    if len(closes) >= 9:
+        prev_ema7  = calc_ema(closes[:-1], 7)
+        prev_ema15 = calc_ema(closes[:-1], 15)
+        if prev_ema7 and prev_ema15 and ema7 and ema15:
+            if prev_ema7 <= prev_ema15 and ema7 > ema15:
+                crossover = "GOLDEN CROSS"
+            elif prev_ema7 >= prev_ema15 and ema7 < ema15:
+                crossover = "DEATH CROSS"
+
+    # Trend string
+    if price_above_ema7 and ema7_above_ema15:
+        trend = "STRONG BULLISH"
+        trend_desc = f"Price > EMA7({ema7}) > EMA15({ema15}) — strong uptrend"
+    elif price_above_ema7 and ema7_above_ema15 == False:
+        trend = "RECOVERING"
+        trend_desc = f"Price above EMA7 but EMA7 < EMA15 — recovering"
+    elif price_above_ema7 == False and ema7_above_ema15:
+        trend = "MILD BEARISH"
+        trend_desc = f"EMA7 > EMA15 but price below EMA7 — pullback in uptrend"
+    elif price_above_ema7 == False and ema7_above_ema15 == False:
+        trend = "STRONG BEARISH"
+        trend_desc = f"Price < EMA7({ema7}) < EMA15({ema15}) — strong downtrend"
+    else:
+        trend = "N/A"
+        trend_desc = "Not enough data for EMA"
+
+    if crossover:
+        trend_desc += f" | {crossover}!"
+
+    st_dir, st_val, st_desc = calc_supertrend(candles, period=7, multiplier=3.0)
+
+    # RSI for this TF
+    rsi_tf = calc_rsi(closes, 14) if len(closes) >= 15 else None
+
+    return {
+        "label":             label,
+        "candle_count":      len(candles),
+        "current_price":     round(price, 2) if price else None,
+        "ema7":              ema7,
+        "ema15":             ema15,
+        "ema21":             ema21,
+        "price_above_ema7":  price_above_ema7,
+        "price_above_ema15": price_above_ema15,
+        "ema7_above_ema15":  ema7_above_ema15,
+        "crossover":         crossover,
+        "trend":             trend,
+        "trend_desc":        trend_desc,
+        "supertrend":        st_dir,
+        "supertrend_val":    st_val,
+        "supertrend_desc":   st_desc,
+        "rsi":               rsi_tf,
+    }
+
+def compute_index_technicals(candles_5m, candles_15m):
+    """Returns EMA+Supertrend signals for 5min and 15min TF."""
+    return {
+        "5min":  compute_tf_signals(candles_5m,  "5min"),
+        "15min": compute_tf_signals(candles_15m, "15min"),
+    }
+
+def compute_strike_technicals(atm_strikes):
+    """Build EMA7/EMA15 from LTP history for each strike's CE and PE."""
+    global ltp_history
+    result = {}
+    for s, v in atm_strikes.items():
+        if s not in ltp_history:
+            ltp_history[s] = {"call": [], "put": []}
+        if v.get("call_ltp"):
+            ltp_history[s]["call"].append(float(v["call_ltp"]))
+            ltp_history[s]["call"] = ltp_history[s]["call"][-25:]
+        if v.get("put_ltp"):
+            ltp_history[s]["put"].append(float(v["put_ltp"]))
+            ltp_history[s]["put"]  = ltp_history[s]["put"][-25:]
+
+        ch   = ltp_history[s]
+        n    = len(ch["call"])
+
+        c_ema7  = calc_ema(ch["call"], 7)
+        c_ema15 = calc_ema(ch["call"], 15)
+        p_ema7  = calc_ema(ch["put"],  7)
+        p_ema15 = calc_ema(ch["put"],  15)
+
+        def side_info(prices, e7, e15):
+            if not prices: return {"trend": "N/A", "ema7": None, "ema15": None, "crossover": None,
+                                   "price_above_ema7": None, "ema7_above_ema15": None}
+            price = prices[-1]
+            xover = None
+            if len(prices) >= 9 and e7 and e15:
+                pe7 = calc_ema(prices[:-1], 7)
+                pe15= calc_ema(prices[:-1], 15)
+                if pe7 and pe15:
+                    if pe7 <= pe15 and e7 > e15: xover = "GOLDEN CROSS"
+                    elif pe7 >= pe15 and e7 < e15: xover = "DEATH CROSS"
+            if e7 and e15:
+                if price > e7 and e7 > e15:   trend = "STRONG BULLISH"
+                elif price > e7 and e7 < e15: trend = "RECOVERING"
+                elif price < e7 and e7 > e15: trend = "MILD BEARISH"
+                else:                          trend = "STRONG BEARISH"
+            else:
+                trend = "N/A"
+            return {"trend": trend, "ema7": e7, "ema15": e15, "crossover": xover,
+                    "price_above_ema7": price > e7 if e7 else None,
+                    "ema7_above_ema15": e7 > e15 if (e7 and e15) else None}
+
+        result[s] = {
+            "data_points": n,
+            "call": side_info(ch["call"], c_ema7, c_ema15),
+            "put":  side_info(ch["put"],  p_ema7, p_ema15),
+        }
+    return result
+
+
+# ══════════════════════════════════════════════════
+#  PER-STRIKE OI FLOW CLASSIFICATION
+# ══════════════════════════════════════════════════
+
+def classify_strike_oi_flow(strike, v, prev_spot, spot):
+    """
+    Full 4-condition OI+Price matrix for each strike.
+    Returns call_flow, put_flow, net_flow dicts.
+    """
+    if prev_spot is None:
+        price_up = price_dn = False
+    else:
+        price_up = spot > prev_spot + 5
+        price_dn = spot < prev_spot - 5
+
+    THRESH = 100_000   # 1L = significant
+
+    c_chg   = v.get("call_oi_chg", 0) or 0
+    c_ltp_c = v.get("call_ltp_chg", 0) or 0
+    c_oi    = v.get("call_oi", 0) or 0
+
+    if price_up and c_chg > THRESH and c_ltp_c > 0:
+        cf = ("CALL LONG BUILDUP",   "BULLISH",       "🟢",
+              "Price ↑ + CE OI ↑ + LTP ↑ = Fresh call buyers in. Strong breakout conviction.")
+    elif price_up and c_chg < -THRESH and c_ltp_c > 0:
+        cf = ("SHORT COVERING",      "WEAK BULLISH",  "📈",
+              "Price ↑ + CE OI ↓ + LTP ↑ = Call shorts exiting. Rally may lack fresh fuel.")
+    elif price_up and abs(c_chg) < THRESH:
+        cf = ("FAKE CALL MOVE",      "NO CONVICTION", "⚠️",
+              "Price up but CE OI flat = no fresh buying. Possible trap — avoid chasing.")
+    elif price_dn and c_chg > THRESH and c_ltp_c < 0:
+        cf = ("FRESH CALL WRITING",  "BEARISH",       "🔴",
+              "Price ↓ + CE OI ↑ + LTP ↓ = New call sellers. Strong resistance forming here.")
+    elif price_dn and c_chg < -THRESH:
+        cf = ("CALL LONG UNWINDING", "WEAK BEARISH",  "🟡",
+              "Price ↓ + CE OI ↓ = Call longs exiting. Resistance may ease if spot stabilises.")
+    elif c_chg > 500_000:
+        cf = ("HEAVY CALL ADDITION", "WATCH",         "🔴",
+              f"Large CE OI build (+{c_chg/100000:.1f}L). Strong resistance wall forming.")
+    elif c_chg < -500_000:
+        cf = ("HEAVY CALL EXIT",     "BULLISH",       "✅",
+              f"Large CE OI exit ({abs(c_chg)/100000:.1f}L). Resistance ceiling collapsing — watch for breakout.")
+    else:
+        cf = ("STABLE / NO CHANGE",  "NEUTRAL",       "⚪",
+              "CE OI unchanged this cycle. No directional signal yet.")
+
+    call_flow = {
+        "condition": cf[0], "signal": cf[1], "emoji": cf[2], "desc": cf[3],
+        "oi_chg_l":   round(c_chg / 100000, 2),
+        "oi_total_l": round(c_oi  / 100000, 2),
+        "ltp_chg":    round(c_ltp_c, 2),
+    }
+
+    p_chg   = v.get("put_oi_chg", 0) or 0
+    p_ltp_c = v.get("put_ltp_chg", 0) or 0
+    p_oi    = v.get("put_oi", 0) or 0
+
+    if price_dn and p_chg > THRESH and p_ltp_c > 0:
+        pf = ("PUT LONG BUILDUP",   "BEARISH",       "🔴",
+              "Price ↓ + PE OI ↑ + LTP ↑ = Fresh put buyers in. Strong breakdown conviction.")
+    elif price_dn and p_chg < -THRESH and p_ltp_c > 0:
+        pf = ("PUT SHORT COVERING", "WEAK BEARISH",  "🟡",
+              "Price ↓ + PE OI ↓ + LTP ↑ = Put shorts exiting. Downside limited.")
+    elif price_dn and abs(p_chg) < THRESH:
+        pf = ("FAKE PUT MOVE",      "NO CONVICTION", "⚠️",
+              "Price down but PE OI flat = no fresh put buying. Possible false breakdown.")
+    elif price_up and p_chg > THRESH and p_ltp_c < 0:
+        pf = ("FRESH PUT WRITING",  "BULLISH",       "✅",
+              "Price ↑ + PE OI ↑ + LTP ↓ = New put sellers. Strong support floor building.")
+    elif price_up and p_chg < -THRESH:
+        pf = ("PUT LONG UNWINDING", "WEAK BULLISH",  "📈",
+              "Price ↑ + PE OI ↓ = Put longs exiting. Support weakening — watch for reversal.")
+    elif p_chg > 500_000:
+        pf = ("HEAVY PUT ADDITION", "WATCH",         "✅",
+              f"Large PE OI build (+{p_chg/100000:.1f}L). Strong support floor forming.")
+    elif p_chg < -500_000:
+        pf = ("HEAVY PUT EXIT",     "BEARISH",       "🔴",
+              f"Large PE OI exit ({abs(p_chg)/100000:.1f}L). Support floor collapsing.")
+    else:
+        pf = ("STABLE / NO CHANGE", "NEUTRAL",       "⚪",
+              "PE OI unchanged this cycle. No directional signal yet.")
+
+    put_flow = {
+        "condition": pf[0], "signal": pf[1], "emoji": pf[2], "desc": pf[3],
+        "oi_chg_l":   round(p_chg / 100000, 2),
+        "oi_total_l": round(p_oi  / 100000, 2),
+        "ltp_chg":    round(p_ltp_c, 2),
+    }
+
+    total_chg = c_chg + p_chg
+    if c_chg > THRESH and p_chg < -THRESH:
+        net_note = "🔄 OI SHIFT: Money moving to CALL side. Bears building resistance."
+    elif p_chg > THRESH and c_chg < -THRESH:
+        net_note = "🔄 OI SHIFT: Money moving to PUT side. Bulls building support."
+    elif c_chg > THRESH and p_chg > THRESH:
+        net_note = "💥 BOTH SIDES ADDING OI: High uncertainty — big move expected. Straddle zone."
+    elif c_chg < -THRESH and p_chg < -THRESH:
+        net_note = "🌀 BOTH SIDES EXITING: Position squareoff. Directionless — wait for clarity."
+    else:
+        net_note = "— No significant OI flow this cycle."
+
+    net_flow = {
+        "total_oi_chg_l":  round(total_chg / 100000, 2),
+        "total_call_oi_l": round(c_oi / 100000, 2),
+        "total_put_oi_l":  round(p_oi / 100000, 2),
+        "total_oi_l":      round((c_oi + p_oi) / 100000, 2),
+        "net_note":        net_note,
+    }
+
+    return call_flow, put_flow, net_flow
 
 
 # ══════════════════════════════════════════════════
@@ -252,53 +562,54 @@ def process_chain(raw):
         ce_md=ce.get("market_data",{}); pe_md=pe.get("market_data",{})
         ce_gk=ce.get("option_greeks",{}); pe_gk=pe.get("option_greeks",{})
 
-        call_oi  =float(ce_md.get("oi",0) or 0)
-        put_oi   =float(pe_md.get("oi",0) or 0)
-        call_vol =float(ce_md.get("volume",0) or 0)
-        put_vol  =float(pe_md.get("volume",0) or 0)
-        call_ltp =float(ce_md.get("ltp",0) or ce_md.get("last_price",0) or 0)
-        put_ltp  =float(pe_md.get("ltp",0) or pe_md.get("last_price",0) or 0)
-        raw_civ  =float(ce_gk.get("iv",0) or 0)
-        raw_piv  =float(pe_gk.get("iv",0) or 0)
-        call_iv  =raw_civ*100 if raw_civ<=5 else raw_civ
-        put_iv   =raw_piv*100 if raw_piv<=5 else raw_piv
-        call_delta=float(ce_gk.get("delta",0) or 0)
-        put_delta =float(pe_gk.get("delta",0) or 0)
-        call_gamma=float(ce_gk.get("gamma",0) or 0)
-        put_gamma =float(pe_gk.get("gamma",0) or 0)
-        call_theta=float(ce_gk.get("theta",0) or 0)
-        put_theta =float(pe_gk.get("theta",0) or 0)
-        call_vega =float(ce_gk.get("vega",0) or 0)
-        put_vega  =float(pe_gk.get("vega",0) or 0)
+        call_oi   = float(ce_md.get("oi",0) or 0)
+        put_oi    = float(pe_md.get("oi",0) or 0)
+        call_vol  = float(ce_md.get("volume",0) or 0)
+        put_vol   = float(pe_md.get("volume",0) or 0)
+        call_ltp  = float(ce_md.get("ltp",0) or ce_md.get("last_price",0) or 0)
+        put_ltp   = float(pe_md.get("ltp",0) or pe_md.get("last_price",0) or 0)
+        raw_civ   = float(ce_gk.get("iv",0) or 0)
+        raw_piv   = float(pe_gk.get("iv",0) or 0)
+        call_iv   = raw_civ*100 if raw_civ<=5 else raw_civ
+        put_iv    = raw_piv*100 if raw_piv<=5 else raw_piv
+        call_delta= float(ce_gk.get("delta",0) or 0)
+        put_delta = float(pe_gk.get("delta",0) or 0)
+        call_gamma= float(ce_gk.get("gamma",0) or 0)
+        put_gamma = float(pe_gk.get("gamma",0) or 0)
+        call_theta= float(ce_gk.get("theta",0) or 0)
+        put_theta = float(pe_gk.get("theta",0) or 0)
+        call_vega = float(ce_gk.get("vega",0) or 0)
+        put_vega  = float(pe_gk.get("vega",0) or 0)
 
-        prev=prev_oi.get(strike,{})
-        call_oi_chg    =call_oi -prev.get("call_oi", call_oi) if prev else 0
-        put_oi_chg     =put_oi  -prev.get("put_oi",  put_oi)  if prev else 0
-        call_ltp_chg   =call_ltp-prev.get("call_ltp",call_ltp) if prev else 0
-        put_ltp_chg    =put_ltp -prev.get("put_ltp", put_ltp)  if prev else 0
-        base=baseline_oi.get(strike,{})
-        call_oi_chg_day=call_oi-base.get("call_oi",call_oi) if base else 0
-        put_oi_chg_day =put_oi -base.get("put_oi", put_oi)  if base else 0
+        prev          = prev_oi.get(strike, {})
+        call_oi_chg   = call_oi  - prev.get("call_oi",  call_oi)  if prev else 0
+        put_oi_chg    = put_oi   - prev.get("put_oi",   put_oi)   if prev else 0
+        call_ltp_chg  = call_ltp - prev.get("call_ltp", call_ltp) if prev else 0
+        put_ltp_chg   = put_ltp  - prev.get("put_ltp",  put_ltp)  if prev else 0
+        base          = baseline_oi.get(strike, {})
+        call_oi_chg_day = call_oi - base.get("call_oi", call_oi) if base else 0
+        put_oi_chg_day  = put_oi  - base.get("put_oi",  put_oi)  if base else 0
 
-        # GEX = gamma * OI * lot_size * spot  (simplified, lot=25)
         call_gex = call_gamma * call_oi * 25
         put_gex  = put_gamma  * put_oi  * 25
 
-        result[strike]={
+        result[strike] = {
             "strike": strike,
-            "call_oi": call_oi,"call_oi_chg": call_oi_chg,"call_oi_chg_day": call_oi_chg_day,
-            "call_vol": call_vol,"call_vol_oi": round(call_vol/call_oi,2) if call_oi else 0,
-            "call_iv": round(call_iv,2),"call_ltp": call_ltp,"call_ltp_chg": round(call_ltp_chg,2),
-            "call_delta": call_delta,"call_gamma": call_gamma,"call_theta": call_theta,"call_vega": call_vega,"call_gex": call_gex,
-            "put_oi": put_oi,"put_oi_chg": put_oi_chg,"put_oi_chg_day": put_oi_chg_day,
-            "put_vol": put_vol,"put_vol_oi": round(put_vol/put_oi,2) if put_oi else 0,
-            "put_iv": round(put_iv,2),"put_ltp": put_ltp,"put_ltp_chg": round(put_ltp_chg,2),
-            "put_delta": put_delta,"put_gamma": put_gamma,"put_theta": put_theta,"put_vega": put_vega,"put_gex": put_gex,
+            "call_oi": call_oi, "call_oi_chg": call_oi_chg, "call_oi_chg_day": call_oi_chg_day,
+            "call_vol": call_vol, "call_vol_oi": round(call_vol/call_oi,2) if call_oi else 0,
+            "call_iv": round(call_iv,2), "call_ltp": call_ltp, "call_ltp_chg": round(call_ltp_chg,2),
+            "call_delta": call_delta, "call_gamma": call_gamma, "call_theta": call_theta,
+            "call_vega": call_vega, "call_gex": call_gex,
+            "put_oi": put_oi, "put_oi_chg": put_oi_chg, "put_oi_chg_day": put_oi_chg_day,
+            "put_vol": put_vol, "put_vol_oi": round(put_vol/put_oi,2) if put_oi else 0,
+            "put_iv": round(put_iv,2), "put_ltp": put_ltp, "put_ltp_chg": round(put_ltp_chg,2),
+            "put_delta": put_delta, "put_gamma": put_gamma, "put_theta": put_theta,
+            "put_vega": put_vega, "put_gex": put_gex,
             "pcr": round(put_oi/call_oi,2) if call_oi else 0,
-            "net_oi": put_oi-call_oi,
+            "net_oi": put_oi - call_oi,
         }
     if is_first and result:
-        baseline_oi={s:{"call_oi":v["call_oi"],"put_oi":v["put_oi"]} for s,v in result.items()}
+        baseline_oi = {s:{"call_oi":v["call_oi"],"put_oi":v["put_oi"]} for s,v in result.items()}
         print(f"[OI] Baseline set — {len(baseline_oi)} strikes")
     return result
 
@@ -317,24 +628,16 @@ def compute_max_pain(chain):
 # ══════════════════════════════════════════════════
 
 def price_oi_matrix(spot, prev_spot, chain, atm):
-    """
-    Four-condition Price+OI matrix.
-    Returns condition name, signal, and description.
-    """
     if prev_spot is None or len(prev_oi)==0:
         return "INITIALIZING","—","Waiting for second data cycle"
-
-    price_up  = spot > prev_spot
-    price_dn  = spot < prev_spot
-
-    # Total OI change in ATM±5 zone
+    price_up = spot > prev_spot
+    price_dn = spot < prev_spot
     total_oi_chg = sum(
         v["call_oi_chg"]+v["put_oi_chg"]
         for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP
     )
     oi_up = total_oi_chg > 0
     oi_dn = total_oi_chg < 0
-
     if price_up and oi_up:
         return "FRESH LONG BUILD","BULLISH","New buyers entering — strong upward momentum. Hold longs."
     elif price_up and oi_dn:
@@ -346,213 +649,117 @@ def price_oi_matrix(spot, prev_spot, chain, atm):
     else:
         return "NO CHANGE","NEUTRAL","OI unchanged this cycle."
 
-
 def pcr_zone_analysis(pcr, prev_pcr):
-    """PCR extreme zones with reversal signals."""
-    if pcr < 0.50:
-        zone="EXTREME FEAR"; signal="REVERSAL UP LIKELY"
-        note="PCR below 0.50 is extreme. Too many calls — market often surprises by going up."
-    elif pcr < 0.70:
-        zone="BEARISH ZONE"; signal="BEARISH — CALLS DOMINATE"
-        note="Call writers active. Resistance strong. Watch for rejection at resistance levels."
-    elif pcr < 0.85:
-        zone="MILD BEARISH"; signal="SLIGHT BEARISH BIAS"
-        note="Calls slightly dominant. Market cautious. Range-bound with downward bias."
-    elif pcr <= 1.15:
-        zone="NEUTRAL ZONE"; signal="BALANCED"
-        note="PCR balanced. Market uncertain. Wait for breakout confirmation."
-    elif pcr <= 1.30:
-        zone="MILD BULLISH"; signal="SLIGHT BULLISH BIAS"
-        note="Puts slightly dominant. Market cautious. Range-bound with upward bias."
-    elif pcr <= 1.50:
-        zone="BULLISH ZONE"; signal="BULLISH — PUTS DOMINATE"
-        note="Put writers active. Support strong. Watch for bounce at support levels."
-    else:
-        zone="EXTREME GREED"; signal="REVERSAL DOWN LIKELY"
-        note="PCR above 1.50 is extreme. Too many puts — market often surprises by going down."
-
+    if pcr < 0.50:   zone="EXTREME FEAR";    signal="REVERSAL UP LIKELY";        note="PCR below 0.50. Too many calls — market often surprises by going up."
+    elif pcr < 0.70: zone="BEARISH ZONE";    signal="BEARISH — CALLS DOMINATE";  note="Call writers active. Resistance strong."
+    elif pcr < 0.85: zone="MILD BEARISH";    signal="SLIGHT BEARISH BIAS";       note="Calls slightly dominant. Range-bound with downward bias."
+    elif pcr <= 1.15:zone="NEUTRAL ZONE";    signal="BALANCED";                  note="PCR balanced. Wait for breakout confirmation."
+    elif pcr <= 1.30:zone="MILD BULLISH";    signal="SLIGHT BULLISH BIAS";       note="Puts slightly dominant. Range-bound with upward bias."
+    elif pcr <= 1.50:zone="BULLISH ZONE";    signal="BULLISH — PUTS DOMINATE";   note="Put writers active. Support strong."
+    else:            zone="EXTREME GREED";   signal="REVERSAL DOWN LIKELY";      note="PCR above 1.50. Too many puts — market often surprises by going down."
     chg_note=""
     if prev_pcr is not None:
         chg=round(pcr-prev_pcr,3)
         if abs(chg)>0.05: chg_note=f" | PCR shifted {chg:+.3f} — {'puts adding fast = support building' if chg>0 else 'calls adding fast = resistance building'}"
     return {"zone":zone,"signal":signal,"note":note+chg_note}
 
-
 def compute_sr_strength(strike_data, is_call, total_oi):
-    """
-    Strength score 0–100 for a support/resistance level.
-    Based on: OI size, OI change direction, Vol/OI, proximity to ATM.
-    """
-    oi     = strike_data["call_oi"]    if is_call else strike_data["put_oi"]
+    oi     = strike_data["call_oi"]     if is_call else strike_data["put_oi"]
     oi_chg = strike_data["call_oi_chg"] if is_call else strike_data["put_oi_chg"]
     voi    = strike_data["call_vol_oi"] if is_call else strike_data["put_vol_oi"]
-
     if total_oi==0 or oi==0: return 0
-
-    # OI weight (50 pts max)
-    oi_score = min(50, (oi/total_oi)*100*3)
-
-    # OI adding = stronger level (20 pts)
-    chg_score = 20 if oi_chg>0 else (-10 if oi_chg<0 else 0)
-
-    # High vol/OI = active strike (15 pts max)
-    vol_score = min(15, voi*3)
-
-    # OI change direction same as OI = confirming (15 pts)
+    oi_score      = min(50, (oi/total_oi)*100*3)
+    chg_score     = 20 if oi_chg>0 else (-10 if oi_chg<0 else 0)
+    vol_score     = min(15, voi*3)
     confirm_score = 15 if oi_chg>0 else 0
-
-    total = max(0, min(100, oi_score + chg_score + vol_score + confirm_score))
-    return round(total, 1)
-
+    return round(max(0, min(100, oi_score+chg_score+vol_score+confirm_score)), 1)
 
 def compute_gex_profile(chain, atm):
-    """
-    Net GEX per strike. Positive = call GEX dominates (acts as magnet/resistance).
-    Negative = put GEX dominates (acts as magnet/support).
-    Net zero GEX strike = flip zone (price accelerates through it).
-    """
     gex_data=[]
     for s,v in sorted(chain.items()):
         if abs(s-atm) > 10*STRIKE_STEP: continue
         net_gex = v["call_gex"] - v["put_gex"]
         gex_data.append({"strike":s,"call_gex":v["call_gex"],"put_gex":v["put_gex"],"net_gex":net_gex})
-    # Find GEX flip zone (closest net_gex to 0)
-    flip=None
-    if gex_data:
-        flip=min(gex_data,key=lambda x:abs(x["net_gex"]))
+    flip = min(gex_data, key=lambda x:abs(x["net_gex"])) if gex_data else None
     return gex_data, flip
 
-
 def compute_iv_skew(chain, atm):
-    """
-    IV Skew: compare call IV vs put IV at equal distances from ATM.
-    If put_iv > call_iv → protective puts expensive → bearish sentiment.
-    If call_iv > put_iv → protective calls expensive → bullish (or squeeze expected).
-    """
     skew_data=[]
     for dist in [1,2,3]:
-        c_strike=atm+dist*STRIKE_STEP
-        p_strike=atm-dist*STRIKE_STEP
+        c_strike=atm+dist*STRIKE_STEP; p_strike=atm-dist*STRIKE_STEP
         ce=chain.get(c_strike,{}); pe=chain.get(p_strike,{})
         if ce and pe and ce.get("call_iv") and pe.get("put_iv"):
             diff=pe["put_iv"]-ce["call_iv"]
-            skew_data.append({
-                "dist": dist,
-                "call_strike": c_strike,"call_iv": ce["call_iv"],
-                "put_strike":  p_strike,"put_iv":  pe["put_iv"],
-                "skew": round(diff,2)   # positive = put IV higher = bearish skew
-            })
+            skew_data.append({"dist":dist,"call_strike":c_strike,"call_iv":ce["call_iv"],
+                              "put_strike":p_strike,"put_iv":pe["put_iv"],"skew":round(diff,2)})
     avg_skew=round(sum(x["skew"] for x in skew_data)/len(skew_data),2) if skew_data else 0
-    if avg_skew>3:   skew_signal="BEARISH SKEW — put IV elevated, market fears fall"
+    if avg_skew>3:    skew_signal="BEARISH SKEW — put IV elevated, market fears fall"
     elif avg_skew<-3: skew_signal="BULLISH SKEW — call IV elevated, market expects rise"
     else:             skew_signal="NEUTRAL SKEW — balanced"
     return {"data":skew_data,"avg_skew":avg_skew,"signal":skew_signal}
 
-
 def compute_oi_concentration(chain, atm):
-    """
-    OI Concentration: how focused is the OI.
-    High concentration = market knows where levels are.
-    Low concentration = uncertain, scattered positions.
-    """
     all_call_oi=[(s,v["call_oi"]) for s,v in chain.items() if s>=atm]
     all_put_oi =[(s,v["put_oi"])  for s,v in chain.items() if s<=atm]
     all_call_oi.sort(key=lambda x:x[1],reverse=True)
-    all_put_oi.sort(key=lambda x: x[1],reverse=True)
+    all_put_oi.sort(key=lambda x:x[1],reverse=True)
     total_c=sum(x[1] for x in all_call_oi); total_p=sum(x[1] for x in all_put_oi)
     top3_c=sum(x[1] for x in all_call_oi[:3]); top3_p=sum(x[1] for x in all_put_oi[:3])
     call_conc=round(top3_c/total_c*100,1) if total_c else 0
     put_conc =round(top3_p/total_p*100,1) if total_p else 0
     avg_conc =(call_conc+put_conc)/2
-    if avg_conc>65:   conc_sig="HIGH CONCENTRATION — clear levels, market has conviction"
-    elif avg_conc>45: conc_sig="MODERATE — reasonably focused positioning"
-    else:             conc_sig="LOW CONCENTRATION — scattered OI, uncertain direction"
+    if avg_conc>65:    conc_sig="HIGH CONCENTRATION — clear levels, market has conviction"
+    elif avg_conc>45:  conc_sig="MODERATE — reasonably focused positioning"
+    else:              conc_sig="LOW CONCENTRATION — scattered OI, uncertain direction"
     return {"call_concentration":call_conc,"put_concentration":put_conc,
             "avg_concentration":round(avg_conc,1),"signal":conc_sig,
             "top_call_strike":all_call_oi[0][0] if all_call_oi else None,
             "top_put_strike": all_put_oi[0][0]  if all_put_oi  else None}
 
-
 def detect_breakout_alerts(chain, atm, spot):
-    """
-    Breakout alert: OI dropping sharply at key strike while price approaches.
-    OI drop at resistance + price rising → resistance breaking → BUY signal.
-    OI drop at support + price falling → support breaking → SELL signal.
-    """
     alerts=[]
     for s,v in chain.items():
         dist=s-spot
-        # Resistance near (above spot, within 150pts)
         if 0 < dist <= 3*STRIKE_STEP:
             if v["call_oi_chg"]<0 and abs(v["call_oi_chg"])>v["call_oi"]*0.05:
-                alerts.append({
-                    "type":"BREAKOUT UP","strike":s,"urgency":"HIGH",
-                    "msg":f"₹{int(s)} resistance OI dropping {(v['call_oi_chg']/100000):.2f}L while price approaches — resistance weakening, upside breakout possible"
-                })
-        # Support near (below spot, within 150pts)
+                alerts.append({"type":"BREAKOUT UP","strike":s,"urgency":"HIGH","icon":"⚡",
+                    "message":f"₹{int(s)} resistance OI dropping {(v['call_oi_chg']/100000):.2f}L while price approaches — upside breakout possible"})
         if -3*STRIKE_STEP <= dist < 0:
             if v["put_oi_chg"]<0 and abs(v["put_oi_chg"])>v["put_oi"]*0.05:
-                alerts.append({
-                    "type":"BREAKOUT DOWN","strike":s,"urgency":"HIGH",
-                    "msg":f"₹{int(s)} support OI dropping {(v['put_oi_chg']/100000):.2f}L while price approaches — support weakening, downside breakdown possible"
-                })
-        # Heavy fresh OI building near ATM = wall being built
+                alerts.append({"type":"BREAKOUT DOWN","strike":s,"urgency":"HIGH","icon":"⚡",
+                    "message":f"₹{int(s)} support OI dropping {(v['put_oi_chg']/100000):.2f}L while price approaches — downside breakdown possible"})
         if abs(dist)<=STRIKE_STEP:
             if v["call_oi_chg"]>v["call_oi"]*0.05:
-                alerts.append({
-                    "type":"WALL BUILDING","strike":s,"urgency":"MEDIUM",
-                    "msg":f"₹{int(s)} call OI surging +{(v['call_oi_chg']/100000):.2f}L — fresh resistance wall at ATM strike"
-                })
+                alerts.append({"type":"WALL BUILDING","strike":s,"urgency":"MEDIUM","icon":"🔴",
+                    "message":f"₹{int(s)} call OI surging +{(v['call_oi_chg']/100000):.2f}L — fresh resistance wall at ATM"})
             if v["put_oi_chg"]>v["put_oi"]*0.05:
-                alerts.append({
-                    "type":"FLOOR BUILDING","strike":s,"urgency":"MEDIUM",
-                    "msg":f"₹{int(s)} put OI surging +{(v['put_oi_chg']/100000):.2f}L — fresh support floor at ATM strike"
-                })
-    return alerts[:5]  # top 5
-
+                alerts.append({"type":"FLOOR BUILDING","strike":s,"urgency":"MEDIUM","icon":"✅",
+                    "message":f"₹{int(s)} put OI surging +{(v['put_oi_chg']/100000):.2f}L — fresh support floor at ATM"})
+    return alerts[:5]
 
 def market_state(pcr, adx, oi_matrix_signal, alerts, vix, concentration):
-    """
-    Final market state: TRENDING UP / TRENDING DOWN / RANGING / BREAKOUT IMMINENT / REVERSAL ZONE.
-    """
     signals=[]
-
-    if oi_matrix_signal in ("BULLISH","WEAK BULLISH"): signals.append(1)
+    if oi_matrix_signal in ("BULLISH","WEAK BULLISH"):   signals.append(1)
     elif oi_matrix_signal in ("BEARISH","WEAK BEARISH"): signals.append(-1)
-
     if adx and adx>=25: signals.append(1 if oi_matrix_signal=="BULLISH" else -1)
-    elif adx and adx<20: signals.append(0)  # ranging
-
-    if pcr<0.6 or pcr>1.5: signals.append(0)  # reversal zone
+    elif adx and adx<20: signals.append(0)
+    if pcr<0.6 or pcr>1.5: signals.append(0)
     elif pcr<0.8: signals.append(-1)
     elif pcr>1.2: signals.append(1)
-
-    # Breakout alerts push toward breakout state
-    breakout_up  =any(a["type"]=="BREAKOUT UP"   for a in alerts)
-    breakout_down=any(a["type"]=="BREAKOUT DOWN" for a in alerts)
-
-    if breakout_up or breakout_down:
-        return "BREAKOUT IMMINENT","⚡","Major OI unwinding at key level detected. Prepare for fast move."
-
-    if pcr<0.6:   return "REVERSAL ZONE","🔄","Extreme PCR — contrarian reversal up likely. Market may surprise bulls."
-    if pcr>1.5:   return "REVERSAL ZONE","🔄","Extreme PCR — contrarian reversal down likely. Market may surprise bears."
-
-    score=sum(signals)
-    conc =concentration.get("avg_concentration",50)
-
+    if any(a["type"]=="BREAKOUT UP"   for a in alerts): return "BREAKOUT IMMINENT","⚡","OI unwinding at resistance — upside breakout possible."
+    if any(a["type"]=="BREAKOUT DOWN" for a in alerts): return "BREAKOUT IMMINENT","⚡","OI unwinding at support — downside breakdown possible."
+    if pcr<0.6: return "REVERSAL ZONE","🔄","Extreme PCR — contrarian reversal up likely."
+    if pcr>1.5: return "REVERSAL ZONE","🔄","Extreme PCR — contrarian reversal down likely."
+    score=sum(signals); conc=concentration.get("avg_concentration",50)
     if score>=2:
-        if conc>55: return "TRENDING UP","📈","Strong bullish OI + momentum + concentrated levels. Trend likely to continue."
+        if conc>55: return "TRENDING UP","📈","Strong bullish OI + concentrated levels. Trend likely continues."
         else: return "TRENDING UP (UNCONFIRMED)","📈?","Bullish signals but scattered OI — confirm with price action."
     elif score<=-2:
-        if conc>55: return "TRENDING DOWN","📉","Strong bearish OI + momentum + concentrated levels. Trend likely to continue."
+        if conc>55: return "TRENDING DOWN","📉","Strong bearish OI + concentrated levels. Trend likely continues."
         else: return "TRENDING DOWN (UNCONFIRMED)","📉?","Bearish signals but scattered OI — confirm with price action."
-    elif adx and adx<20:
-        return "RANGING","↔","ADX below 20 — no clear trend. Trade range: sell resistance, buy support."
-    elif vix>25:
-        return "HIGH VOLATILITY RANGE","⚡↔","High VIX + neutral OI = range with sharp swings. Use wide stops."
-    else:
-        return "NEUTRAL / WAIT","⏳","Mixed signals. Wait for OI to build at a clear level before trading."
-
+    elif adx and adx<20: return "RANGING","↔","ADX below 20 — no clear trend. Trade range: sell resistance, buy support."
+    elif vix>25: return "HIGH VOLATILITY RANGE","⚡↔","High VIX + neutral OI = range with sharp swings. Use wide stops."
+    else: return "NEUTRAL / WAIT","⏳","Mixed signals. Wait for OI to build at a clear level before trading."
 
 def analyse_trend(atm_strikes, atm):
     if not atm_strikes: return "NEUTRAL","Insufficient data",50
@@ -573,13 +780,13 @@ def analyse_trend(atm_strikes, atm):
     elif pe>ce*1.3: score-=1; reasons.append("Put unwinding — support easing")
     if pcr_atm>1.2: score+=1; reasons.append(f"PCR {pcr_atm:.2f} — bullish near ATM")
     elif pcr_atm<0.8: score-=1; reasons.append(f"PCR {pcr_atm:.2f} — bearish near ATM")
-    if   score>=3: t,s="STRONGLY BULLISH",90
-    elif score==2: t,s="BULLISH",70
-    elif score==1: t,s="MILD BULLISH",60
+    if   score>=3:  t,s="STRONGLY BULLISH",90
+    elif score==2:  t,s="BULLISH",70
+    elif score==1:  t,s="MILD BULLISH",60
     elif score==-1: t,s="MILD BEARISH",40
     elif score==-2: t,s="BEARISH",30
     elif score<=-3: t,s="STRONGLY BEARISH",10
-    else: t,s="NEUTRAL / SIDEWAYS",50
+    else:           t,s="NEUTRAL / SIDEWAYS",50
     return t," | ".join(reasons) if reasons else "OI balanced — range-bound expected",s
 
 
@@ -648,87 +855,113 @@ def save_snapshot(data, atm_strikes):
 # ══════════════════════════════════════════════════
 
 def refresh():
-    global prev_oi, prev_pcr, prev_spot, candle_cache
+    global prev_oi, prev_pcr, prev_spot, candle_cache, candle_cache_15
 
     if not token_store["access_token"]: print("[REFRESH] No token"); return
     try:
-        spot   =fetch_spot()
-        expiry =get_expiry()
-        raw    =fetch_chain(expiry)
+        spot   = fetch_spot()
+        expiry = get_expiry()
+        raw    = fetch_chain(expiry)
         if not raw: print("[REFRESH] Empty chain"); return
 
-        atm   =round_to_strike(spot, STRIKE_STEP)
-        chain =process_chain(raw)
+        atm   = round_to_strike(spot, STRIKE_STEP)
+        chain = process_chain(raw)
         if not chain: return
 
-        atm_strikes={s:v for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP}
-        total_call=sum(v["call_oi"] for v in chain.values())
-        total_put =sum(v["put_oi"]  for v in chain.values())
-        pcr       =round(total_put/total_call,2) if total_call else 0
-        pcr_chg   =round(pcr-prev_pcr,3) if prev_pcr is not None else 0
-        max_pain  =compute_max_pain(chain)
-        futures   =fetch_futures(spot)
-        vix       =fetch_vix()
-        candles   =fetch_candles()
-        ind       =get_indicators(candles)
-        trend,trend_reason,trend_strength=analyse_trend(atm_strikes,atm)
+        atm_strikes = {s:v for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP}
+        total_call  = sum(v["call_oi"] for v in chain.values())
+        total_put   = sum(v["put_oi"]  for v in chain.values())
+        pcr         = round(total_put/total_call,2) if total_call else 0
+        pcr_chg     = round(pcr-prev_pcr,3) if prev_pcr is not None else 0
+        max_pain    = compute_max_pain(chain)
+        futures     = fetch_futures(spot)
+        vix         = fetch_vix()
 
-        # Intelligence
-        oi_cond,oi_signal,oi_desc = price_oi_matrix(spot,prev_spot,chain,atm)
-        pcr_analysis              = pcr_zone_analysis(pcr,prev_pcr)
-        gex_data,gex_flip         = compute_gex_profile(chain,atm)
-        iv_skew                   = compute_iv_skew(chain,atm)
-        concentration             = compute_oi_concentration(chain,atm)
-        alerts                    = detect_breakout_alerts(chain,atm,spot)
-        mkt_state,mkt_icon,mkt_note = market_state(pcr,ind.get("adx"),oi_signal,alerts,vix,concentration)
+        # Candles
+        candles_5m  = fetch_candles()
+        candles_15m = fetch_candles_15min()
 
-        # SR Strength for ATM±5
-        total_c_atm=sum(v["call_oi"] for v in atm_strikes.values())
-        total_p_atm=sum(v["put_oi"]  for v in atm_strikes.values())
-        for s,v in atm_strikes.items():
-            v["sr_strength_call"]=compute_sr_strength(v,True,total_c_atm)
-            v["sr_strength_put"] =compute_sr_strength(v,False,total_p_atm)
+        ind   = get_indicators(candles_5m)
+        trend, trend_reason, trend_strength = analyse_trend(atm_strikes, atm)
 
-        intelligence={
-            "market_state":      mkt_state,
-            "market_icon":       mkt_icon,
-            "market_note":       mkt_note,
+        # Original intelligence
+        oi_cond, oi_signal, oi_desc       = price_oi_matrix(spot, prev_spot, chain, atm)
+        pcr_analysis                       = pcr_zone_analysis(pcr, prev_pcr)
+        gex_data, gex_flip                 = compute_gex_profile(chain, atm)
+        iv_skew                            = compute_iv_skew(chain, atm)
+        concentration                      = compute_oi_concentration(chain, atm)
+        alerts                             = detect_breakout_alerts(chain, atm, spot)
+        mkt_state, mkt_icon, mkt_note      = market_state(pcr, ind.get("adx"), oi_signal, alerts, vix, concentration)
+
+        # SR Strength
+        total_c_atm = sum(v["call_oi"] for v in atm_strikes.values())
+        total_p_atm = sum(v["put_oi"]  for v in atm_strikes.values())
+        for s, v in atm_strikes.items():
+            v["sr_strength_call"] = compute_sr_strength(v, True,  total_c_atm)
+            v["sr_strength_put"]  = compute_sr_strength(v, False, total_p_atm)
+
+        # Per-strike OI flow classification
+        for s, v in atm_strikes.items():
+            cf, pf, nf = classify_strike_oi_flow(s, v, prev_spot, spot)
+            v["call_flow"] = cf
+            v["put_flow"]  = pf
+            v["net_flow"]  = nf
+
+        # Index technicals (EMA + Supertrend)
+        index_tech = compute_index_technicals(candles_5m, candles_15m)
+
+        # Per-strike LTP technicals
+        strike_tech = compute_strike_technicals(atm_strikes)
+        for s, tech in strike_tech.items():
+            if s in atm_strikes:
+                atm_strikes[s]["ltp_technicals"] = tech
+
+        intelligence = {
+            "market_state":        mkt_state,
+            "market_icon":         mkt_icon,
+            "market_note":         mkt_note,
             "oi_matrix_condition": oi_cond,
-            "oi_matrix_signal":  oi_signal,
-            "oi_matrix_desc":    oi_desc,
-            "pcr_zone":          pcr_analysis["zone"],
-            "pcr_signal":        pcr_analysis["signal"],
-            "pcr_note":          pcr_analysis["note"],
-            "gex_profile":       gex_data[:11],
-            "gex_flip":          gex_flip,
-            "iv_skew":           iv_skew,
-            "concentration":     concentration,
-            "alerts":            alerts,
+            "oi_matrix_signal":    oi_signal,
+            "oi_matrix_desc":      oi_desc,
+            "pcr_zone":            pcr_analysis["zone"],
+            "pcr_signal":          pcr_analysis["signal"],
+            "pcr_note":            pcr_analysis["note"],
+            "gex_profile":         gex_data[:11],
+            "gex_flip":            gex_flip,
+            "iv_skew":             iv_skew,
+            "concentration":       concentration,
+            "alerts":              alerts,
+            "index_technicals":    index_tech,
         }
 
-        data={
-            "spot":spot,"futures":futures,"premium":round(futures-spot,2),
-            "atm":atm,"pcr":pcr,"pcr_chg":pcr_chg,"vix":vix,
-            "max_pain":max_pain,"expiry":expiry,
-            "trend":trend,"trend_reason":trend_reason,"trend_strength":trend_strength,
-            "indicators":ind,"intelligence":intelligence,
-            "atm_strikes":atm_strikes,"chain":chain,
-            "timestamp":datetime.now().isoformat()
+        data = {
+            "spot": spot, "futures": futures, "premium": round(futures-spot,2),
+            "atm": atm, "pcr": pcr, "pcr_chg": pcr_chg, "vix": vix,
+            "max_pain": max_pain, "expiry": expiry,
+            "trend": trend, "trend_reason": trend_reason, "trend_strength": trend_strength,
+            "indicators": ind,
+            "intelligence": intelligence,
+            "atm_strikes": atm_strikes,
+            "chain": chain,
+            "timestamp": datetime.now().isoformat()
         }
 
-        oi_cache["data"]=data
-        save_snapshot(data,atm_strikes)
+        oi_cache["data"] = data
+        save_snapshot(data, atm_strikes)
 
-        prev_oi ={s:{"call_oi":v["call_oi"],"put_oi":v["put_oi"],
-                     "call_ltp":v["call_ltp"],"put_ltp":v["put_ltp"]}
-                  for s,v in chain.items()}
-        prev_pcr=pcr; prev_spot=spot
+        prev_oi   = {s:{"call_oi":v["call_oi"],"put_oi":v["put_oi"],
+                        "call_ltp":v["call_ltp"],"put_ltp":v["put_ltp"]}
+                     for s,v in chain.items()}
+        prev_pcr  = pcr
+        prev_spot = spot
 
+        t5 = index_tech.get("5min", {})
         print(f"[OI] ✅ Spot={spot} | Fut={futures} | VIX={vix} | PCR={pcr}({pcr_chg:+.3f}) | ATM={atm} | State={mkt_state}")
         print(f"[IND] RSI={ind['rsi']} | ADX={ind['adx']} | OI Matrix={oi_cond} | Alerts={len(alerts)}")
+        print(f"[TECH] 5m EMA7={t5.get('ema7')} EMA15={t5.get('ema15')} ST={t5.get('supertrend')} Trend={t5.get('trend')}")
 
     except Exception as e:
-        import traceback; print("[REFRESH ERROR]",e); traceback.print_exc()
+        import traceback; print("[REFRESH ERROR]", e); traceback.print_exc()
 
 def loop():
     while True:
@@ -740,7 +973,8 @@ def loop():
 # ══════════════════════════════════════════════════
 
 @app.route("/")
-def dashboard(): return render_template("dashboard.html")
+def dashboard():
+    return send_file("dashboard.html")
 
 @app.route("/oi/json")
 def oi_json():
@@ -751,22 +985,31 @@ def oi_json():
 def histogram():
     if not oi_cache["data"]: return jsonify([])
     chain=oi_cache["data"]["chain"]; atm=oi_cache["data"]["atm"]
-    return jsonify(sorted([v for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP],key=lambda x:x["strike"]))
+    return jsonify(sorted([v for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP],
+                          key=lambda x:x["strike"]))
 
 @app.route("/oi/status")
 def oi_status():
-    d=oi_cache["data"]; ind=d["indicators"] if d else {}; intel=d.get("intelligence",{}) if d else {}
-    return jsonify({"token":bool(token_store["access_token"]),"has_data":d is not None,
-                    "spot":d["spot"] if d else None,"pcr":d["pcr"] if d else None,
-                    "market_state":intel.get("market_state"),"rsi":ind.get("rsi"),
-                    "adx":ind.get("adx"),"updated":d["timestamp"] if d else None})
+    d=oi_cache["data"]
+    ind=d["indicators"] if d else {}
+    intel=d.get("intelligence",{}) if d else {}
+    return jsonify({
+        "token":        bool(token_store["access_token"]),
+        "has_data":     d is not None,
+        "spot":         d["spot"]    if d else None,
+        "pcr":          d["pcr"]     if d else None,
+        "market_state": intel.get("market_state"),
+        "rsi":          ind.get("rsi"),
+        "adx":          ind.get("adx"),
+        "updated":      d["timestamp"] if d else None
+    })
 
-if __name__=="__main__":
-    print("="*55)
-    print("  NIFTY OI Server — Full Intelligence Mode")
+if __name__ == "__main__":
+    print("=" * 55)
+    print("  NIFTY OI Server — Full Intelligence Mode v2")
     print("  Step 1: http://localhost:5000/login")
     print("  Step 2: http://localhost:5000")
     print(f"  Snapshots: ./{SNAPSHOT_DIR}/")
-    print("="*55)
-    threading.Thread(target=loop,daemon=True).start()
-    app.run(port=5000,debug=False)
+    print("=" * 55)
+    threading.Thread(target=loop, daemon=True).start()
+    app.run(host="0.0.0.0", port=5000, debug=False)
