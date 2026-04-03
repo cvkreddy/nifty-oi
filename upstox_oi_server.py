@@ -22,9 +22,9 @@ import requests
 app  = Flask(__name__)
 CORS(app)
 
-API_KEY      = "dc927c0f-918a-4c21-ae03-493acaa0608a"
-API_SECRET   = "21ebqgxrft"
-REDIRECT_URI = "http://localhost:5000/callback"
+API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
+API_SECRET   = "0j2fmzd437"
+REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 NIFTY_KEY    = "NSE_INDEX|Nifty 50"
 CACHE_TTL    = 300
 STRIKE_STEP  = 50
