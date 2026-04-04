@@ -974,7 +974,7 @@ def loop():
 
 @app.route("/")
 def dashboard():
-    return send_file("dashboard.html")
+    return send_file("index.html")
 
 @app.route("/oi/json")
 def oi_json():
