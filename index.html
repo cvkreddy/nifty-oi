@@ -28,9 +28,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .btn:hover{background:rgba(0,230,118,.2);}
 .btn-ss{font-family:var(--ui);font-size:12px;font-weight:600;background:rgba(64,196,255,.1);
   border:1px solid rgba(64,196,255,.3);color:var(--info);padding:4px 12px;border-radius:4px;cursor:pointer;}
-.btn-ss:hover{background:rgba(64,196,255,.2);}
-.badge{font-size:11px;background:rgba(64,196,255,.1);border:1px solid rgba(64,196,255,.25);color:var(--info);padding:3px 10px;border-radius:4px;}
-.snap-status{font-size:10px;color:var(--text2);}
 
 /* MARKET STATE BAR */
 .state-bar{padding:12px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
@@ -38,18 +35,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .state-icon{font-size:22px;}
 .state-label{font-size:10px;color:var(--text2);letter-spacing:2px;margin-bottom:2px;}
 .state-val{font-size:20px;font-weight:700;letter-spacing:1px;}
-.state-note{font-size:12px;color:var(--text2);flex:1;}
 .state-divider{width:1px;height:40px;background:var(--border2);}
-
-/* OI MATRIX */
-.matrix-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 18px;
-  display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
-.mx-block{display:flex;flex-direction:column;align-items:center;gap:3px;
-  padding:6px 14px;border-radius:6px;border:1px solid var(--border);min-width:120px;}
-.mx-label{font-size:9px;color:var(--text2);letter-spacing:1.5px;}
-.mx-val{font-size:13px;font-weight:700;}
-.mx-desc{font-size:10px;color:var(--text2);text-align:center;}
-.mx-divider{width:1px;height:50px;background:var(--border2);}
 
 /* STRIP */
 .strip{background:var(--bg2);border-bottom:1px solid var(--border);padding:7px 18px;
@@ -62,7 +48,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 
 /* ALERTS BAR */
 .alerts-bar{padding:6px 18px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-.alert-pill{font-size:10px;padding:3px 10px;border-radius:4px;font-weight:700;letter-spacing:.5px;}
+.alert-pill{font-size:10px;padding:3px 10px;border-radius:4px;font-weight:700;}
 .alert-high{background:rgba(255,61,87,.2);color:var(--bear);border:1px solid rgba(255,61,87,.4);}
 .alert-med{background:rgba(255,171,0,.15);color:var(--warn);border:1px solid rgba(255,171,0,.3);}
 .no-alert{font-size:10px;color:var(--text2);}
@@ -89,13 +75,31 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 #err{display:none;background:rgba(255,61,87,.1);border:1px solid rgba(255,61,87,.3);
   color:var(--bear);padding:8px 18px;font-size:12px;}
 
-/* INTELLIGENCE CARDS ROW */
+/* INTEL CARDS */
 .intel-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px 18px;}
-@media(max-width:900px){.intel-row{grid-template-columns:1fr 1fr;}}
 .ic{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
 .ic-lbl{font-size:9px;color:var(--text2);letter-spacing:1.5px;margin-bottom:4px;}
 .ic-val{font-size:13px;font-weight:700;margin-bottom:2px;}
 .ic-sub{font-size:10px;color:var(--text2);line-height:1.4;}
+
+/* ══ INDEX TECHNICALS BAR (NEW) ══ */
+.tech-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 18px;
+  display:flex;align-items:flex-start;gap:0;flex-wrap:wrap;}
+.tech-tf{padding:6px 16px 6px 0;border-right:1px solid var(--border2);margin-right:16px;}
+.tech-tf:last-child{border-right:none;}
+.tech-tf-lbl{font-size:9px;color:var(--info);letter-spacing:1.5px;font-weight:700;margin-bottom:5px;font-family:var(--ui);}
+.tech-item{display:flex;align-items:center;gap:6px;margin-bottom:3px;}
+.tech-key{font-size:10px;color:var(--text2);width:90px;flex-shrink:0;}
+.tech-val{font-size:12px;font-weight:700;}
+.tech-trend-pill{font-size:10px;padding:2px 7px;border-radius:3px;font-weight:700;font-family:var(--ui);}
+.tp-bull{background:rgba(0,230,118,.12);color:var(--bull);border:1px solid rgba(0,230,118,.25);}
+.tp-bear{background:rgba(255,61,87,.12);color:var(--bear);border:1px solid rgba(255,61,87,.3);}
+.tp-warn{background:rgba(255,171,0,.1);color:var(--warn);border:1px solid rgba(255,171,0,.3);}
+.tp-neu{background:rgba(107,127,160,.1);color:var(--text2);border:1px solid var(--border2);}
+.xover-pill{font-size:10px;padding:2px 8px;border-radius:3px;font-weight:700;font-family:var(--ui);
+  animation:blink 1s infinite;}
+.xover-gold{background:rgba(0,230,118,.2);color:var(--bull);border:1px solid rgba(0,230,118,.4);}
+.xover-death{background:rgba(255,61,87,.2);color:var(--bear);border:1px solid rgba(255,61,87,.4);}
 
 /* GRID */
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 18px 18px;}
@@ -119,17 +123,11 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .ar td.td-s{background:rgba(124,77,255,.25)!important;}
 .hr2 td{background:rgba(255,171,0,.04)!important;}
 .sk-c{color:var(--bear);font-weight:700;}.sk-p{color:var(--bull);font-weight:700;}.sk-a{color:var(--atm);font-weight:700;}
-
-/* strength bar */
 .stbar{width:40px;height:5px;background:var(--bg3);border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:4px;}
 .stfill{height:100%;border-radius:2px;}
-
-/* OI bar */
 .bw{display:flex;align-items:center;gap:4px;justify-content:flex-end;}
 .bb{width:38px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
 .bf{height:100%;border-radius:3px;}.bc{background:var(--bear);}.bp{background:var(--bull);}
-
-/* badges */
 .sig{display:inline-block;padding:2px 5px;border-radius:3px;font-size:9px;font-weight:700;}
 .sa{background:rgba(255,61,87,.18);color:var(--bear);border:1px solid rgba(255,61,87,.3);}
 .se{background:rgba(0,230,118,.12);color:var(--bull);border:1px solid rgba(0,230,118,.3);}
@@ -137,37 +135,35 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .su{background:rgba(255,171,0,.1);color:var(--warn);border:1px solid rgba(255,171,0,.3);}
 .sn{background:rgba(107,127,160,.1);color:var(--text2);border:1px solid var(--border2);}
 
-/* ══ ENHANCED OI HISTOGRAM ══ */
+/* ══ OI HISTOGRAM enhanced ══ */
 .hw{padding:8px 12px;}
-.hist-legend{display:flex;gap:16px;padding:0 12px 6px;font-size:10px;align-items:center;}
-.hist-legend-item{display:flex;align-items:center;gap:4px;}
-.hist-legend-bar{width:14px;height:5px;border-radius:2px;}
-
-/* Row 1: total OI bars */
 .hr{display:flex;align-items:center;gap:4px;margin-bottom:1px;}
-/* Row 2: OI change bars */
-.hrc{display:flex;align-items:center;gap:4px;margin-bottom:6px;}
-
+.hrc{display:flex;align-items:center;gap:4px;margin-bottom:7px;}
 .hsk{font-size:11px;width:54px;text-align:right;flex-shrink:0;}
 .hbs{flex:1;display:flex;align-items:center;gap:2px;}
-.hcb{height:12px;background:var(--bear);border-radius:2px 0 0 2px;min-width:2px;opacity:.85;}
-.hpb{height:12px;background:var(--bull);border-radius:0 2px 2px 0;min-width:2px;opacity:.85;}
+.hcb{height:12px;background:var(--bear);border-radius:2px 0 0 2px;min-width:2px;opacity:.8;}
+.hpb{height:12px;background:var(--bull);border-radius:0 2px 2px 0;min-width:2px;opacity:.8;}
 .hcn{width:1px;background:var(--border2);height:12px;flex-shrink:0;}
-
-/* Change bar track */
-.hbs-chg{flex:1;display:flex;align-items:center;gap:2px;height:9px;}
-.hchg-ce-add{height:9px;background:var(--bear);border-radius:2px;min-width:2px;opacity:.9;}
-.hchg-ce-exit{height:9px;background:var(--bull);border-radius:2px;min-width:2px;opacity:.9;}
-.hchg-pe-add{height:9px;background:var(--bull);border-radius:2px;min-width:2px;opacity:.9;}
-.hchg-pe-exit{height:9px;background:var(--warn);border-radius:2px;min-width:2px;opacity:.9;}
-.hchg-zero{height:9px;width:2px;background:var(--border2);border-radius:2px;}
-
 .hlc{font-size:10px;color:var(--bear);width:34px;text-align:right;flex-shrink:0;}
 .hlp{font-size:10px;color:var(--bull);width:34px;flex-shrink:0;}
 .hnet{font-size:10px;width:38px;text-align:right;}
 .hstr{font-size:9px;width:28px;text-align:right;color:var(--text2);}
 .hatm{font-size:10px;color:var(--atm);}
-.hchg-lbl{font-size:9px;width:80px;text-align:right;flex-shrink:0;}
+/* Change bars */
+.hchg-ca{height:9px;background:var(--bear);border-radius:2px;min-width:2px;}
+.hchg-cx{height:9px;background:var(--bull);border-radius:2px;min-width:2px;}
+.hchg-pa{height:9px;background:var(--bull);border-radius:2px;min-width:2px;}
+.hchg-px{height:9px;background:var(--warn);border-radius:2px;min-width:2px;}
+
+/* ══ PER-STRIKE OI FLOW TABLE (NEW) ══ */
+.flow-table table td{font-size:11px;padding:5px 7px;vertical-align:top;}
+.flow-table table th{font-size:10px;padding:5px 7px;}
+.flow-cond{font-size:11px;font-weight:700;}
+.flow-sig{font-size:10px;padding:2px 6px;border-radius:3px;font-weight:700;display:inline-block;font-family:var(--ui);}
+.flow-desc{font-size:10px;color:var(--text2);margin-top:3px;line-height:1.4;}
+.flow-nums{display:flex;gap:8px;margin-top:3px;flex-wrap:wrap;}
+.flow-num{font-size:10px;}
+.net-flow-cell{font-size:10px;font-family:var(--ui);line-height:1.5;}
 
 /* GEX */
 .gex-row{display:flex;align-items:center;gap:6px;padding:3px 12px;border-bottom:1px solid rgba(255,255,255,.03);}
@@ -197,12 +193,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .ast{font-size:12px;font-weight:700;}.aoi{font-size:11px;font-weight:700;}.achg{font-size:10px;color:var(--text2);}
 .anote{font-size:10px;color:var(--text2);margin-top:5px;line-height:1.5;}
 .aempty{font-size:11px;color:var(--text2);padding:3px 0;line-height:1.6;}
-
 .ts-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);}
 .ts-row:last-child{border-bottom:none;}
 .ts-l{font-size:11px;color:var(--text2);}.ts-v{font-size:12px;font-weight:700;}
-
-/* IV SKEW */
 .skew-row{display:flex;align-items:center;gap:8px;padding:5px 12px;border-bottom:1px solid rgba(255,255,255,.03);}
 .skew-dist{font-size:10px;color:var(--text2);width:24px;}
 .skew-bar{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;}
@@ -221,12 +214,12 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <div class="hdr">
   <div style="display:flex;align-items:center;gap:12px;">
     <div class="logo">NIFTY·OI</div>
-    <div class="badge" id="expiry-badge">Expiry: —</div>
+    <div class="badge" style="font-size:11px;background:rgba(64,196,255,.1);border:1px solid rgba(64,196,255,.25);color:var(--info);padding:3px 10px;border-radius:4px;" id="expiry-badge">Expiry: —</div>
     <div style="font-size:11px;color:var(--text2);" id="upd">—</div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
-    <span class="snap-status" id="snap-status">📸 Auto-snap: ON · Every 5min</span>
-    <button class="btn-ss" onclick="saveScreenshot()">📸 SNAP NOW</button>
+    <span style="font-size:10px;color:var(--text2);" id="snap-status">📸 Auto-snap: ON</span>
+    <button class="btn-ss" onclick="saveScreenshot(false)">📸 SNAP NOW</button>
     <div class="dot" id="dot"></div>
     <div class="timer" id="timer">5:00</div>
     <button class="btn" onclick="doFetch()">↺ REFRESH</button>
@@ -248,13 +241,13 @@ tr:hover td{background:rgba(255,255,255,.02);}
   </div>
   <div class="state-divider"></div>
   <div style="flex:2;">
-    <div class="state-note" id="state-note">—</div>
+    <div style="font-size:12px;color:var(--text2);" id="state-note">—</div>
     <div style="font-size:11px;color:var(--text2);margin-top:2px;" id="matrix-desc">—</div>
   </div>
 </div>
 
 <!-- BREAKOUT ALERTS -->
-<div class="alerts-bar" id="alerts-bar">
+<div class="alerts-bar">
   <span style="font-size:10px;color:var(--text2);letter-spacing:1px;">ALERTS:</span>
   <span class="no-alert" id="alerts-content">No alerts — OI stable</span>
 </div>
@@ -269,6 +262,17 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="si"><span class="sl">MAX PAIN</span><span class="sv warn" id="m-mp">—</span></div><div class="sdv"></div>
   <div class="si"><span class="sl">ATM</span><span class="sv atmc" id="m-atm">—</span></div><div class="sdv"></div>
   <div class="si"><span class="sl">BIAS</span><span class="sv" id="m-bias">—</span></div>
+</div>
+
+<!-- ══ INDEX TECHNICALS BAR (NEW) ══ -->
+<div class="tech-bar" id="index-tech-bar">
+  <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;align-self:center;margin-right:16px;flex-shrink:0">NIFTY TECHNICALS</div>
+  <div class="tech-tf" id="tf-5min">
+    <div class="tech-tf-lbl">5 MIN TF — Loading...</div>
+  </div>
+  <div class="tech-tf" id="tf-15min">
+    <div class="tech-tf-lbl">15 MIN TF — Loading...</div>
+  </div>
 </div>
 
 <!-- RSI + ADX -->
@@ -296,7 +300,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <span style="font-size:10px;color:var(--text2);" id="trend-str">—</span>
 </div>
 
-<!-- INTELLIGENCE CARDS -->
+<!-- INTEL CARDS -->
 <div class="intel-row">
   <div class="ic"><div class="ic-lbl">PCR ZONE</div><div class="ic-val" id="pcr-zone">—</div><div class="ic-sub" id="pcr-note">—</div></div>
   <div class="ic"><div class="ic-lbl">FUTURES BIAS</div><div class="ic-val" id="sig-fut">—</div><div class="ic-sub" id="sig-fut-s">—</div></div>
@@ -329,20 +333,52 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <tbody id="put-tbody"><tr><td colspan="9" class="loading">Waiting...</td></tr></tbody></table>
   </div>
 
-  <!-- OI HISTOGRAM — ENHANCED WITH OI CHANGE -->
+  <!-- ══ PER-STRIKE OI FLOW MATRIX (NEW — FULL WIDTH) ══ -->
+  <div class="card full">
+    <div class="ch">
+      <span class="ct" style="color:var(--warn)">⚡ OI FLOW MATRIX — WHAT IS HAPPENING AT EACH STRIKE (Long Buildup · Short Covering · Fake Move · Unwinding)</span>
+      <span class="cs" id="flow-time">—</span>
+    </div>
+    <!-- LEGEND -->
+    <div style="padding:6px 14px;border-bottom:1px solid var(--border);display:flex;gap:14px;flex-wrap:wrap;font-size:10px;font-family:var(--ui);">
+      <span style="color:var(--bull);font-weight:700">🟢 Long Buildup</span><span style="color:var(--text2)">Price↑+OI↑ = Real buying conviction</span>
+      <span style="color:var(--bear);font-weight:700">🔴 Short Buildup</span><span style="color:var(--text2)">Price↓+OI↑ = Real selling conviction</span>
+      <span style="color:var(--bull)">📈 Short Covering</span><span style="color:var(--text2)">Price↑+OI↓ = Bears exiting, weak rally</span>
+      <span style="color:var(--warn)">⚠ Fake Move</span><span style="color:var(--text2)">Price moves but OI flat = no conviction, trap</span>
+      <span style="color:var(--warn)">🌀 Unwinding</span><span style="color:var(--text2)">Price↓+OI↓ = Bulls exiting, weak fall</span>
+      <span style="color:var(--info)">💥 Both Adding</span><span style="color:var(--text2)">CE+PE OI both rising = BIG MOVE COMING</span>
+    </div>
+    <div class="flow-table" style="overflow-x:auto;">
+      <table>
+        <thead><tr style="background:var(--bg3)">
+          <th class="th-s" style="min-width:80px">STRIKE</th>
+          <th style="text-align:left;min-width:200px;color:var(--bear)">🔴 CALL (CE) OI FLOW</th>
+          <th style="text-align:left;min-width:80px;color:var(--bear)">CE Δ OI</th>
+          <th style="text-align:left;min-width:80px;color:var(--bear)">CE Δ LTP</th>
+          <th style="text-align:center;min-width:160px">NET FLOW</th>
+          <th style="text-align:left;min-width:200px;color:var(--bull)">✅ PUT (PE) OI FLOW</th>
+          <th style="text-align:left;min-width:80px;color:var(--bull)">PE Δ OI</th>
+          <th style="text-align:left;min-width:80px;color:var(--bull)">PE Δ LTP</th>
+          <th style="text-align:center;min-width:100px">CE LTP EMAs</th>
+          <th style="text-align:center;min-width:100px">PE LTP EMAs</th>
+        </tr></thead>
+        <tbody id="flow-tbody"><tr><td colspan="10" class="loading">Waiting for 2nd data cycle...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- OI HISTOGRAM -->
   <div class="card">
     <div class="ch">
       <span class="ct info">OI HISTOGRAM + OI CHANGE — ATM ±5</span>
-      <span style="display:flex;gap:10px;font-size:10px;align-items:center;">
-        <span style="color:var(--text2)">Top: Total OI &nbsp;|&nbsp; Bottom: OI Change this cycle</span>
+      <span style="display:flex;gap:12px;font-size:10px;">
+        <span style="color:var(--bear)">■ CE OI · ■ CE Chg</span>
+        <span style="color:var(--bull)">■ PE OI · ■ PE Chg</span>
+        <span style="color:var(--warn)">■ PE Exit</span>
       </span>
     </div>
-    <!-- LEGEND -->
-    <div class="hist-legend" style="border-bottom:1px solid var(--border);padding:5px 12px;">
-      <span style="font-size:9px;color:var(--text2);letter-spacing:1px;font-weight:700;margin-right:4px;">OI CHANGE:</span>
-      <div class="hist-legend-item"><div class="hist-legend-bar" style="background:var(--bear)"></div><span style="font-size:10px;color:var(--bear)">CE Adding (shorts building resistance)</span></div>
-      <div class="hist-legend-item"><div class="hist-legend-bar" style="background:var(--bull)"></div><span style="font-size:10px;color:var(--bull)">CE Exiting (short covering) / PE Adding (support building)</span></div>
-      <div class="hist-legend-item"><div class="hist-legend-bar" style="background:var(--warn)"></div><span style="font-size:10px;color:var(--warn)">PE Exiting (support weakening)</span></div>
+    <div style="padding:4px 12px 4px;border-bottom:1px solid var(--border);font-size:9px;color:var(--text2);font-family:var(--ui);">
+      TOP ROW = Total OI bars &nbsp;|&nbsp; BOTTOM ROW = OI Change this 5-min cycle (🔴=CE adding · ✅=CE exit/PE adding · ⚠=PE exit)
     </div>
     <div class="hw" id="histogram"><div class="loading">Waiting...</div></div>
   </div>
@@ -387,39 +423,27 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <div style="height:28px"></div>
 <div class="statusbar">
   <span id="st-left">Connecting...</span>
-  <span id="st-right">OI Matrix needs 2 cycles · Alerts appear when OI moves sharply · PNG auto-saved every 5min → snapshots/</span>
+  <span id="st-right">OI Matrix needs 2 cycles · Alerts appear when OI moves sharply · PNG auto-saved every 5min</span>
 </div>
 
 <script>
-let secs = 300
-let snapCount = 0
+let secs = 300, snapCount = 0
 
-/* ── SCREENSHOT ─────────────────────────────────────── */
-function loadH2C(){
-  const s=document.createElement('script')
-  s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
-  document.head.appendChild(s)
-}
+/* ── SCREENSHOT ─────────────────────────────────────────────── */
+function loadH2C(){const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';document.head.appendChild(s)}
 loadH2C()
-
 function saveScreenshot(auto){
-  if(typeof html2canvas==='undefined'){
-    if(!auto) window.print()
-    return
-  }
+  if(typeof html2canvas==='undefined'){if(!auto)window.print();return}
   const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19)
-  const prefix=auto?'auto':'manual'
   html2canvas(document.body,{scale:1,useCORS:true,allowTaint:true}).then(c=>{
-    const a=document.createElement('a')
-    a.download=`nifty_oi_${prefix}_${ts}.png`
-    a.href=c.toDataURL('image/png')
-    a.click()
+    const a=document.createElement('a');a.download=`nifty_oi_${auto?'auto':'manual'}_${ts}.png`
+    a.href=c.toDataURL('image/png');a.click()
     snapCount++
-    document.getElementById('snap-status').textContent=`📸 Auto-snap: ON · Last: ${new Date().toLocaleTimeString('en-IN')} · Total: ${snapCount}`
-  }).catch(e=>{console.warn('Screenshot error:',e)})
+    document.getElementById('snap-status').textContent=`📸 Auto-snap ON · Last: ${new Date().toLocaleTimeString('en-IN')} · #${snapCount}`
+  }).catch(e=>console.warn('Screenshot:',e))
 }
 
-/* ── FETCH ──────────────────────────────────────────── */
+/* ── FETCH ──────────────────────────────────────────────────── */
 async function doFetch(){
   document.getElementById('dot').style.background='var(--warn)'
   try{
@@ -427,35 +451,21 @@ async function doFetch(){
     if(!jr.ok) throw new Error('HTTP '+jr.status)
     const raw=await jr.json()
     if(raw.error) throw new Error(raw.error)
-
-    const chain={}
-    Object.keys(raw.chain||{}).forEach(k=>{const nk=parseFloat(k);chain[nk]={...raw.chain[k],strike:nk}})
-    raw.chain=chain
-    const atk={}
-    Object.keys(raw.atm_strikes||{}).forEach(k=>{const nk=parseFloat(k);atk[nk]={...raw.atm_strikes[k],strike:nk}})
-    raw.atm_strikes=atk
-    raw.atm=parseFloat(raw.atm)||0; raw.max_pain=parseFloat(raw.max_pain)||0
-    raw.spot=parseFloat(raw.spot)||0; raw.futures=parseFloat(raw.futures)||raw.spot
-    raw.premium=parseFloat(raw.premium)||0; raw.pcr=parseFloat(raw.pcr)||0
-    raw.vix=parseFloat(raw.vix)||0; raw.pcr_chg=parseFloat(raw.pcr_chg)||0
-
-    let hist=[]
-    try{hist=(await hr.json()).map(h=>({...h,strike:parseFloat(h.strike||0)}))}catch(e){}
-
+    const chain={};Object.keys(raw.chain||{}).forEach(k=>{const nk=parseFloat(k);chain[nk]={...raw.chain[k],strike:nk}});raw.chain=chain
+    const atk={};Object.keys(raw.atm_strikes||{}).forEach(k=>{const nk=parseFloat(k);atk[nk]={...raw.atm_strikes[k],strike:nk}});raw.atm_strikes=atk
+    raw.atm=parseFloat(raw.atm)||0;raw.max_pain=parseFloat(raw.max_pain)||0
+    raw.spot=parseFloat(raw.spot)||0;raw.futures=parseFloat(raw.futures)||raw.spot
+    raw.premium=parseFloat(raw.premium)||0;raw.pcr=parseFloat(raw.pcr)||0
+    raw.vix=parseFloat(raw.vix)||0;raw.pcr_chg=parseFloat(raw.pcr_chg)||0
+    let hist=[];try{hist=(await hr.json()).map(h=>({...h,strike:parseFloat(h.strike||0)}))}catch(e){}
     document.getElementById('err').style.display='none'
     render(raw,hist)
     secs=300
     document.getElementById('upd').textContent='Updated: '+new Date().toLocaleTimeString('en-IN')
     document.getElementById('dot').style.background='var(--bull)'
-    const ind=raw.indicators||{}; const intel=raw.intelligence||{}
-    document.getElementById('st-left').textContent=
-      'Live · Spot ₹'+fmt(raw.spot)+' · PCR '+raw.pcr.toFixed(2)+
-      ' · RSI '+(ind.rsi||'N/A')+' · ADX '+(ind.adx||'N/A')+
-      ' · State: '+(intel.market_state||'—')
-
-    // Auto screenshot 2 seconds after data loads
-    setTimeout(()=>saveScreenshot(true), 2000)
-
+    const ind=raw.indicators||{},intel=raw.intelligence||{}
+    document.getElementById('st-left').textContent='Live · Spot ₹'+fmt(raw.spot)+' · PCR '+raw.pcr.toFixed(2)+' · RSI '+(ind.rsi||'N/A')+' · ADX '+(ind.adx||'N/A')+' · State: '+(intel.market_state||'—')
+    setTimeout(()=>saveScreenshot(true),2000)
   }catch(e){
     document.getElementById('err').style.display='block'
     document.getElementById('dot').style.background='var(--bear)'
@@ -464,46 +474,42 @@ async function doFetch(){
   }
 }
 
-/* ── RENDER ─────────────────────────────────────────── */
+/* ── MAIN RENDER ────────────────────────────────────────────── */
 function render(d,hist){
   const {spot,futures,premium,pcr,pcr_chg,vix,max_pain:mp,atm,trend,trend_reason,trend_strength}=d
-  const ind=d.indicators||{}; const intel=d.intelligence||{}
-
+  const ind=d.indicators||{},intel=d.intelligence||{}
   document.getElementById('expiry-badge').textContent='Expiry: '+(d.expiry||'—')
 
-  // MARKET STATE BAR
-  const ms=intel.market_state||'—'; const mi=intel.market_icon||'⏳'
+  // MARKET STATE
+  const ms=intel.market_state||'—',mi=intel.market_icon||'⏳'
   const msCol=ms.includes('UP')||ms.includes('BULL')?'var(--bull)':ms.includes('DOWN')||ms.includes('BEAR')?'var(--bear)':ms.includes('BREAK')?'var(--warn)':ms.includes('REVERS')?'var(--purple)':'var(--text2)'
-  const sb=document.getElementById('state-bar'); sb.style.borderBottomColor=msCol
-  set('state-icon',mi); styl('state-val',ms,msCol)
+  document.getElementById('state-bar').style.borderBottomColor=msCol
+  set('state-icon',mi);styl('state-val',ms,msCol)
   set('state-note',intel.market_note||'—')
-  const mxCol=intel.oi_matrix_signal==='BULLISH'?'var(--bull)':intel.oi_matrix_signal==='BEARISH'?'var(--bear)':intel.oi_matrix_signal==='WEAK BULLISH'?'var(--bull)':intel.oi_matrix_signal==='WEAK BEARISH'?'var(--bear)':'var(--warn)'
+  const mxCol=intel.oi_matrix_signal==='BULLISH'||intel.oi_matrix_signal==='WEAK BULLISH'?'var(--bull)':intel.oi_matrix_signal==='BEARISH'||intel.oi_matrix_signal==='WEAK BEARISH'?'var(--bear)':'var(--warn)'
   styl('matrix-val',(intel.oi_matrix_condition||'—')+' → '+(intel.oi_matrix_signal||'—'),mxCol)
   set('matrix-desc',intel.oi_matrix_desc||'—')
 
   // ALERTS
   const alerts=intel.alerts||[]
-  const alertsEl=document.getElementById('alerts-content')
-  if(alerts.length){
-    alertsEl.innerHTML=alerts.map(a=>`<span class="alert-pill ${a.urgency==='HIGH'?'alert-high':'alert-med'}">${a.icon||''} ${a.type}: ${a.message||a.msg||''}</span>`).join('')
-  } else {
-    alertsEl.innerHTML='<span class="no-alert">No alerts — OI stable at all key levels</span>'
-  }
+  document.getElementById('alerts-content').innerHTML=alerts.length
+    ?alerts.map(a=>`<span class="alert-pill ${a.urgency==='HIGH'?'alert-high':'alert-med'}">${a.icon||''} ${a.type}: ${a.message||a.msg||''}</span>`).join('')
+    :'<span class="no-alert">No alerts — OI stable at all key levels</span>'
 
   // STRIP
-  set('m-spot','₹'+fmt(spot))
-  set('m-fut','₹'+fmt(futures))
-  const pe=document.getElementById('m-prem'); pe.textContent=(premium>=0?'+':'')+premium.toFixed(1)+'pts'; pe.className='sv '+(premium>=0?'bull':'bear')
+  set('m-spot','₹'+fmt(spot));set('m-fut','₹'+fmt(futures))
+  const pe=document.getElementById('m-prem');pe.textContent=(premium>=0?'+':'')+premium.toFixed(1)+'pts';pe.className='sv '+(premium>=0?'bull':'bear')
   set('m-vix',vix?vix.toFixed(2):'—')
-  const pcrEl=document.getElementById('m-pcr'); pcrEl.textContent=pcr.toFixed(2); pcrEl.className='sv '+(pcr>=1.2?'bull':pcr<=0.8?'bear':'warn')
+  const pcrEl=document.getElementById('m-pcr');pcrEl.textContent=pcr.toFixed(2);pcrEl.className='sv '+(pcr>=1.2?'bull':pcr<=0.8?'bear':'warn')
   const pcrChgEl=document.getElementById('m-pcr-chg')
   if(pcr_chg!==0){pcrChgEl.textContent=(pcr_chg>0?'▲+':'▼')+pcr_chg.toFixed(3);pcrChgEl.style.color=pcr_chg>0?'var(--bull)':'var(--bear)'}
-  else{pcrChgEl.textContent=''}
+  else pcrChgEl.textContent=''
   set('m-mp','₹'+Math.round(mp).toLocaleString('en-IN'))
   set('m-atm','₹'+Math.round(atm).toLocaleString('en-IN'))
-  const biasEl=document.getElementById('m-bias')
-  biasEl.textContent=pcr>=1.2?'BULLISH':pcr<=0.8?'BEARISH':'NEUTRAL'
-  biasEl.className='sv '+(pcr>=1.2?'bull':pcr<=0.8?'bear':'warn')
+  const biasEl=document.getElementById('m-bias');biasEl.textContent=pcr>=1.2?'BULLISH':pcr<=0.8?'BEARISH':'NEUTRAL';biasEl.className='sv '+(pcr>=1.2?'bull':pcr<=0.8?'bear':'warn')
+
+  // INDEX TECHNICALS
+  renderIndexTech(intel.index_technicals||{})
 
   // RSI + ADX
   if(ind.rsi!=null){
@@ -512,48 +518,33 @@ function render(d,hist){
     document.getElementById('rsi-val').style.color=rc
     document.getElementById('rsi-fill').style.width=ind.rsi+'%'
     document.getElementById('rsi-fill').style.background=rc
-    const sig=document.getElementById('rsi-sig'); sig.textContent=ind.rsi_signal||'—'; sig.style.color=rc
+    const sig=document.getElementById('rsi-sig');sig.textContent=ind.rsi_signal||'—';sig.style.color=rc
     sig.style.background=ind.rsi>=70?'rgba(255,61,87,.2)':ind.rsi<=30?'rgba(0,230,118,.15)':'rgba(255,171,0,.15)'
     set('rsi-tip',ind.rsi>=70?'Overbought — watch reversal':ind.rsi<=30?'Oversold — watch bounce':ind.rsi>=55?'Bullish momentum':ind.rsi<=45?'Bearish momentum':'Neutral')
-  } else { set('rsi-val','N/A'); set('rsi-tip','No candle data — market hours only') }
+  } else {set('rsi-val','N/A');set('rsi-tip','No candle data — market hours only')}
   if(ind.adx!=null){
     set('adx-val',ind.adx.toFixed(1))
     const ac=ind.adx>=25?'var(--bull)':ind.adx>=20?'var(--warn)':'var(--text2)'
     document.getElementById('adx-val').style.color=ac
-    const as2=document.getElementById('adx-sig'); as2.textContent=ind.adx_signal||'—'; as2.style.color=ac
+    const as2=document.getElementById('adx-sig');as2.textContent=ind.adx_signal||'—';as2.style.color=ac
     as2.style.background=ind.adx>=25?'rgba(0,230,118,.12)':'rgba(255,171,0,.1)'
     set('pdi-val',ind.pdi!=null?ind.pdi.toFixed(1):'—')
     set('ndi-val',ind.ndi!=null?ind.ndi.toFixed(1):'—')
-    const at=document.getElementById('adx-trend'); at.textContent=ind.adx_trend||'—'
+    const at=document.getElementById('adx-trend');at.textContent=ind.adx_trend||'—'
     at.style.color=(ind.adx_trend||'').includes('BULL')?'var(--bull)':(ind.adx_trend||'').includes('BEAR')?'var(--bear)':'var(--warn)'
-  } else { set('adx-val','N/A') }
+  } else set('adx-val','N/A')
 
-  // OI Concentration
   const conc=intel.concentration||{}
-  const concEl=document.getElementById('conc-val')
-  concEl.textContent=(conc.avg_concentration||0).toFixed(0)+'%'
-  concEl.style.color=conc.avg_concentration>65?'var(--bull)':conc.avg_concentration>45?'var(--warn)':'var(--bear)'
-
-  // IV Skew
-  const skew=intel.iv_skew||{}
-  const skewEl=document.getElementById('skew-val')
-  const sa=skew.avg_skew||0
-  skewEl.textContent=(sa>0?'PUT IV+':'CALL IV+')+Math.abs(sa).toFixed(1)+'%'
-  skewEl.style.color=sa>3?'var(--bear)':sa<-3?'var(--bull)':'var(--text2)'
-
-  // Trend bar
+  const concEl=document.getElementById('conc-val');concEl.textContent=(conc.avg_concentration||0).toFixed(0)+'%';concEl.style.color=conc.avg_concentration>65?'var(--bull)':conc.avg_concentration>45?'var(--warn)':'var(--bear)'
+  const skew=intel.iv_skew||{},sa=skew.avg_skew||0
+  const skewEl=document.getElementById('skew-val');skewEl.textContent=(sa>0?'PUT IV+':'CALL IV+')+Math.abs(sa).toFixed(1)+'%';skewEl.style.color=sa>3?'var(--bear)':sa<-3?'var(--bull)':'var(--text2)'
   const tc=(trend||'').includes('BULL')?'var(--bull)':(trend||'').includes('BEAR')?'var(--bear)':'var(--warn)'
-  styl('trend-val',trend||'—',tc); set('trend-reason',trend_reason||'—')
+  styl('trend-val',trend||'—',tc);set('trend-reason',trend_reason||'—')
   document.getElementById('trend-fill').style.width=(trend_strength||50)+'%'
   document.getElementById('trend-fill').style.background=trend_strength>60?'var(--bull)':trend_strength<40?'var(--bear)':'var(--warn)'
   set('trend-str',(trend_strength||50)+'%')
-
-  // PCR zone card
-  styl('pcr-zone',(intel.pcr_zone||'—')+' — '+(intel.pcr_signal||'—'),
-    (intel.pcr_zone||'').includes('BULL')||intel.pcr_zone==='EXTREME GREED'?'var(--bull)':
-    (intel.pcr_zone||'').includes('BEAR')||intel.pcr_zone==='EXTREME FEAR'?'var(--bear)':'var(--warn)')
+  styl('pcr-zone',(intel.pcr_zone||'—')+' — '+(intel.pcr_signal||'—'),(intel.pcr_zone||'').includes('BULL')||intel.pcr_zone==='EXTREME GREED'?'var(--bull)':(intel.pcr_zone||'').includes('BEAR')||intel.pcr_zone==='EXTREME FEAR'?'var(--bear)':'var(--warn)')
   set('pcr-note',intel.pcr_note||'—')
-
   styl('sig-fut',premium>=0?'MILD BULLISH':'MILD BEARISH',premium>=0?'var(--bull)':'var(--bear)')
   set('sig-fut-s','Futures '+(premium>=0?'+':'')+premium.toFixed(1)+'pts above spot')
   styl('sig-mp',(mp-spot>=0?'+':'')+'₹'+Math.round(mp-spot).toLocaleString('en-IN')+' from spot','var(--warn)')
@@ -571,6 +562,7 @@ function render(d,hist){
   document.getElementById('call-tbody').innerHTML=callRows.length?callRows.map(r=>rowHTML(r,atm,maxCOI,true)).join(''):'<tr><td colspan="9" class="loading">No data</td></tr>'
   document.getElementById('put-tbody').innerHTML=putRows.length?putRows.map(r=>rowHTML(r,atm,maxPOI,false)).join(''):'<tr><td colspan="9" class="loading">No data</td></tr>'
 
+  renderFlowMatrix(ak, atm)
   renderHist(hist,atm)
   renderGEX(intel.gex_profile||[],intel.gex_flip,atm)
   renderSkew(intel.iv_skew||{},skew)
@@ -579,115 +571,175 @@ function render(d,hist){
   renderAnalysis(d,ak,atm,ind,intel)
 }
 
-/* ── HELPERS ─────────────────────────────────────────── */
-function fc(n){
-  const a=Math.abs(n)
-  if(a>=100000) return (n>=0?'+':'−')+(Math.abs(n)/100000).toFixed(2)+'L'
-  if(a>=1000)   return (n>=0?'+':'−')+(Math.abs(n)/1000).toFixed(1)+'K'
-  return (n>=0?'+':'−')+Math.round(Math.abs(n))
-}
-function strBar(score,col){
-  return `<div class="stbar"><div class="stfill" style="width:${score}%;background:${col}"></div></div><span style="font-size:9px;color:var(--text2)">${score}</span>`
-}
-function actBadge(chg,isCall){
-  const big=Math.abs(chg)>500000
-  if(isCall){if(chg>0)return`<span class="sig sa">${big?'ADD▼▼':'ADD▼'}</span>`;if(chg<0)return`<span class="sig se">${big?'CVR▲▲':'CVR▲'}</span>`;return'<span class="sig sn">—</span>'}
-  else{if(chg>0)return`<span class="sig sw">${big?'WALL▲▲':'WALL▲'}</span>`;if(chg<0)return`<span class="sig su">${big?'UNW▼▼':'UNW▼'}</span>`;return'<span class="sig sn">—</span>'}
-}
-function rowHTML(r,atm,maxOI,isCall){
-  const s=parseFloat(r.strike),isA=Math.abs(s-atm)<1,isHot=Math.abs(isCall?(r.call_oi_chg||0):(r.put_oi_chg||0))>500000
-  const oi=isCall?(r.call_oi||0):(r.put_oi||0)
-  const chg=isCall?(r.call_oi_chg||0):(r.put_oi_chg||0)
-  const chgD=isCall?(r.call_oi_chg_day||0):(r.put_oi_chg_day||0)
-  const iv=isCall?(r.call_iv||0):(r.put_iv||0)
-  const ltp=isCall?(r.call_ltp||0):(r.put_ltp||0)
-  const ltpC=isCall?(r.call_ltp_chg||0):(r.put_ltp_chg||0)
-  const str=isCall?(r.sr_strength_call||0):(r.sr_strength_put||0)
-  const pct=maxOI>0?Math.round((oi/maxOI)*100):0
-  const cc=chg>0?'var(--bear)':chg<0?'var(--bull)':'var(--text2)'
-  const dc=chgD>0?'var(--bear)':chgD<0?'var(--bull)':'var(--text2)'
-  const lc=ltpC>0?'var(--bull)':ltpC<0?'var(--bear)':'var(--text2)'
-  const strCol=str>=70?'var(--bear)':str>=40?'var(--warn)':'var(--bull)'
-  const skC=isA?'sk-a':isCall?'sk-c':'sk-p'
-  return `<tr class="${isA?'ar':isHot?'hr2':''}">
-    <td class="td-s"><span class="${skC}">${Math.round(s).toLocaleString('en-IN')}${isA?' ◄':''}</span></td>
-    <td style="color:var(--warn)">₹${ltp.toFixed(1)}</td>
-    <td style="color:${lc};font-weight:700">${ltpC>=0?'+':''}${ltpC.toFixed(2)}</td>
-    <td>${(oi/100000).toFixed(2)}L</td>
-    <td style="color:${cc};font-weight:${isHot?'700':'400'}">${fc(chg)}</td>
-    <td style="color:${dc}">${fc(chgD)}</td>
-    <td style="color:${iv>30?'var(--bear)':'var(--text)'}">${iv.toFixed(1)}%</td>
-    <td style="text-align:left">${strBar(str,strCol)}</td>
-    <td>${actBadge(chg,isCall)}</td>
-  </tr>`
+/* ══ INDEX TECHNICALS RENDERER ════════════════════════════════ */
+function renderIndexTech(tech){
+  ;['5min','15min'].forEach(tf=>{
+    const t=tech[tf]||{}
+    const el=document.getElementById('tf-'+tf.replace('min','min'))
+    if(!el) return
+
+    if(!t.ema7 && t.candle_count<8){
+      el.innerHTML=`<div class="tech-tf-lbl">${tf.toUpperCase()} TF</div>
+        <div style="font-size:10px;color:var(--warn);font-family:var(--ui)">${t.candle_count||0} candles — need 15+ for EMA (market hours)</div>`
+      return
+    }
+
+    const trendCls=t.trend&&t.trend.includes('STRONG BULL')?'tp-bull':t.trend&&t.trend.includes('STRONG BEAR')?'tp-bear':t.trend==='RECOVERING'||t.trend==='MILD BEARISH'?'tp-warn':'tp-neu'
+    const stCls=t.supertrend==='BULLISH'?'tp-bull':t.supertrend==='BEARISH'?'tp-bear':'tp-neu'
+    const xoverHtml=t.crossover?`<span class="xover-pill ${t.crossover.includes('GOLDEN')?'xover-gold':'xover-death'}">🔔 ${t.crossover}</span>`:'';
+    const p2e7=t.price_above_ema7===null?'—':t.price_above_ema7?'<span class="bull">✅ ABOVE</span>':'<span class="bear">❌ BELOW</span>'
+    const e7e15=t.ema7_above_ema15===null?'—':t.ema7_above_ema15?'<span class="bull">▲ ABOVE</span>':'<span class="bear">▼ BELOW</span>'
+
+    el.innerHTML=`
+      <div class="tech-tf-lbl">${tf.toUpperCase()} TF <span style="color:var(--text2);font-size:8px">(${t.candle_count||0} candles)</span></div>
+      <div class="tech-item"><span class="tech-key">EMA 7 / 15 / 21</span><span class="tech-val">${t.ema7||'—'} / ${t.ema15||'—'} / ${t.ema21||'—'}</span></div>
+      <div class="tech-item"><span class="tech-key">Price vs EMA7</span><span class="tech-val">${p2e7}</span></div>
+      <div class="tech-item"><span class="tech-key">EMA7 vs EMA15</span><span class="tech-val">${e7e15}</span></div>
+      <div class="tech-item"><span class="tech-key">Supertrend</span><span class="tech-trend-pill ${stCls}">${t.supertrend||'N/A'}</span><span style="font-size:10px;color:var(--text2);margin-left:4px">${t.supertrend_val?t.supertrend_val:''}</span></div>
+      <div class="tech-item"><span class="tech-key">Trend</span><span class="tech-trend-pill ${trendCls}">${t.trend||'N/A'}</span>${xoverHtml?'&nbsp;'+xoverHtml:''}</div>
+      ${t.rsi?`<div class="tech-item"><span class="tech-key">RSI(${tf})</span><span class="tech-val" style="color:${t.rsi>=70?'var(--bear)':t.rsi<=30?'var(--bull)':'var(--warn)'}">${t.rsi}</span></div>`:''}`
+  })
 }
 
-/* ══ ENHANCED HISTOGRAM ═══════════════════════════════
-   Row 1: Total OI bars (as before)
-   Row 2: OI CHANGE bars — clearly shows:
-     CE side: RED = adding (resistance building) | GREEN = exiting (resistance weakening)
-     PE side: GREEN = adding (support building)  | ORANGE = exiting (support weakening)
-═══════════════════════════════════════════════════════ */
+/* ══ PER-STRIKE OI FLOW MATRIX ═══════════════════════════════ */
+function sigColor(sig){
+  if(!sig) return 'var(--text2)'
+  if(sig.includes('BULL')||sig.includes('COVERING')||sig.includes('PUT WRITING')) return 'var(--bull)'
+  if(sig.includes('BEAR')||sig.includes('WRITING')||sig.includes('BUILDUP')) return 'var(--bear)'
+  if(sig.includes('WATCH')||sig.includes('CONVICTION')||sig.includes('UNWIND')) return 'var(--warn)'
+  return 'var(--text2)'
+}
+function sigBg(sig){
+  const c=sigColor(sig)
+  if(c==='var(--bull)') return 'rgba(0,230,118,.1)'
+  if(c==='var(--bear)') return 'rgba(255,61,87,.1)'
+  if(c==='var(--warn)') return 'rgba(255,171,0,.06)'
+  return 'rgba(107,127,160,.06)'
+}
+function sigBdr(sig){
+  const c=sigColor(sig)
+  if(c==='var(--bull)') return 'rgba(0,230,118,.25)'
+  if(c==='var(--bear)') return 'rgba(255,61,87,.25)'
+  if(c==='var(--warn)') return 'rgba(255,171,0,.25)'
+  return 'var(--border)'
+}
+
+function renderFlowMatrix(atk, atm){
+  set('flow-time', new Date().toLocaleTimeString('en-IN'))
+  const strikes = Object.keys(atk).map(Number).sort((a,b)=>a-b)
+
+  const rows = strikes.map(s=>{
+    const v    = atk[s]||{}
+    const isATM= s===atm
+    const cf   = v.call_flow||{}
+    const pf   = v.put_flow||{}
+    const nf   = v.net_flow||{}
+    const tech = v.ltp_technicals||{}
+    const ctech= tech.call||{}
+    const ptech= tech.put||{}
+
+    // LTP EMA mini display
+    const mkTechCell = (t)=>{
+      if(!t||!t.ema7) return `<span style="font-size:9px;color:var(--text2)">Need ${7-(tech.data_points||0)} more cycles</span>`
+      const tCls = t.trend&&t.trend.includes('STRONG BULL')?'var(--bull)':t.trend&&t.trend.includes('STRONG BEAR')?'var(--bear)':'var(--warn)'
+      const xover= t.crossover?`<br><span style="font-size:9px;font-weight:700;color:${t.crossover.includes('GOLDEN')?'var(--bull)':'var(--bear)'}">🔔 ${t.crossover}</span>`:''
+      return `<span style="font-size:10px;font-weight:700;color:${tCls}">${t.trend||'N/A'}</span>
+              <br><span style="font-size:9px;color:var(--text2)">E7:${t.ema7||'—'} E15:${t.ema15||'—'}</span>
+              <br><span style="font-size:9px;color:${t.price_above_ema7?'var(--bull)':'var(--bear)'}">${t.price_above_ema7?'✅ > EMA7':'❌ < EMA7'}</span>${xover}`
+    }
+
+    const netCol = nf.net_note&&nf.net_note.includes('💥')?'var(--info)':nf.net_note&&nf.net_note.includes('🔄')?'var(--info)':nf.net_note&&nf.net_note.includes('🌀')?'var(--text2)':'var(--text2)'
+
+    return `<tr style="${isATM?'background:rgba(124,77,255,.08)':''}">
+      <td class="td-s">
+        <span class="${isATM?'sk-a':s>atm?'sk-c':'sk-p'}" style="font-size:13px">
+          ${Math.round(s).toLocaleString('en-IN')}${isATM?' ◄':''}
+        </span>
+        <br><span style="font-size:9px;color:var(--text2)">${s>atm?'ABOVE ATM':s<atm?'BELOW ATM':'ATM'}</span>
+        <br><span style="font-size:9px;color:${v.pcr>1.2?'var(--bull)':v.pcr<0.8?'var(--bear)':'var(--warn)'}">PCR: ${v.pcr?Number(v.pcr).toFixed(2):'—'}</span>
+      </td>
+      <!-- CE FLOW -->
+      <td style="text-align:left;background:${sigBg(cf.signal)};border-left:2px solid ${sigBdr(cf.signal)}">
+        <div class="flow-cond" style="color:${sigColor(cf.signal)}">${cf.emoji||'⚪'} ${cf.condition||'—'}</div>
+        <span class="flow-sig" style="background:${sigBg(cf.signal)};color:${sigColor(cf.signal)};border:1px solid ${sigBdr(cf.signal)}">${cf.signal||'—'}</span>
+        <div class="flow-desc">${cf.desc||'Waiting for 2nd cycle...'}</div>
+      </td>
+      <!-- CE NUMBERS -->
+      <td style="text-align:left">
+        <div style="font-size:11px;font-weight:700;color:${(cf.oi_chg_l||0)>0?'var(--bear)':(cf.oi_chg_l||0)<0?'var(--bull)':'var(--text2)'}">
+          ${cf.oi_chg_l!==undefined?(cf.oi_chg_l>=0?'+':'')+cf.oi_chg_l+'L':'—'}
+        </div>
+        <div style="font-size:10px;color:var(--text2)">Total: ${cf.oi_total_l||0}L</div>
+      </td>
+      <td style="text-align:left">
+        <div style="font-size:11px;font-weight:700;color:${(cf.ltp_chg||0)>0?'var(--bull)':(cf.ltp_chg||0)<0?'var(--bear)':'var(--text2)'}">
+          ${cf.ltp_chg!==undefined?(cf.ltp_chg>=0?'+':'')+cf.ltp_chg:' —'}
+        </div>
+      </td>
+      <!-- NET FLOW -->
+      <td style="text-align:center;padding:4px 8px">
+        <div style="font-size:11px;color:${netCol};font-family:var(--ui);font-weight:700;line-height:1.5">${nf.net_note||'—'}</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:2px">Total OI: ${nf.total_oi_l||0}L</div>
+        <div style="font-size:9px;color:var(--text2)">CE:${nf.total_call_oi_l||0}L PE:${nf.total_put_oi_l||0}L</div>
+      </td>
+      <!-- PE FLOW -->
+      <td style="text-align:left;background:${sigBg(pf.signal)};border-left:2px solid ${sigBdr(pf.signal)}">
+        <div class="flow-cond" style="color:${sigColor(pf.signal)}">${pf.emoji||'⚪'} ${pf.condition||'—'}</div>
+        <span class="flow-sig" style="background:${sigBg(pf.signal)};color:${sigColor(pf.signal)};border:1px solid ${sigBdr(pf.signal)}">${pf.signal||'—'}</span>
+        <div class="flow-desc">${pf.desc||'Waiting for 2nd cycle...'}</div>
+      </td>
+      <!-- PE NUMBERS -->
+      <td style="text-align:left">
+        <div style="font-size:11px;font-weight:700;color:${(pf.oi_chg_l||0)>0?'var(--bull)':(pf.oi_chg_l||0)<0?'var(--warn)':'var(--text2)'}">
+          ${pf.oi_chg_l!==undefined?(pf.oi_chg_l>=0?'+':'')+pf.oi_chg_l+'L':'—'}
+        </div>
+        <div style="font-size:10px;color:var(--text2)">Total: ${pf.oi_total_l||0}L</div>
+      </td>
+      <td style="text-align:left">
+        <div style="font-size:11px;font-weight:700;color:${(pf.ltp_chg||0)>0?'var(--bull)':(pf.ltp_chg||0)<0?'var(--bear)':'var(--text2)'}">
+          ${pf.ltp_chg!==undefined?(pf.ltp_chg>=0?'+':'')+pf.ltp_chg:'—'}
+        </div>
+      </td>
+      <!-- CE LTP TECHNICALS -->
+      <td style="text-align:left;min-width:110px">${mkTechCell(ctech)}</td>
+      <!-- PE LTP TECHNICALS -->
+      <td style="text-align:left;min-width:110px">${mkTechCell(ptech)}</td>
+    </tr>`
+  }).join('')
+
+  document.getElementById('flow-tbody').innerHTML = rows ||
+    '<tr><td colspan="10" class="loading">No strike data yet</td></tr>'
+}
+
+/* ══ ENHANCED HISTOGRAM ═══════════════════════════════════════ */
 function renderHist(hist,atm){
   const el=document.getElementById('histogram')
   if(!hist||!hist.length){el.innerHTML='<div class="loading">No data</div>';return}
+  const maxOI=Math.max(Math.max(...hist.map(h=>h.call_oi||0)),Math.max(...hist.map(h=>h.put_oi||0)))||1
+  const maxChg=Math.max(Math.max(...hist.map(h=>Math.abs(h.call_oi_chg||0))),Math.max(...hist.map(h=>Math.abs(h.put_oi_chg||0))))||1
+  const W=90
 
-  const maxOI = Math.max(
-    Math.max(...hist.map(h=>h.call_oi||0)),
-    Math.max(...hist.map(h=>h.put_oi||0))
-  ) || 1
+  el.innerHTML=hist.map(h=>{
+    const s=parseFloat(h.strike||0),isA=Math.abs(s-atm)<1
+    const coi=h.call_oi||0,poi=h.put_oi||0
+    const cw=Math.round((coi/maxOI)*W),pw=Math.round((poi/maxOI)*W)
+    const net=poi-coi,nc=net>0?'var(--bull)':net<0?'var(--bear)':'var(--text2)'
+    const cc=h.call_oi_chg||0,pc=h.put_oi_chg||0
+    const ccW=Math.max(2,Math.round((Math.abs(cc)/maxChg)*W))
+    const pcW=Math.max(2,Math.round((Math.abs(pc)/maxChg)*W))
 
-  // Find max absolute OI change for scaling change bars
-  const maxChg = Math.max(
-    Math.max(...hist.map(h=>Math.abs(h.call_oi_chg||0))),
-    Math.max(...hist.map(h=>Math.abs(h.put_oi_chg||0)))
-  ) || 1
-
-  const W = 90  // max bar width px
-
-  el.innerHTML = hist.map(h=>{
-    const s = parseFloat(h.strike||0)
-    const isA = Math.abs(s-atm)<1
-    const sLabel = Math.round(s).toLocaleString('en-IN')
-
-    // OI totals
-    const coi = h.call_oi||0, poi = h.put_oi||0
-    const cw = Math.round((coi/maxOI)*W), pw = Math.round((poi/maxOI)*W)
-
-    // Net OI (put - call)
-    const net = poi - coi
-    const nc  = net>0?'var(--bull)':net<0?'var(--bear)':'var(--text2)'
-
-    // OI CHANGE
-    const cc = h.call_oi_chg||0   // CE change: +ve = adding resistance, -ve = exiting
-    const pc = h.put_oi_chg||0    // PE change: +ve = adding support,    -ve = exiting
-
-    // Scale change bars proportionally to maxChg
-    const ccW = Math.max(2, Math.round((Math.abs(cc)/maxChg)*W))
-    const pcW = Math.max(2, Math.round((Math.abs(pc)/maxChg)*W))
-
-    // OI change labels
-    const ccStr = cc!==0 ? fc(cc) : '—'
-    const pcStr = pc!==0 ? fc(pc) : '—'
-    const ccCol = cc>0?'var(--bear)':cc<0?'var(--bull)':'var(--text2)'  // CE: adding=red, exiting=green
-    const pcCol = pc>0?'var(--bull)':pc<0?'var(--warn)':'var(--text2)'  // PE: adding=green, exiting=orange
-
-    // Interpret what's happening at this strike
-    let interp = ''
-    const bigThresh = maxChg * 0.1  // >10% of max = significant
-    if(Math.abs(cc)>bigThresh || Math.abs(pc)>bigThresh){
-      if(cc>bigThresh && pc>bigThresh) interp = '💥 Both sides adding — big move brewing'
-      else if(cc<-bigThresh && pc<-bigThresh) interp = '🌀 Both sides exiting — squaring off'
-      else if(cc>bigThresh) interp = '🔴 CE adding = resistance building'
-      else if(cc<-bigThresh) interp = '✅ CE exiting = resistance weakening'
-      else if(pc>bigThresh) interp = '✅ PE adding = support building'
-      else if(pc<-bigThresh) interp = '⚠ PE exiting = support weakening'
-    }
+    // Interpretation
+    const bigT=maxChg*0.08
+    let interp=''
+    if(cc>bigT&&pc>bigT) interp='💥 Both adding — BIG MOVE'
+    else if(cc<-bigT&&pc<-bigT) interp='🌀 Both exiting'
+    else if(cc>bigT) interp='🔴 CE adding'
+    else if(cc<-bigT) interp='✅ CE exit'
+    else if(pc>bigT) interp='✅ PE adding'
+    else if(pc<-bigT) interp='⚠ PE exit'
 
     return `
-    <div style="margin-bottom:8px;padding:${isA?'4px 0':'2px 0'};${isA?'background:rgba(124,77,255,.05);border-radius:4px;':''}">
-
-      <!-- ROW 1: TOTAL OI BARS -->
+    <div style="margin-bottom:10px;${isA?'background:rgba(124,77,255,.04);padding:3px 0;border-radius:4px':''}">
       <div class="hr">
         <div class="hlc">${(coi/100000).toFixed(1)}L</div>
         <div class="hbs">
@@ -696,126 +748,91 @@ function renderHist(hist,atm){
           <div style="width:${W}px"><div class="hpb" style="width:${pw}px"></div></div>
         </div>
         <div class="hlp">${(poi/100000).toFixed(1)}L</div>
-        <div class="hsk" style="font-weight:${isA?'700':'400'};color:${isA?'var(--atm)':'var(--text2)'}">
-          ${sLabel}${isA?'<span class="hatm"> ◄ATM</span>':''}
+        <div class="hsk" style="font-weight:${isA?700:400};color:${isA?'var(--atm)':'var(--text2)'}">
+          ${Math.round(s).toLocaleString('en-IN')}${isA?'<span class="hatm"> ◄ATM</span>':''}
         </div>
         <div class="hnet" style="color:${nc}">${net>=0?'+':''}${(net/100000).toFixed(1)}L</div>
-        <div style="font-size:9px;color:var(--text2);width:28px;text-align:right">${Math.max(h.sr_strength_call||0,h.sr_strength_put||0)}</div>
+        <div class="hstr">${Math.max(h.sr_strength_call||0,h.sr_strength_put||0)}</div>
       </div>
-
-      <!-- ROW 2: OI CHANGE BARS -->
       <div class="hrc">
-        <!-- CE change label -->
-        <div style="font-size:9px;color:${ccCol};width:40px;text-align:right;flex-shrink:0">${ccStr}</div>
-        <!-- CE change bar (right-aligned, red=add, green=exit) -->
+        <div style="font-size:9px;color:${cc>0?'var(--bear)':cc<0?'var(--bull)':'var(--text2)'};width:34px;text-align:right;flex-shrink:0">${cc!==0?fc(cc):'—'}</div>
         <div style="display:flex;justify-content:flex-end;width:${W}px;flex-shrink:0">
-          ${cc!==0?`<div class="${cc>0?'hchg-ce-add':'hchg-ce-exit'}" style="width:${ccW}px" title="${cc>0?'CE Adding: resistance building':'CE Exiting: resistance weakening'}"></div>`:'<div style="width:2px;height:9px;background:var(--border2);border-radius:2px"></div>'}
+          ${cc!==0?`<div class="${cc>0?'hchg-ca':'hchg-cx'}" style="width:${ccW}px" title="${cc>0?'CE Adding':'CE Exiting'}"></div>`:'<div style="width:2px;height:9px;background:var(--border2);border-radius:2px"></div>'}
         </div>
-        <!-- CENTER LINE -->
         <div style="width:1px;background:var(--border2);height:9px;flex-shrink:0"></div>
-        <!-- PE change bar (left-aligned, green=add, orange=exit) -->
         <div style="width:${W}px;flex-shrink:0">
-          ${pc!==0?`<div class="${pc>0?'hchg-pe-add':'hchg-pe-exit'}" style="width:${pcW}px" title="${pc>0?'PE Adding: support building':'PE Exiting: support weakening'}"></div>`:'<div style="width:2px;height:9px;background:var(--border2);border-radius:2px"></div>'}
+          ${pc!==0?`<div class="${pc>0?'hchg-pa':'hchg-px'}" style="width:${pcW}px" title="${pc>0?'PE Adding':'PE Exiting'}"></div>`:'<div style="width:2px;height:9px;background:var(--border2);border-radius:2px"></div>'}
         </div>
-        <!-- PE change label -->
-        <div style="font-size:9px;color:${pcCol};flex-shrink:0">${pcStr}</div>
-        <!-- INTERPRETATION -->
-        <div style="font-size:9px;color:var(--text2);margin-left:6px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${interp}</div>
+        <div style="font-size:9px;color:${pc>0?'var(--bull)':pc<0?'var(--warn)':'var(--text2)'};flex-shrink:0">${pc!==0?fc(pc):'—'}</div>
+        <div style="font-size:9px;color:var(--text2);margin-left:6px;white-space:nowrap">${interp}</div>
       </div>
     </div>`
   }).join('')
 }
 
-/* ── GEX ─────────────────────────────────────────────── */
+/* ── GEX ──────────────────────────────────────────────────── */
 function renderGEX(gexData,flip,atm){
   set('gex-flip-label',flip?`GEX flip: ₹${Math.round(flip.strike).toLocaleString('en-IN')} (price accelerates here)`:'Flip zone: N/A')
   const el=document.getElementById('gex-panel')
   if(!gexData||!gexData.length){el.innerHTML='<div class="loading">No GEX data</div>';return}
-  const maxGEX=Math.max(...gexData.map(g=>Math.abs(g.net_gex)||0))||1
-  const W=100
+  const maxGEX=Math.max(...gexData.map(g=>Math.abs(g.net_gex)||0))||1,W=100
   el.innerHTML=gexData.map(g=>{
-    const s=parseFloat(g.strike),isA=Math.abs(s-atm)<1
-    const isFlip=flip&&Math.abs(s-parseFloat(flip.strike||0))<1
-    const ng=g.net_gex||0
-    const pct=Math.round((Math.abs(ng)/maxGEX)*W)
-    const col=ng>0?'var(--bear)':'var(--bull)'
+    const s=parseFloat(g.strike),isA=Math.abs(s-atm)<1,isFlip=flip&&Math.abs(s-parseFloat(flip.strike||0))<1
+    const ng=g.net_gex||0,pct=Math.round((Math.abs(ng)/maxGEX)*W),col=ng>0?'var(--bear)':'var(--bull)'
     return `<div class="gex-row">
-      <div class="gex-strike" style="color:${isA?'var(--atm)':isFlip?'var(--warn)':'var(--text2)'};font-weight:${isA||isFlip?'700':'400'}">
-        ₹${Math.round(s).toLocaleString('en-IN')}
-      </div>
+      <div class="gex-strike" style="color:${isA?'var(--atm)':isFlip?'var(--warn)':'var(--text2)'};font-weight:${isA||isFlip?700:400}">₹${Math.round(s).toLocaleString('en-IN')}</div>
       <div class="gex-bar-wrap">
-        ${ng>0?`<div style="display:flex;justify-content:flex-end;flex:1"><div class="gex-pos" style="width:${pct}px"></div></div><div class="gex-mid"></div><div style="flex:1"></div>`
-               :`<div style="flex:1"></div><div class="gex-mid"></div><div style="flex:1"><div class="gex-neg" style="width:${pct}px"></div></div>`}
+        ${ng>0?`<div style="display:flex;justify-content:flex-end;flex:1"><div class="gex-pos" style="width:${pct}px"></div></div><div class="gex-mid"></div><div style="flex:1"></div>`:`<div style="flex:1"></div><div class="gex-mid"></div><div style="flex:1"><div class="gex-neg" style="width:${pct}px"></div></div>`}
       </div>
       <div class="gex-val" style="color:${col}">${ng>=0?'+':''}${(ng/1000).toFixed(0)}K</div>
-      ${isFlip?'<span class="gex-flip-tag">⚡ FLIP</span>':''}
-      ${isA?`<span style="font-size:9px;color:var(--atm)">◄ATM</span>`:''}
+      ${isFlip?'<span class="gex-flip-tag">⚡ FLIP</span>':''}${isA?`<span style="font-size:9px;color:var(--atm)">◄ATM</span>`:''}
     </div>`
   }).join('')
 }
 
-/* ── IV SKEW ─────────────────────────────────────────── */
+/* ── IV SKEW ──────────────────────────────────────────────── */
 function renderSkew(skewObj,_){
-  const el=document.getElementById('skew-panel')
-  const data=skewObj.data||[]
-  const signal=skewObj.signal||'—'
-  const avg=skewObj.avg_skew||0
+  const el=document.getElementById('skew-panel'),data=skewObj.data||[],signal=skewObj.signal||'—',avg=skewObj.avg_skew||0
   styl('skew-signal',signal,avg>3?'var(--bear)':avg<-3?'var(--bull)':'var(--text2)')
   styl('skew-val',(avg>0?'PUT IV+':'CALL IV+')+Math.abs(avg).toFixed(1)+'%',avg>3?'var(--bear)':avg<-3?'var(--bull)':'var(--text2)')
   if(!data.length){el.innerHTML='<div class="loading">Need ±3 strikes data</div>';return}
-  el.innerHTML=`
-    <div style="padding:10px 12px">
-      <div style="font-size:11px;color:var(--text2);margin-bottom:8px">${signal}</div>
-      ${data.map(s=>{
-        const skew=s.skew||0
-        const col=skew>0?'var(--bear)':skew<0?'var(--bull)':'var(--text2)'
-        const pct=Math.min(100,Math.abs(skew)*3)
-        return `<div class="skew-row">
-          <div class="skew-dist">±${s.dist}</div>
-          <div style="font-size:10px;color:var(--bear);width:40px;text-align:right">${(s.call_iv||0).toFixed(1)}%</div>
-          <div class="skew-bar"><div class="skew-fill" style="width:${pct}%;background:${col}"></div></div>
-          <div style="font-size:10px;color:var(--bull);width:40px">${(s.put_iv||0).toFixed(1)}%</div>
-          <div style="font-size:10px;color:${col};width:44px;text-align:right">${skew>=0?'PUT+':'CALL+'}${Math.abs(skew).toFixed(1)}%</div>
-          <div style="font-size:9px;color:var(--text2);margin-left:6px">
-            ${Math.abs(skew)>3?skew>0?'Bears paying up for puts → bearish sentiment':'Bulls paying up for calls → bullish squeeze fear':'Balanced'}
-          </div>
-        </div>`
-      }).join('')}
-    </div>`
+  el.innerHTML=`<div style="padding:10px 12px"><div style="font-size:11px;color:var(--text2);margin-bottom:8px">${signal}</div>
+    ${data.map(s=>{const skew=s.skew||0,col=skew>0?'var(--bear)':skew<0?'var(--bull)':'var(--text2)',pct=Math.min(100,Math.abs(skew)*3)
+    return `<div class="skew-row">
+      <div class="skew-dist">±${s.dist}</div>
+      <div style="font-size:10px;color:var(--bear);width:40px;text-align:right">${(s.call_iv||0).toFixed(1)}%</div>
+      <div class="skew-bar"><div class="skew-fill" style="width:${pct}%;background:${col}"></div></div>
+      <div style="font-size:10px;color:var(--bull);width:40px">${(s.put_iv||0).toFixed(1)}%</div>
+      <div style="font-size:10px;color:${col};width:44px;text-align:right">${skew>=0?'PUT+':'CALL+'}${Math.abs(skew).toFixed(1)}%</div>
+      <div style="font-size:9px;color:var(--text2);margin-left:6px">${Math.abs(skew)>3?skew>0?'Bears paying up for puts → bearish':'Bulls paying up for calls → bullish':'Balanced'}</div>
+    </div>`}).join('')}</div>`
 }
 
-/* ── GREEKS ──────────────────────────────────────────── */
+/* ── GREEKS ───────────────────────────────────────────────── */
 function renderGreeks(atm,pcr,vix,atk,ind){
   set('atm-lbl','ATM: ₹'+Math.round(atm).toLocaleString('en-IN'))
-  const a=atk[atm]||{}
-  const civ=a.call_iv||0,piv=a.put_iv||0
+  const a=atk[atm]||{},civ=a.call_iv||0,piv=a.put_iv||0
   const avgIV=civ&&piv?(civ+piv)/2:civ||piv||vix||20
   const cd=a.call_delta||Math.min(0.65,Math.max(0.35,0.50+(pcr-1)*0.05))
-  const pd=a.put_delta||(-(1-cd))
-  const cg=a.call_gamma||0.0004
-  const ct=a.call_theta||-(atm*(avgIV/100)*cg*15.87)
-  const cv=a.call_vega||(atm*cg*100*(avgIV/100))
-  const tLot=(Math.abs(ct)*25).toFixed(0), vLot=(Math.abs(cv)*25).toFixed(0)
+  const pd=a.put_delta||(-(1-cd)),cg=a.call_gamma||0.0004
+  const ct=a.call_theta||-(atm*(avgIV/100)*cg*15.87),cv=a.call_vega||(atm*cg*100*(avgIV/100))
   const ri=ind.rsi,ai=ind.adx
   const cells=[
     {l:'DELTA (CALL)',v:'+'+cd.toFixed(3),c:'var(--bull)',s:'₹ move per ₹1 NIFTY',w:'ATM ≈0.50, deep ITM ≈0.90, far OTM ≈0.10'},
     {l:'DELTA (PUT)', v:pd.toFixed(3),c:'var(--bear)',s:'Moves opposite NIFTY',w:'Watch: put delta sum = hedge size in market'},
-    {l:'GAMMA',       v:cg.toFixed(5),c:'var(--text)',s:'Delta change rate',w:'⚡ High near expiry — sellers face rapid loss if price moves'},
-    {l:'THETA/DAY',   v:'₹'+tLot+'/lot',c:'var(--bear)',s:'Time decay daily',w:'Sellers earn this every day — buyers pay it'},
-    {l:'VEGA',        v:'₹'+vLot+'/lot',c:'var(--warn)',s:'Per 1% IV change',w:vix>25?'High VIX = high Vega = risky to buy options now':'Normal Vega environment'},
-    {l:'IV ATM AVG',  v:avgIV.toFixed(1)+'%',c:avgIV>35?'var(--bear)':avgIV>25?'var(--warn)':'var(--bull)',
-     s:'Option richness',w:avgIV>35?'Sell premium — options very rich':avgIV>25?'Slightly elevated — sellers edge':avgIV>15?'Normal — balanced':'Low IV — cheap to buy options'},
-    {l:'RSI (14)',    v:ri?ri.toFixed(1)+' — '+(ind.rsi_signal||''):'N/A',c:ri>=70?'var(--bear)':ri<=30?'var(--bull)':'var(--warn)',
-     s:'Momentum signal',w:ri>=70?'⚠ Overbought — watch resistance for reversal':ri<=30?'⚠ Oversold — watch support for bounce':ri>=55?'Bullish momentum confirming OI':ri<=45?'Bearish momentum confirming OI':'Neutral — no directional edge from RSI'},
-    {l:'ADX (14)',    v:ai?ai.toFixed(1)+' — '+(ind.adx_signal||''):'N/A',c:ai>=25?'var(--bull)':ai>=20?'var(--warn)':'var(--text2)',
-     s:'Trend strength (not direction)',w:ai>=25?`Strong trend: ${(ind.pdi||0)>(ind.ndi||0)?'+DI>-DI = UPTREND':'-DI>+DI = DOWNTREND'}`:ai>=20?'Trend developing — confirm with OI build':'Below 20 = sideways — trade range, sell extremes'},
+    {l:'GAMMA',v:cg.toFixed(5),c:'var(--text)',s:'Delta change rate',w:'⚡ High near expiry — sellers face rapid loss'},
+    {l:'THETA/DAY',v:'₹'+(Math.abs(ct)*25).toFixed(0)+'/lot',c:'var(--bear)',s:'Time decay daily',w:'Sellers earn this — buyers pay it'},
+    {l:'VEGA',v:'₹'+(Math.abs(cv)*25).toFixed(0)+'/lot',c:'var(--warn)',s:'Per 1% IV change',w:vix>25?'High VIX = risky to buy options':'Normal Vega'},
+    {l:'IV ATM AVG',v:avgIV.toFixed(1)+'%',c:avgIV>35?'var(--bear)':avgIV>25?'var(--warn)':'var(--bull)',s:'Option richness',w:avgIV>35?'Options very rich — sell premium':avgIV>25?'Slightly elevated':'Normal — balanced'},
+    {l:'RSI (14)',v:ri?ri.toFixed(1)+' — '+(ind.rsi_signal||''):'N/A',c:ri>=70?'var(--bear)':ri<=30?'var(--bull)':'var(--warn)',s:'Momentum signal',w:ri>=70?'⚠ Overbought — reversal risk':ri<=30?'⚠ Oversold — bounce likely':ri>=55?'Bullish momentum':'Neutral momentum'},
+    {l:'ADX (14)',v:ai?ai.toFixed(1)+' — '+(ind.adx_signal||''):'N/A',c:ai>=25?'var(--bull)':ai>=20?'var(--warn)':'var(--text2)',s:'Trend strength',w:ai>=25?`Strong: ${(ind.pdi||0)>(ind.ndi||0)?'+DI=UPTREND':'-DI=DOWNTREND'}`:ai>=20?'Trend developing':'Below 20 = sideways'},
   ]
   document.getElementById('greeks').innerHTML=cells.map(c=>`
     <div class="gc"><div class="gl">${c.l}</div><div class="gv" style="color:${c.c}">${c.v}</div>
     <div class="gs">${c.s}</div><div class="gw">${c.w||''}</div></div>`).join('')
 }
 
-/* ── ACTIVITY ────────────────────────────────────────── */
+/* ── ACTIVITY ─────────────────────────────────────────────── */
 function renderActivity(callRows,putRows){
   const cAdd=callRows.filter(r=>(r.call_oi_chg||0)>0).sort((a,b)=>b.call_oi_chg-a.call_oi_chg)
   const cExit=callRows.filter(r=>(r.call_oi_chg||0)<0).sort((a,b)=>a.call_oi_chg-b.call_oi_chg)
@@ -827,7 +844,7 @@ function renderActivity(callRows,putRows){
       <div style="text-align:right"><div class="aoi" style="color:${color}">${fc(r[chgKey]||0)}</div>
       <div class="achg">${((r[oiKey]||0)/100000).toFixed(2)}L total</div></div></div>`).join('')
     return `<div class="ac"><div class="at2" style="color:${color}">${title}</div>
-      ${rows||`<div class="aempty" style="color:var(--text2)">No change yet<br><span style="font-size:9px">After 2nd refresh cycle</span></div>`}
+      ${rows||`<div class="aempty">No change yet<br><span style="font-size:9px">After 2nd refresh</span></div>`}
       ${arr.length?`<div class="anote">${note}</div>`:''}</div>`
   }
   set('act-time',new Date().toLocaleTimeString('en-IN'))
@@ -838,7 +855,7 @@ function renderActivity(callRows,putRows){
     mkCol(pExit,'put_oi','put_oi_chg','var(--warn)','⚠ PUT SELLERS EXITING ▼','Put unwinding — floor weakening. Avoid buying dips here.')
 }
 
-/* ── ANALYSIS ────────────────────────────────────────── */
+/* ── ANALYSIS ─────────────────────────────────────────────── */
 function renderAnalysis(d,atk,atm,ind,intel){
   const sts=Object.keys(atk).map(Number).sort((a,b)=>a-b)
   const ca=sts.filter(s=>s>atm),pb=sts.filter(s=>s<atm)
@@ -849,30 +866,24 @@ function renderAnalysis(d,atk,atm,ind,intel){
   const pex =pb.reduce((s,k)=>s+Math.abs(Math.min(0,atk[k].put_oi_chg||0)),0)
   const topR=ca.slice().sort((a,b)=>atk[b].call_oi-atk[a].call_oi)[0]
   const topS=pb.slice().sort((a,b)=>atk[b].put_oi-atk[a].put_oi)[0]
-  const conc=intel.concentration||{}; const skew=intel.iv_skew||{}; const gexFlip=intel.gex_flip
+  const conc=intel.concentration||{},skew=intel.iv_skew||{},gexFlip=intel.gex_flip
   set('analysis-time',new Date().toLocaleTimeString('en-IN'))
-
-  const trend=d.trend||'NEUTRAL'
-  const tCol=trend.includes('BULL')?'var(--bull)':trend.includes('BEAR')?'var(--bear)':'var(--warn)'
   const ms=intel.market_state||'—'
   const msCol=ms.includes('UP')||ms.includes('BULL')?'var(--bull)':ms.includes('DOWN')||ms.includes('BEAR')?'var(--bear)':ms.includes('BREAK')?'var(--warn)':'var(--purple)'
-
-  let verdict=ms, verdictNotes=[]
-  const ri=ind.rsi, ai=ind.adx
+  let verdictNotes=[]
+  const ri=ind.rsi,ai=ind.adx
   if(ri&&ai){
-    if(ms.includes('BULL')&&ri>55&&ai>=20&&(ind.pdi||0)>(ind.ndi||0))
-      verdictNotes.push('✅ RSI + ADX + OI all confirm BULLISH — high confidence trade setup')
-    else if(ms.includes('BEAR')&&ri<45&&ai>=20&&(ind.ndi||0)>(ind.pdi||0))
-      verdictNotes.push('✅ RSI + ADX + OI all confirm BEARISH — high confidence trade setup')
-    else if(ms.includes('BULL')&&ri<45) verdictNotes.push('⚠ OI bullish but RSI weak — low confidence, wait for RSI to confirm')
-    else if(ms.includes('BEAR')&&ri>55) verdictNotes.push('⚠ OI bearish but RSI strong — divergence, be careful with shorts')
-    if(ai<20) verdictNotes.push('📊 ADX below 20 — range-bound. Trade: sell at resistance, buy at support')
-    if(ri>=70) verdictNotes.push('🔴 RSI overbought — beware of longs near top, reversal risk')
-    if(ri<=30) verdictNotes.push('🟢 RSI oversold — consider longs near support if OI confirms')
-  } else { verdictNotes.push('💡 RSI/ADX loading — need market hours candle data') }
-  if((skew.avg_skew||0)>3) verdictNotes.push('📉 Put IV elevated — market pricing in downside, cautious sentiment')
-  if((skew.avg_skew||0)<-3) verdictNotes.push('📈 Call IV elevated — market pricing in upside, bullish sentiment')
-  if(gexFlip) verdictNotes.push(`⚡ GEX flip at ₹${Math.round(parseFloat(gexFlip.strike)).toLocaleString('en-IN')} — price accelerates if this level breaks`)
+    if(ms.includes('BULL')&&ri>55&&ai>=20&&(ind.pdi||0)>(ind.ndi||0)) verdictNotes.push('✅ RSI+ADX+OI all confirm BULLISH — high confidence setup')
+    else if(ms.includes('BEAR')&&ri<45&&ai>=20&&(ind.ndi||0)>(ind.pdi||0)) verdictNotes.push('✅ RSI+ADX+OI all confirm BEARISH — high confidence setup')
+    else if(ms.includes('BULL')&&ri<45) verdictNotes.push('⚠ OI bullish but RSI weak — wait for RSI to confirm')
+    else if(ms.includes('BEAR')&&ri>55) verdictNotes.push('⚠ OI bearish but RSI strong — divergence, be careful')
+    if(ai<20) verdictNotes.push('📊 ADX below 20 — range. Trade: sell resistance, buy support')
+    if(ri>=70) verdictNotes.push('🔴 RSI overbought — reversal risk')
+    if(ri<=30) verdictNotes.push('🟢 RSI oversold — bounce likely')
+  } else verdictNotes.push('💡 RSI/ADX loading — need market hours candle data')
+  if((skew.avg_skew||0)>3) verdictNotes.push('📉 Put IV elevated — market fears downside')
+  if((skew.avg_skew||0)<-3) verdictNotes.push('📈 Call IV elevated — bullish squeeze expected')
+  if(gexFlip) verdictNotes.push(`⚡ GEX flip ₹${Math.round(parseFloat(gexFlip.strike)).toLocaleString('en-IN')} — price accelerates here`)
   if((intel.alerts||[]).length) verdictNotes.push('🚨 '+(intel.alerts[0].message||intel.alerts[0].msg||''))
 
   document.getElementById('analysis-grid').innerHTML=`
@@ -893,10 +904,10 @@ function renderAnalysis(d,atk,atm,ind,intel){
       <div class="ts-row"><span class="ts-l">Call OI Exited</span><span class="ts-v bull">−${(cex/100000).toFixed(2)}L → resistance weakening</span></div>
       <div class="ts-row"><span class="ts-l">Put OI Added</span><span class="ts-v bull">+${(padd/100000).toFixed(2)}L → support strengthening</span></div>
       <div class="ts-row"><span class="ts-l">Put OI Exited</span><span class="ts-v warn">−${(pex/100000).toFixed(2)}L → support weakening</span></div>
-      <div class="ts-row"><span class="ts-l">Net OI Pressure</span><span class="ts-v" style="color:${(padd-cadd)>0?'var(--bull)':'var(--bear)'}">${(padd-cadd)>0?'PUTS adding more → support building':'CALLS adding more → resistance building'}</span></div>
-      <div class="ts-row"><span class="ts-l">OI Matrix Signal</span><span class="ts-v" style="color:${intel.oi_matrix_signal==='BULLISH'||intel.oi_matrix_signal==='WEAK BULLISH'?'var(--bull)':'var(--bear)'}">${intel.oi_matrix_condition||'—'}</span></div>
+      <div class="ts-row"><span class="ts-l">Net Pressure</span><span class="ts-v" style="color:${(padd-cadd)>0?'var(--bull)':'var(--bear)'}">${(padd-cadd)>0?'PUTS adding more → support':'CALLS adding more → resistance'}</span></div>
+      <div class="ts-row"><span class="ts-l">OI Matrix</span><span class="ts-v" style="color:${intel.oi_matrix_signal==='BULLISH'||intel.oi_matrix_signal==='WEAK BULLISH'?'var(--bull)':'var(--bear)'}">${intel.oi_matrix_condition||'—'}</span></div>
       <div class="ts-row"><span class="ts-l">RSI</span><span class="ts-v" style="color:${ind.rsi>=70?'var(--bear)':ind.rsi<=30?'var(--bull)':'var(--warn)'}">${ind.rsi||'N/A'} — ${ind.rsi_signal||'N/A'}</span></div>
-      <div class="ts-row"><span class="ts-l">ADX (+DI / −DI)</span><span class="ts-v" style="color:${ind.adx>=25?'var(--bull)':'var(--warn)'}">${ind.adx||'N/A'} &nbsp; <span class="bull">${ind.pdi||'—'}</span>/<span class="bear">${ind.ndi||'—'}</span></span></div>
+      <div class="ts-row"><span class="ts-l">ADX (+DI/−DI)</span><span class="ts-v" style="color:${ind.adx>=25?'var(--bull)':'var(--warn)'}">${ind.adx||'N/A'} <span class="bull">${ind.pdi||'—'}</span>/<span class="bear">${ind.ndi||'—'}</span></span></div>
     </div>
     <div style="padding:12px 14px;border-right:1px solid var(--border)">
       <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;margin-bottom:8px;font-weight:700">COMBINED VERDICT</div>
@@ -908,24 +919,48 @@ function renderAnalysis(d,atk,atm,ind,intel){
       <div style="font-size:11px;color:var(--text2);line-height:1.9">
         <div><span class="bull">BULLISH:</span> PCR rising + Call OI unwinding + Put OI building + ADX rising + RSI 50-60</div>
         <div><span class="bear">BEARISH:</span> PCR falling + Call OI building + Put OI unwinding + ADX rising + RSI 40-50</div>
-        <div><span class="warn">RANGE:</span> ADX below 20 + OI stable + VIX normal → sell at resistance, buy support</div>
+        <div><span class="warn">RANGE:</span> ADX below 20 + OI stable → sell resistance, buy support</div>
         <div><span style="color:var(--purple)">BREAKOUT:</span> OI dropping at key level + price approaching → fast move imminent</div>
-        <div><span style="color:var(--info)">EXPIRY:</span> Max Pain pull strongest in last hour — watch for pin to Max Pain level</div>
+        <div><span style="color:var(--info)">EXPIRY:</span> Max Pain pull strongest in last hour before expiry</div>
         <div style="margin-top:6px;padding:6px;background:var(--bg3);border-radius:4px;border:1px solid var(--border)">
-          <div style="font-size:10px;color:var(--bull)">📸 PNG auto-saved every 5min → snapshots/ folder (browser downloads)</div>
+          <div style="font-size:10px;color:var(--bull)">📸 PNG auto-saved every 5min → browser downloads</div>
         </div>
       </div>
     </div>`
 }
 
-/* ── UTILS ───────────────────────────────────────────── */
+/* ── UTILS ──────────────────────────────────────────────────── */
+function fc(n){const a=Math.abs(n);if(a>=100000)return(n>=0?'+':'−')+(a/100000).toFixed(2)+'L';if(a>=1000)return(n>=0?'+':'−')+(a/1000).toFixed(1)+'K';return(n>=0?'+':'−')+Math.round(a)}
+function strBar(s,c){return`<div class="stbar"><div class="stfill" style="width:${s}%;background:${c}"></div></div><span style="font-size:9px;color:var(--text2)">${s}</span>`}
+function actBadge(chg,isCall){const big=Math.abs(chg)>500000;if(isCall){if(chg>0)return`<span class="sig sa">${big?'ADD▼▼':'ADD▼'}</span>`;if(chg<0)return`<span class="sig se">${big?'CVR▲▲':'CVR▲'}</span>`;return'<span class="sig sn">—</span>'}else{if(chg>0)return`<span class="sig sw">${big?'WALL▲▲':'WALL▲'}</span>`;if(chg<0)return`<span class="sig su">${big?'UNW▼▼':'UNW▼'}</span>`;return'<span class="sig sn">—</span>'}}
+function rowHTML(r,atm,maxOI,isCall){
+  const s=parseFloat(r.strike),isA=Math.abs(s-atm)<1,isHot=Math.abs(isCall?(r.call_oi_chg||0):(r.put_oi_chg||0))>500000
+  const oi=isCall?(r.call_oi||0):(r.put_oi||0),chg=isCall?(r.call_oi_chg||0):(r.put_oi_chg||0)
+  const chgD=isCall?(r.call_oi_chg_day||0):(r.put_oi_chg_day||0),iv=isCall?(r.call_iv||0):(r.put_iv||0)
+  const ltp=isCall?(r.call_ltp||0):(r.put_ltp||0),ltpC=isCall?(r.call_ltp_chg||0):(r.put_ltp_chg||0)
+  const str=isCall?(r.sr_strength_call||0):(r.sr_strength_put||0)
+  const cc=chg>0?'var(--bear)':chg<0?'var(--bull)':'var(--text2)'
+  const dc=chgD>0?'var(--bear)':chgD<0?'var(--bull)':'var(--text2)'
+  const lc=ltpC>0?'var(--bull)':ltpC<0?'var(--bear)':'var(--text2)'
+  const strCol=str>=70?'var(--bear)':str>=40?'var(--warn)':'var(--bull)'
+  return`<tr class="${isA?'ar':isHot?'hr2':''}">
+    <td class="td-s"><span class="${isA?'sk-a':isCall?'sk-c':'sk-p'}">${Math.round(s).toLocaleString('en-IN')}${isA?' ◄':''}</span></td>
+    <td style="color:var(--warn)">₹${ltp.toFixed(1)}</td>
+    <td style="color:${lc};font-weight:700">${ltpC>=0?'+':''}${ltpC.toFixed(2)}</td>
+    <td>${(oi/100000).toFixed(2)}L</td>
+    <td style="color:${cc};font-weight:${isHot?700:400}">${fc(chg)}</td>
+    <td style="color:${dc}">${fc(chgD)}</td>
+    <td style="color:${iv>30?'var(--bear)':'var(--text)'}">${iv.toFixed(1)}%</td>
+    <td style="text-align:left">${strBar(str,strCol)}</td>
+    <td>${actBadge(chg,isCall)}</td>
+  </tr>`
+}
 function set(id,t){document.getElementById(id).textContent=t}
 function styl(id,t,c){const el=document.getElementById(id);el.textContent=t;el.style.color=c}
 function fmt(n){return n?Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}
 
 setInterval(()=>{
-  secs--
-  if(secs<=0){secs=300;doFetch()}
+  secs--;if(secs<=0){secs=300;doFetch()}
   const m=Math.floor(secs/60),s=secs%60
   document.getElementById('timer').textContent=m+':'+String(s).padStart(2,'0')
 },1000)
