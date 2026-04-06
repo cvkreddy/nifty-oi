@@ -16,8 +16,8 @@
 body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;}
 
 /* HEADER */
-.hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 18px;
-  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
+.hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:6px 14px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;
   position:sticky;top:0;z-index:100;}
 .logo{font-size:14px;font-weight:700;color:var(--info);letter-spacing:3px;}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--bull);animation:blink 1.4s infinite;}
@@ -30,7 +30,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
   border:1px solid rgba(64,196,255,.3);color:var(--info);padding:4px 12px;border-radius:4px;cursor:pointer;}
 
 /* ══ IMPROVEMENT #1 — ONE-GLANCE VERDICT BANNER ══ */
-.verdict-banner{padding:10px 18px;border-bottom:2px solid transparent;font-family:var(--ui);
+.verdict-banner{padding:7px 14px;border-bottom:2px solid transparent;font-family:var(--ui);
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;transition:background .4s,border-color .4s;}
 .vb-icon{font-size:20px;}
 .vb-main{font-size:16px;font-weight:700;letter-spacing:.5px;}
@@ -38,7 +38,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .vb-time{font-size:10px;opacity:.6;}
 
 /* MARKET STATE BAR */
-.state-bar{padding:10px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+.state-bar{padding:7px 14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
   border-bottom:2px solid var(--border);}
 .state-icon{font-size:20px;}
 .state-label{font-size:10px;color:var(--text2);letter-spacing:2px;margin-bottom:2px;}
@@ -46,7 +46,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .state-divider{width:1px;height:36px;background:var(--border2);}
 
 /* STRIP */
-.strip{background:var(--bg2);border-bottom:1px solid var(--border);padding:7px 18px;
+.strip{background:var(--bg2);border-bottom:1px solid var(--border);padding:5px 14px;
   display:flex;flex-wrap:wrap;gap:5px 14px;align-items:center;}
 .si{display:flex;align-items:baseline;gap:4px;}
 .sl{font-size:10px;color:var(--text2);letter-spacing:1px;}
@@ -73,7 +73,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .no-alert{font-size:10px;color:var(--text2);}
 
 /* INDEX TECHNICALS BAR */
-.tech-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:7px 18px;
+.tech-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:5px 14px;
   display:flex;align-items:flex-start;gap:0;flex-wrap:wrap;}
 .tech-tf{padding:4px 14px 4px 0;border-right:1px solid var(--border2);margin-right:14px;}
 .tech-tf:last-child{border-right:none;}
@@ -91,7 +91,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .xover-death{background:rgba(255,61,87,.2);color:var(--bear);border:1px solid rgba(255,61,87,.4);}
 
 /* RSI+ADX */
-.ind-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:6px 18px;
+.ind-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:4px 14px;
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .ib{display:flex;align-items:center;gap:5px;}
 .il{font-size:10px;color:var(--text2);letter-spacing:1px;}
@@ -110,10 +110,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .tf{height:100%;border-radius:3px;transition:width .6s;}
 
 #err{display:none;background:rgba(255,61,87,.1);border:1px solid rgba(255,61,87,.3);
-  color:var(--bear);padding:8px 18px;font-size:12px;}
+  color:var(--bear);padding:5px 14px;font-size:11px;}
 
 /* INTEL CARDS */
-.intel-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:8px 18px;}
+.intel-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px 14px;}
 .ic{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:9px 11px;}
 .ic-lbl{font-size:9px;color:var(--text2);letter-spacing:1.5px;margin-bottom:3px;}
 .ic-val{font-size:12px;font-weight:700;margin-bottom:2px;}
@@ -125,7 +125,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .pcr-trend-lbl{font-size:10px;font-weight:700;}
 
 /* GRID */
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 18px 18px;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 14px 14px;}
 .full{grid-column:1/-1;}
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
 .ch{padding:7px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
@@ -319,6 +319,20 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="si"><span class="sl">BIAS</span><span class="sv" id="m-bias">—</span></div>
 </div>
 
+<!-- ══ TOTAL MARKET OI SUMMARY ══ -->
+<div id="total-oi-bar" style="background:var(--bg3);border-bottom:1px solid var(--border);padding:5px 14px;display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center;font-size:11px;">
+  <span style="font-size:9px;color:var(--text2);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;flex-shrink:0">TOTAL MARKET OI:</span>
+  <span style="color:var(--text2);font-size:9px;font-family:var(--ui)">CE:</span><span id="tot-ce-oi" style="font-weight:700;color:var(--bear)">—</span>
+  <span style="color:var(--text2);font-size:9px;font-family:var(--ui)">Δ5m:</span><span id="tot-ce-chg" style="font-weight:700">—</span>
+  <div style="width:1px;height:14px;background:var(--border2)"></div>
+  <span style="color:var(--text2);font-size:9px;font-family:var(--ui)">PE:</span><span id="tot-pe-oi" style="font-weight:700;color:var(--bull)">—</span>
+  <span style="color:var(--text2);font-size:9px;font-family:var(--ui)">Δ5m:</span><span id="tot-pe-chg" style="font-weight:700">—</span>
+  <div style="width:1px;height:14px;background:var(--border2)"></div>
+  <span style="color:var(--text2);font-size:9px;font-family:var(--ui)">NET Δ:</span><span id="tot-net-chg" style="font-weight:700">—</span>
+  <div style="width:1px;height:14px;background:var(--border2)"></div>
+  <span id="tot-market-flow" style="font-size:11px;font-weight:700;font-family:var(--ui)">—</span>
+</div>
+
 <!-- ══ #2 STRADDLE COST BAR ══ -->
 <div class="straddle-bar">
   <div class="sb-item">
@@ -473,16 +487,51 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
   </div>
 
-  <!-- OI HISTOGRAM enhanced -->
+  <!-- OI HISTOGRAM improved -->
   <div class="card">
     <div class="ch">
-      <span class="ct info">OI HISTOGRAM + OI CHANGE — ATM ±5</span>
-      <span style="font-size:10px;color:var(--text2)">Top: Total OI · Bottom: Change this cycle</span>
+      <span class="ct info">OI HISTOGRAM — CE vs PE  (ATM ±5)</span>
+      <span style="display:flex;gap:10px;font-size:10px;align-items:center">
+        <span><span style="color:var(--bear)">●</span> CE OI/Adding</span>
+        <span><span style="color:var(--bull)">●</span> PE OI/Adding</span>
+        <span><span style="color:var(--info)">●</span> CE Exiting</span>
+        <span><span style="color:var(--warn)">●</span> PE Exiting</span>
+      </span>
     </div>
-    <div style="padding:4px 12px 4px;border-bottom:1px solid var(--border);font-size:9px;color:var(--text2);font-family:var(--ui)">
-      🔴=CE adding · ✅=CE exit/PE adding · ⚠=PE exit
+    <!-- COLUMN HEADERS -->
+    <div style="display:flex;align-items:center;gap:4px;padding:3px 12px;border-bottom:1px solid var(--border);background:var(--bg3)">
+      <div style="width:44px;font-size:9px;color:var(--bear);text-align:right;flex-shrink:0;font-family:var(--ui);font-weight:700">CE OI</div>
+      <div style="flex:1;text-align:center;font-size:9px;color:var(--bear);font-family:var(--ui);font-weight:700">← CALL SIDE</div>
+      <div style="width:64px;text-align:center;font-size:9px;color:var(--atm);font-family:var(--ui);font-weight:700">STRIKE</div>
+      <div style="flex:1;text-align:center;font-size:9px;color:var(--bull);font-family:var(--ui);font-weight:700">PUT SIDE →</div>
+      <div style="width:44px;font-size:9px;color:var(--bull);flex-shrink:0;font-family:var(--ui);font-weight:700">PE OI</div>
+      <div style="width:36px;font-size:9px;color:var(--text2);text-align:right;flex-shrink:0;font-family:var(--ui)">Str</div>
     </div>
     <div class="hw" id="histogram"><div class="loading">Waiting...</div></div>
+  </div>
+
+  <!-- NIFTY 50 TECHNICALS FULL PANEL -->
+  <div class="card">
+    <div class="ch">
+      <span class="ct info">📊 NIFTY 50 TECHNICALS — 5min &amp; 15min</span>
+      <span class="cs" id="tech-bias-lbl">Bias: —</span>
+    </div>
+    <div id="nifty-tech-full" style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)">
+      <div style="padding:8px 10px;border-right:1px solid var(--border)">
+        <div style="font-size:9px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:6px">5 MIN TIMEFRAME</div>
+        <div id="tech-5m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
+      </div>
+      <div style="padding:8px 10px">
+        <div style="font-size:9px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:6px">15 MIN TIMEFRAME</div>
+        <div id="tech-15m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
+      </div>
+    </div>
+    <!-- COMBINED BIAS -->
+    <div style="padding:7px 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="font-size:9px;color:var(--text2);letter-spacing:1px;font-family:var(--ui);font-weight:700">OVERALL BIAS</div>
+      <div id="tech-overall-bias" style="font-size:13px;font-weight:700;font-family:var(--ui)">—</div>
+      <div id="tech-confluence" style="font-size:10px;color:var(--text2);flex:1">—</div>
+    </div>
   </div>
 
   <!-- GEX + IV SKEW -->
@@ -520,7 +569,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <div style="height:28px"></div>
 <div class="statusbar">
   <span id="st-left">Connecting...</span>
-  <span id="st-right">OI Matrix needs 2 cycles · PNG auto-saved every 5min</span>
+  <span id="st-right">OI Matrix needs 2 cycles · Auto-PNG every 5min → Chrome Downloads (disable "Ask where to save" in Chrome Settings for silent save)</span>
 </div>
 
 <script>
@@ -538,10 +587,26 @@ loadH2C()
 function saveScreenshot(auto){
   if(typeof html2canvas==='undefined'){if(!auto)window.print();return}
   const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19)
-  html2canvas(document.body,{scale:1,useCORS:true,allowTaint:true}).then(c=>{
-    const a=document.createElement('a');a.download=`nifty_oi_${auto?'auto':'snap'}_${ts}.png`
-    a.href=c.toDataURL('image/png');a.click()
-    snapCount++;g('snap-status').textContent=`📸 Last: ${new Date().toLocaleTimeString('en-IN')} #${snapCount}`
+  html2canvas(document.body,{scale:1,useCORS:true,allowTaint:true,logging:false}).then(c=>{
+    const dataUrl=c.toDataURL('image/png')
+    // Silent download — goes straight to browser Downloads folder (no dialog if Chrome auto-download is on)
+    const a=document.createElement('a')
+    a.download=`nifty_oi_${auto?'auto':'snap'}_${ts}.png`
+    a.href=dataUrl; a.style.display='none'
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    snapCount++
+    g('snap-status').textContent=`📸 Saved #${snapCount} at ${new Date().toLocaleTimeString('en-IN')}`
+    // Also store in IndexedDB so nothing is lost even if download is missed
+    try{
+      const req=indexedDB.open('NiftyOI_Snaps',1)
+      req.onupgradeneeded=e=>e.target.result.createObjectStore('snaps',{keyPath:'ts'})
+      req.onsuccess=e=>{
+        const db=e.target.result
+        const tx=db.transaction('snaps','readwrite')
+        tx.objectStore('snaps').put({ts,data:dataUrl})
+        // Keep only last 100 snaps
+      }
+    }catch(ex){}
   }).catch(e=>console.warn(e))
 }
 
@@ -668,6 +733,9 @@ function render(d,hist){
 
   g('call-tbody').innerHTML=callRows.length?callRows.map(r=>rowHTML(r,atm,maxCOI,true)).join(''):'<tr><td colspan="10" class="loading">No data</td></tr>'
   g('put-tbody').innerHTML=putRows.length?putRows.map(r=>rowHTML(r,atm,maxPOI,false)).join(''):'<tr><td colspan="10" class="loading">No data</td></tr>'
+
+  // ══ TOTAL MARKET OI SUMMARY ══
+  renderTotalMarketOI(d)
 
   renderFlowMatrix(ak,atm)
   renderMigration(ak,atm)         // ══ #4 ══
@@ -980,14 +1048,15 @@ function renderPinRisk(d,atm){
 
 /* ══ INDEX TECHNICALS ═══════════════════════════════ */
 function renderIndexTech(tech){
+  // Compact bar at top (unchanged)
   ;['5min','15min'].forEach(tf=>{
-    const t=tech[tf]||{},el=g('tf-'+tf.replace('min','min'))
+    const t=tech[tf]||{},el=g('tf-'+tf)
     if(!el) return
     if(!t.ema7&&(t.candle_count||0)<8){
-      el.innerHTML=`<div class="tech-tf-lbl">${tf.toUpperCase()} TF</div><div style="font-size:10px;color:var(--warn);font-family:var(--ui)">${t.candle_count||0} candles — need 15+ (market hours)</div>`
+      el.innerHTML=`<div class="tech-tf-lbl">${tf.toUpperCase()} TF</div><div style="font-size:10px;color:var(--warn);font-family:var(--ui)">${t.candle_count||0} candles — need 15+</div>`
       return
     }
-    const tCls=t.trend&&t.trend.includes('STRONG BULL')?'tp-bull':t.trend&&t.trend.includes('STRONG BEAR')?'tp-bear':t.trend==='RECOVERING'||t.trend==='MILD BEARISH'?'tp-warn':'tp-neu'
+    const tCls=t.trend&&t.trend.includes('STRONG BULL')?'tp-bull':t.trend&&t.trend.includes('STRONG BEAR')?'tp-bear':'tp-warn'
     const stCls=t.supertrend==='BULLISH'?'tp-bull':t.supertrend==='BEARISH'?'tp-bear':'tp-neu'
     const xover=t.crossover?`&nbsp;<span class="xover-pill ${t.crossover.includes('GOLDEN')?'xover-gold':'xover-death'}">🔔 ${t.crossover}</span>`:''
     const p2e7=t.price_above_ema7===null?'—':t.price_above_ema7?'<span class="bull">✅ ABOVE</span>':'<span class="bear">❌ BELOW</span>'
@@ -1001,6 +1070,107 @@ function renderIndexTech(tech){
       <div class="tech-item"><span class="tech-key">Trend</span><span class="tech-pill ${tCls}">${t.trend||'N/A'}</span>${xover}</div>
       ${t.rsi?`<div class="tech-item"><span class="tech-key">RSI(${tf})</span><span class="tech-val" style="color:${t.rsi>=70?'var(--bear)':t.rsi<=30?'var(--bull)':'var(--warn)'}">${t.rsi}</span></div>`:''}`
   })
+
+  // Full panel
+  renderNiftyTechFull(tech)
+}
+
+function renderNiftyTechFull(tech){
+  const mkRow=(key,val,col,note)=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.03)">
+      <span style="font-size:10px;color:var(--text2);font-family:var(--ui)">${key}</span>
+      <span style="font-size:11px;font-weight:700;color:${col||'var(--text)'}">${val}</span>
+      ${note?`<span style="font-size:9px;color:var(--text2);font-family:var(--ui)">${note}</span>`:''}
+    </div>`
+
+  const mkPill=(label,cls)=>`<span class="tech-pill ${cls}" style="font-size:10px">${label}</span>`
+
+  ;['5min','15min'].forEach(tf=>{
+    const t=tech[tf]||{}
+    const elId=tf==='5min'?'tech-5m-full':'tech-15m-full'
+    const el=g(elId); if(!el) return
+
+    if(!t.ema7&&(t.candle_count||0)<8){
+      el.innerHTML=`<div style="font-size:10px;color:var(--warn);font-family:var(--ui);padding:4px 0">${t.candle_count||0} candles — needs 15+ (market hours only)</div>`
+      return
+    }
+
+    const price=t.current_price||0
+    const ema7=t.ema7, ema15=t.ema15, ema21=t.ema21
+    const stDir=t.supertrend, stVal=t.supertrend_val
+    const trendCls=t.trend&&t.trend.includes('STRONG BULL')?'tp-bull':t.trend&&t.trend.includes('STRONG BEAR')?'tp-bear':'tp-warn'
+    const stCls=stDir==='BULLISH'?'tp-bull':stDir==='BEARISH'?'tp-bear':'tp-neu'
+    const p7col=t.price_above_ema7?'var(--bull)':'var(--bear)'
+    const p15col=t.price_above_ema15?'var(--bull)':'var(--bear)'
+    const e7e15col=t.ema7_above_ema15?'var(--bull)':'var(--bear)'
+    const xover=t.crossover?`<span class="xover-pill ${t.crossover.includes('GOLDEN')?'xover-gold':'xover-death'}" style="font-size:9px">🔔 ${t.crossover}</span>`:''
+
+    // EMA distance (how far price is from each EMA)
+    const d7  = ema7  ? ((price-ema7)/ema7*100).toFixed(2)+'%' : '—'
+    const d15 = ema15 ? ((price-ema15)/ema15*100).toFixed(2)+'%' : '—'
+    const d21 = ema21 ? ((price-ema21)/ema21*100).toFixed(2)+'%' : '—'
+    const d7col  = ema7  ?(price>ema7?'var(--bull)':'var(--bear)'):'var(--text2)'
+    const d15col = ema15?(price>ema15?'var(--bull)':'var(--bear)'):'var(--text2)'
+
+    // EMA Alignment score (all 3 aligned = strong trend)
+    let emaScore=0
+    if(ema7&&ema15&&price>ema7&&price>ema15) emaScore+=2
+    if(ema7&&ema15&&ema7>ema15) emaScore+=1
+    if(ema15&&ema21&&ema15>ema21) emaScore+=1
+    const emaAlign=emaScore>=3?'PERFECT BULLISH STACK':emaScore>=2?'BULLISH ALIGNED':emaScore===1?'PARTIAL ALIGN':'BEARISH STACK'
+    const emaAlignCol=emaScore>=3?'var(--bull)':emaScore>=2?'var(--bull)':emaScore===1?'var(--warn)':'var(--bear)'
+
+    // RSI interpretation
+    const rsi=t.rsi
+    const rsiNote=!rsi?'N/A':rsi>=70?'Overbought ⚠':rsi>=60?'Bullish':'Neutral'+(rsi<=40?' Bearish':'')
+    const rsiCol=!rsi?'var(--text2)':rsi>=70?'var(--bear)':rsi<=30?'var(--bull)':rsi>=55?'var(--bull)':'var(--warn)'
+
+    // Supertrend distance
+    const stDist=stVal&&price?Math.abs(price-stVal).toFixed(1):null
+
+    el.innerHTML=`
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+        ${mkPill(t.trend||'N/A',trendCls)}
+        ${mkPill(stDir||'ST N/A',stCls)}
+        ${xover}
+      </div>
+      ${mkRow('EMA 7',ema7||'—',d7col,`${t.price_above_ema7?'Price ABOVE':'Price BELOW'} · dist ${d7}`)}
+      ${mkRow('EMA 15',ema15||'—',d15col,`${t.price_above_ema15?'ABOVE':'BELOW'} · dist ${d15}`)}
+      ${mkRow('EMA 21',ema21||'—','var(--text2)',`dist ${d21}`)}
+      ${mkRow('EMA Stack',emaAlign,emaAlignCol,'')}
+      ${mkRow('Supertrend',stDir?`${stDir} @ ${stVal}`:'N/A',stCls,stDist?`${stDist}pts away`:'')}
+      ${rsi?mkRow('RSI (14)',rsi.toFixed(1),rsiCol,rsiNote):''}
+      ${mkRow('EMA7 vs EMA15',t.ema7_above_ema15?'EMA7 ABOVE ▲':'EMA7 BELOW ▼',e7e15col,'')}
+    `
+  })
+
+  // OVERALL BIAS — confluence of both timeframes
+  const t5=tech['5min']||{}, t15=tech['15min']||{}
+  let bullPoints=0, bearPoints=0
+  if(t5.price_above_ema7)  bullPoints++; else bearPoints++
+  if(t5.ema7_above_ema15) bullPoints++; else bearPoints++
+  if(t5.supertrend==='BULLISH') bullPoints+=2; else if(t5.supertrend==='BEARISH') bearPoints+=2
+  if(t15.price_above_ema7) bullPoints++; else bearPoints++
+  if(t15.ema7_above_ema15) bullPoints++; else bearPoints++
+  if(t15.supertrend==='BULLISH') bullPoints+=2; else if(t15.supertrend==='BEARISH') bearPoints+=2
+  if((t5.rsi||50)>55) bullPoints++; else if((t5.rsi||50)<45) bearPoints++
+
+  const total=bullPoints+bearPoints||1
+  const bullPct=Math.round(bullPoints/total*100)
+  let bias,biasCol,confluence
+  if(bullPct>=75)     {bias='STRONG BULLISH';biasCol='var(--bull)';confluence='All EMAs + ST aligned bullish across TFs'}
+  else if(bullPct>=60){bias='BULLISH';biasCol='var(--bull)';confluence='Most signals bullish — buy dips strategy'}
+  else if(bullPct>=45){bias='MILD BULLISH';biasCol='rgba(0,230,118,.7)';confluence='Slight bullish lean — wait for confirmation'}
+  else if(bullPct>=35){bias='NEUTRAL';biasCol='var(--warn)';confluence='Mixed signals — range-bound, no clear edge'}
+  else if(bullPct>=25){bias='MILD BEARISH';biasCol='rgba(255,61,87,.7)';confluence='Slight bearish lean — wait for breakdown confirmation'}
+  else                {bias='STRONG BEARISH';biasCol='var(--bear)';confluence='All EMAs + ST aligned bearish across TFs'}
+
+  const el=g('tech-overall-bias'),ec=g('tech-confluence'),el2=g('tech-bias-lbl')
+  if(el){el.textContent=bias;el.style.color=biasCol}
+  if(ec) ec.textContent=confluence+` (Bull: ${bullPct}% · Bear: ${100-bullPct}%)`
+  if(el2){el2.textContent='Bias: '+bias;el2.style.color=biasCol}
+}
+
 }
 
 /* ══ TABLES with heatmap + velocity + score ══════════ */
@@ -1043,6 +1213,69 @@ function rowHTML(r,atm,maxOI,isCall){
   </tr>`
 }
 
+/* ══ TOTAL MARKET OI ═══════════════════════════════ */
+function renderTotalMarketOI(d){
+  const chain=d.chain||{}
+  const sts=Object.keys(chain).map(Number)
+  if(!sts.length) return
+
+  const totalCE    = sts.reduce((s,k)=>s+(chain[k].call_oi||0),0)
+  const totalPE    = sts.reduce((s,k)=>s+(chain[k].put_oi||0),0)
+  const totalCEChg = sts.reduce((s,k)=>s+(chain[k].call_oi_chg||0),0)
+  const totalPEChg = sts.reduce((s,k)=>s+(chain[k].put_oi_chg||0),0)
+  const netChg     = totalPEChg - totalCEChg
+
+  const el=g('tot-ce-oi');   if(el) el.textContent=(totalCE/10000000).toFixed(2)+'Cr'
+  const el2=g('tot-pe-oi');  if(el2) el2.textContent=(totalPE/10000000).toFixed(2)+'Cr'
+
+  const cce=g('tot-ce-chg')
+  if(cce){
+    const v=totalCEChg
+    cce.textContent=(v>=0?'+':'')+fc(v)
+    cce.style.color=v>0?'var(--bear)':v<0?'var(--bull)':'var(--text2)'
+  }
+  const cpe=g('tot-pe-chg')
+  if(cpe){
+    const v=totalPEChg
+    cpe.textContent=(v>=0?'+':'')+fc(v)
+    cpe.style.color=v>0?'var(--bull)':v<0?'var(--warn)':'var(--text2)'
+  }
+  const cnet=g('tot-net-chg')
+  if(cnet){
+    cnet.textContent=(netChg>=0?'+':'')+fc(netChg)
+    cnet.style.color=netChg>0?'var(--bull)':netChg<0?'var(--bear)':'var(--text2)'
+  }
+
+  // Market-wide flow condition
+  const spot=d.spot||0, prevSpot=d._prevSpot||spot
+  const priceUp=spot>prevSpot+5, priceDn=spot<prevSpot-5
+  const oiUp=netChg>500000, oiDn=netChg<-500000
+  let flowTxt='', flowCol='var(--text2)'
+  if(Math.abs(totalCEChg)<500000&&Math.abs(totalPEChg)<500000){
+    flowTxt='⚡ OI FLAT — No conviction yet'; flowCol='var(--warn)'
+  } else if(totalCEChg>2000000&&totalPEChg>2000000){
+    flowTxt='💥 BOTH ADDING — BIG MOVE COMING'; flowCol='var(--info)'
+  } else if(totalCEChg<-2000000&&totalPEChg<-2000000){
+    flowTxt='🌀 BOTH EXITING — Squareoff / caution'; flowCol='var(--text2)'
+  } else if(totalCEChg>2000000&&totalPEChg<-500000){
+    flowTxt='🔄 OI SHIFT→CE — Resistance building'; flowCol='var(--bear)'
+  } else if(totalPEChg>2000000&&totalCEChg<-500000){
+    flowTxt='🔄 OI SHIFT→PE — Support building'; flowCol='var(--bull)'
+  } else if(totalCEChg>2000000){
+    flowTxt='🔴 FRESH CE BUILD — Resistance forming'; flowCol='var(--bear)'
+  } else if(totalCEChg<-2000000){
+    flowTxt='✅ CE UNWINDING — Resistance weakening'; flowCol='var(--bull)'
+  } else if(totalPEChg>2000000){
+    flowTxt='✅ FRESH PE BUILD — Support forming'; flowCol='var(--bull)'
+  } else if(totalPEChg<-2000000){
+    flowTxt='⚠ PE UNWINDING — Support weakening'; flowCol='var(--warn)'
+  } else {
+    flowTxt='→ STABLE — No major OI shift this cycle'; flowCol='var(--text2)'
+  }
+  const mf=g('tot-market-flow')
+  if(mf){mf.textContent=flowTxt; mf.style.color=flowCol}
+}
+
 /* ══ FLOW MATRIX ═════════════════════════════════════ */
 function sigColor(sig){
   if(!sig) return 'var(--text2)'
@@ -1077,8 +1310,9 @@ function renderFlowMatrix(atk,atm){
     return `<tr style="${isATM?'background:rgba(124,77,255,.08)':''}">
       <td class="td-s">
         <span class="${isATM?'sk-a':s>atm?'sk-c':'sk-p'}">${Math.round(s).toLocaleString('en-IN')}${isATM?' ◄':''}</span>
+        <br><span style="font-size:9px;color:var(--warn)">CE ₹${v.call_ltp?Number(v.call_ltp).toFixed(0):'—'}</span>
+        <br><span style="font-size:9px;color:var(--bull)">PE ₹${v.put_ltp?Number(v.put_ltp).toFixed(0):'—'}</span>
         <br><span style="font-size:9px;color:${v.pcr>1.2?'var(--bull)':v.pcr<0.8?'var(--bear)':'var(--warn)'}">PCR:${v.pcr?Number(v.pcr).toFixed(2):'—'}</span>
-        <br><span style="font-size:9px;color:var(--text2)">${s>atm?'↑ CE zone':s<atm?'↓ PE zone':'◉ ATM'}</span>
       </td>
       <td style="text-align:left;background:${sigBg(cf.signal)};border-left:2px solid ${sigColor(cf.signal)}">
         <div class="flow-cond" style="color:${sigColor(cf.signal)}">${cf.emoji||'⚪'} ${cf.condition||'Waiting...'}</div>
@@ -1111,58 +1345,102 @@ function renderFlowMatrix(atk,atm){
   g('flow-tbody').innerHTML=rows||'<tr><td colspan="10" class="loading">No data</td></tr>'
 }
 
-/* ══ HISTOGRAM ═══════════════════════════════════════ */
+/* ══ HISTOGRAM — IMPROVED ═══════════════════════════ */
 function renderHist(hist,atm){
   const el=g('histogram')
   if(!hist||!hist.length){el.innerHTML='<div class="loading">No data</div>';return}
-  const maxOI=Math.max(Math.max(...hist.map(h=>h.call_oi||0)),Math.max(...hist.map(h=>h.put_oi||0)))||1
-  const maxChg=Math.max(Math.max(...hist.map(h=>Math.abs(h.call_oi_chg||0))),Math.max(...hist.map(h=>Math.abs(h.put_oi_chg||0))))||1
-  const W=90,bigT=maxChg*0.08
+
+  // Scale: separate max for OI bars and change bars
+  const maxC  = Math.max(...hist.map(h=>h.call_oi||0))||1
+  const maxP  = Math.max(...hist.map(h=>h.put_oi||0))||1
+  const maxOI = Math.max(maxC,maxP)
+  const allChg= [...hist.map(h=>Math.abs(h.call_oi_chg||0)),...hist.map(h=>Math.abs(h.put_oi_chg||0))]
+  const maxChg= Math.max(...allChg)||1
+  const W=110  // max bar width
+
   el.innerHTML=hist.map(h=>{
-    const s=parseFloat(h.strike||0),isA=Math.abs(s-atm)<1
-    const coi=h.call_oi||0,poi=h.put_oi||0
-    const cw=Math.round((coi/maxOI)*W),pw=Math.round((poi/maxOI)*W)
-    const net=poi-coi,nc=net>0?'var(--bull)':net<0?'var(--bear)':'var(--text2)'
-    const cc=h.call_oi_chg||0,pc=h.put_oi_chg||0
-    const ccW=Math.max(2,Math.round((Math.abs(cc)/maxChg)*W))
-    const pcW=Math.max(2,Math.round((Math.abs(pc)/maxChg)*W))
-    let interp=''
-    if(cc>bigT&&pc>bigT) interp='💥 Both adding'
-    else if(cc<-bigT&&pc<-bigT) interp='🌀 Both exit'
-    else if(cc>bigT) interp='🔴 CE add'
-    else if(cc<-bigT) interp='✅ CE exit'
-    else if(pc>bigT) interp='✅ PE add'
-    else if(pc<-bigT) interp='⚠ PE exit'
-    return `
-    <div style="margin-bottom:9px;${isA?'background:rgba(124,77,255,.04);padding:2px 0;border-radius:4px':''}">
-      <div class="hr">
-        <div class="hlc">${(coi/100000).toFixed(1)}L</div>
-        <div class="hbs">
-          <div style="display:flex;justify-content:flex-end;width:${W}px"><div class="hcb" style="width:${cw}px"></div></div>
-          <div class="hcn"></div><div style="width:${W}px"><div class="hpb" style="width:${pw}px"></div></div>
+    const s=parseFloat(h.strike||0), isA=Math.abs(s-atm)<1
+    const coi=h.call_oi||0, poi=h.put_oi||0
+    const cc=h.call_oi_chg||0, pc=h.put_oi_chg||0
+
+    // OI bars proportional to respective maxes
+    const cw=Math.round((coi/maxOI)*W)
+    const pw=Math.round((poi/maxOI)*W)
+
+    // Change bars
+    const ccW=cc!==0?Math.max(3,Math.round((Math.abs(cc)/maxChg)*W)):0
+    const pcW=pc!==0?Math.max(3,Math.round((Math.abs(pc)/maxChg)*W)):0
+
+    // Determine what's happening at each side
+    const bigT=maxChg*0.05
+    let ceStatus='', peStatus=''
+    let ceStatusCol='var(--text2)', peStatusCol='var(--text2)'
+    if(Math.abs(cc)>bigT){
+      if(cc>0){ceStatus='▲ ADDING';ceStatusCol='var(--bear)'}
+      else{ceStatus='▼ EXITING';ceStatusCol='var(--bull)'}
+    }
+    if(Math.abs(pc)>bigT){
+      if(pc>0){peStatus='▲ ADDING';peStatusCol='var(--bull)'}
+      else{peStatus='▼ EXITING';peStatusCol='var(--warn)'}
+    }
+
+    // Combined signal
+    let signal='', signalCol='var(--text2)'
+    if(cc>bigT&&pc>bigT){signal='💥 BOTH ADDING';signalCol='var(--info)'}
+    else if(cc<-bigT&&pc<-bigT){signal='🌀 BOTH EXIT';signalCol='var(--text2)'}
+    else if(cc>bigT&&Math.abs(pc)<=bigT){signal='🔴 CE WALL';signalCol='var(--bear)'}
+    else if(cc<-bigT&&Math.abs(pc)<=bigT){signal='✅ CE COLLAPSE';signalCol='var(--bull)'}
+    else if(pc>bigT&&Math.abs(cc)<=bigT){signal='✅ PE FLOOR';signalCol='var(--bull)'}
+    else if(pc<-bigT&&Math.abs(cc)<=bigT){signal='⚠ PE FLOOR WEAK';signalCol='var(--warn)'}
+    else if(cc>bigT&&pc<-bigT){signal='🔄 SHIFT→CE';signalCol='var(--info)'}
+    else if(pc>bigT&&cc<-bigT){signal='🔄 SHIFT→PE';signalCol='var(--info)'}
+
+    const net=poi-coi, nc=net>0?'var(--bull)':net<0?'var(--bear)':'var(--text2)'
+    const str=Math.max(h.sr_strength_call||0,h.sr_strength_put||0)
+
+    return `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.025);${isA?'background:rgba(124,77,255,.06)':''}">
+      <!-- ROW 1: TOTAL OI BARS -->
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
+        <!-- CE OI value + bar (right-aligned going toward center) -->
+        <div style="width:44px;text-align:right;font-size:10px;font-weight:700;color:var(--bear);flex-shrink:0">${(coi/100000).toFixed(1)}L</div>
+        <div style="flex:1;display:flex;justify-content:flex-end;height:11px;background:rgba(255,61,87,.06);border-radius:2px 0 0 2px;overflow:hidden">
+          <div style="width:${cw}px;background:var(--bear);opacity:.7;border-radius:2px 0 0 2px"></div>
         </div>
-        <div class="hlp">${(poi/100000).toFixed(1)}L</div>
-        <div class="hsk" style="font-weight:${isA?700:400};color:${isA?'var(--atm)':'var(--text2)'}">
-          ${Math.round(s).toLocaleString('en-IN')}${isA?'<span class="hatm"> ◄</span>':''}
+        <!-- STRIKE LABEL -->
+        <div style="width:64px;text-align:center;font-size:${isA?12:11}px;font-weight:${isA?700:400};color:${isA?'var(--atm)':'var(--text2)'};flex-shrink:0">
+          ${Math.round(s).toLocaleString('en-IN')}${isA?' ◄':''}
         </div>
-        <div class="hnet" style="color:${nc}">${net>=0?'+':''}${(net/100000).toFixed(1)}L</div>
-        <div class="hstr">${Math.max(h.sr_strength_call||0,h.sr_strength_put||0)}</div>
+        <!-- PE OI bar + value (left-aligned going away from center) -->
+        <div style="flex:1;display:flex;justify-content:flex-start;height:11px;background:rgba(0,230,118,.05);border-radius:0 2px 2px 0;overflow:hidden">
+          <div style="width:${pw}px;background:var(--bull);opacity:.7;border-radius:0 2px 2px 0"></div>
+        </div>
+        <div style="width:44px;font-size:10px;font-weight:700;color:var(--bull);flex-shrink:0">${(poi/100000).toFixed(1)}L</div>
+        <div style="width:36px;font-size:9px;color:var(--text2);text-align:right;flex-shrink:0">${str}</div>
       </div>
-      <div class="hrc">
-        <div style="font-size:9px;color:${cc>0?'var(--bear)':cc<0?'var(--bull)':'var(--text2)'};width:34px;text-align:right;flex-shrink:0">${cc!==0?fc(cc):'—'}</div>
-        <div style="display:flex;justify-content:flex-end;width:${W}px;flex-shrink:0">
-          ${cc!==0?`<div class="${cc>0?'hchg-ca':'hchg-cx'}" style="width:${ccW}px"></div>`:'<div style="width:2px;height:8px;background:var(--border2);border-radius:2px"></div>'}
+      <!-- ROW 2: OI CHANGE BARS -->
+      <div style="display:flex;align-items:center;gap:4px">
+        <!-- CE change label -->
+        <div style="width:44px;text-align:right;font-size:9px;font-weight:700;color:${ceStatusCol};flex-shrink:0">${cc!==0?fc(cc):'—'}</div>
+        <!-- CE change bar -->
+        <div style="flex:1;display:flex;justify-content:flex-end;height:7px;border-radius:2px 0 0 2px;overflow:hidden;background:rgba(255,255,255,.03)">
+          ${ccW>0?`<div style="width:${ccW}px;background:${cc>0?'var(--bear)':'var(--info)'};border-radius:2px 0 0 2px"></div>`:''}
         </div>
-        <div style="width:1px;background:var(--border2);height:8px;flex-shrink:0"></div>
-        <div style="width:${W}px;flex-shrink:0">
-          ${pc!==0?`<div class="${pc>0?'hchg-pa':'hchg-px'}" style="width:${pcW}px"></div>`:'<div style="width:2px;height:8px;background:var(--border2);border-radius:2px"></div>'}
+        <!-- Center signal label -->
+        <div style="width:64px;text-align:center;font-size:9px;font-weight:700;color:${signalCol};flex-shrink:0;font-family:var(--ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${signal||''}</div>
+        <!-- PE change bar -->
+        <div style="flex:1;display:flex;justify-content:flex-start;height:7px;border-radius:0 2px 2px 0;overflow:hidden;background:rgba(255,255,255,.03)">
+          ${pcW>0?`<div style="width:${pcW}px;background:${pc>0?'var(--bull)':'var(--warn)'};border-radius:0 2px 2px 0"></div>`:''}
         </div>
-        <div style="font-size:9px;color:${pc>0?'var(--bull)':pc<0?'var(--warn)':'var(--text2)'};flex-shrink:0">${pc!==0?fc(pc):'—'}</div>
-        <div style="font-size:9px;color:var(--text2);margin-left:6px;white-space:nowrap">${interp}</div>
+        <!-- PE change label -->
+        <div style="width:44px;font-size:9px;font-weight:700;color:${peStatusCol};flex-shrink:0">${pc!==0?fc(pc):'—'}</div>
+        <!-- Net -->
+        <div style="width:36px;font-size:9px;color:${nc};text-align:right;flex-shrink:0">${net>=0?'+':''}${(net/100000).toFixed(1)}</div>
       </div>
     </div>`
   }).join('')
 }
+
+
 
 /* ══ GEX, SKEW, GREEKS, ACTIVITY, ANALYSIS ═══════════ */
 function renderGEX(gexData,flip,atm){
