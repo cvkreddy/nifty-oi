@@ -1,7 +1,7 @@
 """
 ====================================================
   NIFTY50 OI Server — Full Intelligence Mode v2
-  Includes: Render Gunicorn Fix + 1Min Resampling Engine
+  Includes: Render Gunicorn Fix + Candle API Fixes
 ====================================================
 """
 
@@ -66,7 +66,7 @@ def hdrs():
     return {
         "Authorization": f"Bearer {token_store['access_token']}", 
         "Accept": "application/json",
-        "Api-Version": "2.0"  
+        "Api-Version": "2.0"  # 🔥 FIX: Required by Upstox historical endpoints
     }
 
 # ══════════════════════════════════════════════════
@@ -103,7 +103,7 @@ def get_token():
 
 
 # ══════════════════════════════════════════════════
-#  FETCHERS & RESAMPLER
+#  FETCHERS
 # ══════════════════════════════════════════════════
 
 def fetch_spot():
@@ -156,14 +156,43 @@ def fetch_vix():
     except: pass
     return 0
 
-# 🔥 FIX: Fetch 1-minute candles because Upstox blocked 5min/15min API calls
-def fetch_base_1m_candles():
+def fetch_candles():
+    global candle_cache
+    try:
+        # 🔥 FIX: Safely encode the symbol to prevent Upstox API crashes
+        safe_key = urllib.parse.quote(NIFTY_KEY)
+        to_date = date.today().strftime("%Y-%m-%d")
+        from_date = (date.today() - timedelta(days=6)).strftime("%Y-%m-%d")
+        
+        url = f"https://api.upstox.com/v2/historical-candle/{safe_key}/5minute/{to_date}/{from_date}"
+        r = requests.get(url, headers=hdrs(), timeout=10)
+        
+        if r.status_code == 200:
+            raw = r.json()
+            cr  = raw.get("data", {}).get("candles", [])
+            result = []
+            for c in cr:
+                if len(c) >= 5:
+                    result.append({"time": c[0], "open": float(c[1]), "high": float(c[2]),
+                                   "low": float(c[3]), "close": float(c[4])})
+            # 🔥 FIX: Sort chronological (oldest first) for accurate EMA/RSI math
+            result.sort(key=lambda x: x["time"])
+            if result:
+                candle_cache = result[-60:]
+            return candle_cache
+        else:
+            print(f"[CANDLES 5M ERROR] HTTP {r.status_code}: {r.text}")
+    except Exception as e: print("[CANDLES 5M EXCEPTION]", e)
+    return candle_cache
+
+def fetch_candles_15min():
+    global candle_cache_15
     try:
         safe_key = urllib.parse.quote(NIFTY_KEY)
         to_date = date.today().strftime("%Y-%m-%d")
-        from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
+        from_date = (date.today() - timedelta(days=12)).strftime("%Y-%m-%d")
         
-        url = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_date}/{from_date}"
+        url = f"https://api.upstox.com/v2/historical-candle/{safe_key}/15minute/{to_date}/{from_date}"
         r = requests.get(url, headers=hdrs(), timeout=10)
         
         if r.status_code == 200:
@@ -175,53 +204,13 @@ def fetch_base_1m_candles():
                     result.append({"time": c[0], "open": float(c[1]), "high": float(c[2]),
                                    "low": float(c[3]), "close": float(c[4])})
             result.sort(key=lambda x: x["time"])
-            return result
+            if result:
+                candle_cache_15 = result[-40:]
+            return candle_cache_15
         else:
-            print(f"[CANDLES 1M ERROR] HTTP {r.status_code}: {r.text}")
-    except Exception as e: print("[CANDLES 1M EXCEPTION]", e)
-    return []
-
-# 🔥 FIX: Manually group the 1-minute candles into accurate 5min and 15min charts
-def resample_candles(candles_1m, timeframe_mins):
-    if not candles_1m: return []
-    resampled = []
-    curr_group = []
-    curr_time = None
-    
-    for c in candles_1m:
-        try:
-            # Extract just YYYY-MM-DDTHH:MM to avoid strict timezone parsing issues
-            dt_str = c["time"][:16]
-            dt = datetime.strptime(dt_str, "%Y-%m-%dT%H:%M")
-            minute_rounded = (dt.minute // timeframe_mins) * timeframe_mins
-            group_time = dt.replace(minute=minute_rounded, second=0, microsecond=0)
-            
-            if curr_time is None: curr_time = group_time
-            
-            if group_time == curr_time:
-                curr_group.append(c)
-            else:
-                resampled.append({
-                    "time": curr_time.isoformat(),
-                    "open": curr_group[0]["open"],
-                    "high": max(x["high"] for x in curr_group),
-                    "low": min(x["low"] for x in curr_group),
-                    "close": curr_group[-1]["close"]
-                })
-                curr_group = [c]
-                curr_time = group_time
-        except:
-            pass
-            
-    if curr_group:
-        resampled.append({
-            "time": curr_time.isoformat(),
-            "open": curr_group[0]["open"],
-            "high": max(x["high"] for x in curr_group),
-            "low": min(x["low"] for x in curr_group),
-            "close": curr_group[-1]["close"]
-        })
-    return resampled
+            print(f"[CANDLES 15M ERROR] HTTP {r.status_code}: {r.text}")
+    except Exception as e: print("[CANDLES 15M EXCEPTION]", e)
+    return candle_cache_15
 
 def get_expiry():
     try:
@@ -620,15 +609,9 @@ def refresh():
         futures     = fetch_futures(spot)
         vix         = fetch_vix()
 
-        # 🔥 FIX: Use the 1-minute historical endpoint and resample into accurate 5m and 15m intervals
-        candles_1m  = fetch_base_1m_candles()
-        candles_5m  = resample_candles(candles_1m, 5)[-60:] if candles_1m else candle_cache
-        candles_15m = resample_candles(candles_1m, 15)[-40:] if candles_1m else candle_cache_15
-        
-        if candles_5m: candle_cache = candles_5m
-        if candles_15m: candle_cache_15 = candles_15m
-        
-        ind   = get_indicators(candle_cache)
+        candles_5m  = fetch_candles()
+        candles_15m = fetch_candles_15min()
+        ind   = get_indicators(candles_5m)
         trend, trend_reason, trend_strength = analyse_trend(atm_strikes, atm)
 
         oi_cond, oi_signal, oi_desc       = price_oi_matrix(spot, prev_spot, chain, atm)
@@ -647,7 +630,7 @@ def refresh():
             cf, pf, nf = classify_strike_oi_flow(s, v, prev_spot, spot)
             v["call_flow"], v["put_flow"], v["net_flow"] = cf, pf, nf
 
-        index_tech = compute_index_technicals(candle_cache, candle_cache_15)
+        index_tech = compute_index_technicals(candles_5m, candles_15m)
         strike_tech = compute_strike_technicals(atm_strikes)
         for s, tech in strike_tech.items():
             if s in atm_strikes: atm_strikes[s]["ltp_technicals"] = tech
