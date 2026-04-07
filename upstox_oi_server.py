@@ -30,7 +30,9 @@ API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 NIFTY_KEY    = "NSE_INDEX|Nifty 50"
-CACHE_TTL    = 300
+
+# 🔥 FIX: Lowered TTL so backend data is always fresh when frontend asks for it
+CACHE_TTL    = 120  
 STRIKE_STEP  = 50
 ATM_RANGE    = 5
 SNAPSHOT_DIR = "snapshots"
@@ -1006,10 +1008,14 @@ def refresh():
     except Exception as e:
         import traceback; print("[REFRESH ERROR]", e); traceback.print_exc()
 
+# 🔥 FIX: Start the background thread globally so Render/Gunicorn executes it!
 def loop():
+    time.sleep(5) # Give the server 5 seconds to boot up
     while True:
-        time.sleep(CACHE_TTL); refresh()
+        refresh()
+        time.sleep(CACHE_TTL)
 
+threading.Thread(target=loop, daemon=True).start()
 
 # ══════════════════════════════════════════════════
 #  ROUTES
@@ -1054,5 +1060,4 @@ if __name__ == "__main__":
     print("  Step 2: http://localhost:5000")
     print(f"  Snapshots: ./{SNAPSHOT_DIR}/")
     print("=" * 55)
-    threading.Thread(target=loop, daemon=True).start()
     app.run(host="0.0.0.0", port=5000, debug=False)
