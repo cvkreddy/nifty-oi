@@ -153,57 +153,62 @@ def fetch_vix():
                 return float(d[key].get("last_price") or d[key].get("ltp") or 0)
     except: pass
     return 0
-
 def fetch_candles():
     global candle_cache
     try:
-        url = f"https://api.upstox.com/v2/historical-candle/intraday/{NIFTY_KEY}/5minute"
-        r   = requests.get(url, headers=hdrs(), timeout=10)
-        if r.status_code != 200:
-            today = date.today().strftime("%Y-%m-%d")
-            url   = f"https://api.upstox.com/v2/historical-candle/{NIFTY_KEY}/5minute/{today}/{today}"
-            r     = requests.get(url, headers=hdrs(), timeout=10)
+        # 1. URL Encode the symbol so the API doesn't crash on the pipe '|' and space
+        enc_key = "NSE_INDEX%7CNifty%2050"
+        
+        # 2. Fetch the last 5 days so we ALWAYS have enough candles for RSI & EMA
+        to_date = date.today().strftime("%Y-%m-%d")
+        from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
+        
+        url = f"https://api.upstox.com/v2/historical-candle/{enc_key}/5minute/{to_date}/{from_date}"
+        r = requests.get(url, headers=hdrs(), timeout=10)
+        
         if r.status_code == 200:
             raw = r.json()
-            cr  = raw.get("data", {})
-            if isinstance(cr, dict): cr = cr.get("candles", [])
+            cr  = raw.get("data", {}).get("candles", [])
             result = []
-            for c in (cr if isinstance(cr, list) else []):
+            for c in cr:
                 if len(c) >= 5:
-                    result.append({"time": c[0], "open": float(c[1]), "high": float(c[2]),
-                                   "low": float(c[3]), "close": float(c[4]),
-                                   "volume": float(c[5]) if len(c) > 5 else 0})
+                    result.append({"time": c[0], "open": float(c[1]), "high": float(c[2]), 
+                                   "low": float(c[3]), "close": float(c[4])})
             result.sort(key=lambda x: x["time"])
-            candle_cache = result[-40:]
+            candle_cache = result[-50:] # Keep the last 50 candles
             return candle_cache
-    except: pass
+        else:
+            print(f"[CANDLES API ERROR] {r.status_code}: {r.text}")
+    except Exception as e: 
+        print("[CANDLES ERROR]", e)
     return candle_cache
 
 def fetch_candles_15min():
     global candle_cache_15
     try:
-        url = f"https://api.upstox.com/v2/historical-candle/intraday/{NIFTY_KEY}/15minute"
-        r   = requests.get(url, headers=hdrs(), timeout=10)
-        if r.status_code != 200:
-            today = date.today().strftime("%Y-%m-%d")
-            url   = f"https://api.upstox.com/v2/historical-candle/{NIFTY_KEY}/15minute/{today}/{today}"
-            r     = requests.get(url, headers=hdrs(), timeout=10)
+        enc_key = "NSE_INDEX%7CNifty%2050"
+        to_date = date.today().strftime("%Y-%m-%d")
+        from_date = (date.today() - timedelta(days=10)).strftime("%Y-%m-%d") # 10 days needed for 15min chart
+        
+        url = f"https://api.upstox.com/v2/historical-candle/{enc_key}/15minute/{to_date}/{from_date}"
+        r = requests.get(url, headers=hdrs(), timeout=10)
+        
         if r.status_code == 200:
             raw = r.json()
-            cr  = raw.get("data", {})
-            if isinstance(cr, dict): cr = cr.get("candles", [])
+            cr  = raw.get("data", {}).get("candles", [])
             result = []
-            for c in (cr if isinstance(cr, list) else []):
+            for c in cr:
                 if len(c) >= 5:
-                    result.append({"time": c[0], "open": float(c[1]), "high": float(c[2]),
-                                   "low": float(c[3]), "close": float(c[4]),
-                                   "volume": float(c[5]) if len(c) > 5 else 0})
+                    result.append({"time": c[0], "open": float(c[1]), "high": float(c[2]), 
+                                   "low": float(c[3]), "close": float(c[4])})
             result.sort(key=lambda x: x["time"])
-            candle_cache_15 = result[-30:]
+            candle_cache_15 = result[-40:]
             return candle_cache_15
-    except: pass
+        else:
+            print(f"[CANDLES-15m API ERROR] {r.status_code}: {r.text}")
+    except Exception as e: 
+        print("[CANDLES-15M ERROR]", e)
     return candle_cache_15
-
 def get_expiry():
     try:
         r = requests.get("https://api.upstox.com/v2/option/contract",
