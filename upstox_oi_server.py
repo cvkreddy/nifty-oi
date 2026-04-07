@@ -1,7 +1,7 @@
 """
 ====================================================
   NIFTY50 OI Server — Full Intelligence Mode v2
-  Includes: Render Gunicorn Fix + 1Min Resampling Engine
+  Includes: 3m/5m/15m Resampling + Custom Supertrends
 ====================================================
 """
 
@@ -39,6 +39,7 @@ baseline_oi     = {}
 prev_pcr        = None
 prev_spot       = None
 candle_cache    = []
+candle_cache_3m = []   # New 3m cache
 candle_cache_15 = []          
 ltp_history     = {}          
 
@@ -156,7 +157,6 @@ def fetch_vix():
     except: pass
     return 0
 
-# 🔥 FIX: Fetch 1-minute candles because Upstox blocked 5min/15min API calls
 def fetch_base_1m_candles():
     try:
         safe_key = urllib.parse.quote(NIFTY_KEY)
@@ -181,7 +181,6 @@ def fetch_base_1m_candles():
     except Exception as e: print("[CANDLES 1M EXCEPTION]", e)
     return []
 
-# 🔥 FIX: Manually group the 1-minute candles into accurate 5min and 15min charts
 def resample_candles(candles_1m, timeframe_mins):
     if not candles_1m: return []
     resampled = []
@@ -330,10 +329,11 @@ def calc_supertrend(candles, period=7, multiplier=3.0):
     st_val = round(lower if direction == "BULLISH" else upper, 2)
     return direction, st_val, ""
 
-def compute_tf_signals(candles, label):
+# 🔥 FIX: Accepts custom Supertrend Period and Multiplier
+def compute_tf_signals(candles, label, st_period, st_multiplier):
     if not candles: return {"label": label, "candle_count": 0, "error": "No data"}
     closes = [c["close"] for c in candles]
-    ema7, ema15, ema21, price = calc_ema(closes, 7), calc_ema(closes, 15), calc_ema(closes, 21), closes[-1] if closes else None
+    ema7, ema15, price = calc_ema(closes, 7), calc_ema(closes, 15), closes[-1] if closes else None
     price_above_ema7  = price > ema7  if (price and ema7)  else None
     price_above_ema15 = price > ema15 if (price and ema15) else None
     ema7_above_ema15  = ema7  > ema15 if (ema7  and ema15) else None
@@ -351,15 +351,19 @@ def compute_tf_signals(candles, label):
     elif price_above_ema7 == False and ema7_above_ema15 == False: trend = "STRONG BEARISH"
     else: trend = "N/A"
 
-    st_dir, st_val, _ = calc_supertrend(candles, period=7, multiplier=3.0)
+    st_dir, st_val, _ = calc_supertrend(candles, period=st_period, multiplier=st_multiplier)
     return {"label": label, "candle_count": len(candles), "current_price": round(price, 2) if price else None,
-            "ema7": ema7, "ema15": ema15, "ema21": ema21, "price_above_ema7": price_above_ema7,
+            "ema7": ema7, "ema15": ema15, "price_above_ema7": price_above_ema7,
             "price_above_ema15": price_above_ema15, "ema7_above_ema15": ema7_above_ema15,
             "crossover": crossover, "trend": trend, "supertrend": st_dir, "supertrend_val": st_val,
             "rsi": calc_rsi(closes, 14) if len(closes) >= 15 else None}
 
-def compute_index_technicals(candles_5m, candles_15m):
-    return {"5min": compute_tf_signals(candles_5m, "5min"), "15min": compute_tf_signals(candles_15m, "15min")}
+def compute_index_technicals(candles_3m, candles_5m, candles_15m):
+    return {
+        "3min":  compute_tf_signals(candles_3m,  "3min",  st_period=1, st_multiplier=2.0),
+        "5min":  compute_tf_signals(candles_5m,  "5min",  st_period=1, st_multiplier=2.0),
+        "15min": compute_tf_signals(candles_15m, "15min", st_period=1, st_multiplier=1.0)
+    }
 
 def compute_strike_technicals(atm_strikes):
     global ltp_history
@@ -586,7 +590,7 @@ def analyse_trend(atm_strikes, atm):
 # ══════════════════════════════════════════════════
 
 def refresh():
-    global prev_oi, prev_pcr, prev_spot, candle_cache, candle_cache_15
+    global prev_oi, prev_pcr, prev_spot, candle_cache, candle_cache_15, candle_cache_3m
 
     load_token()
     if not token_store.get("access_token"): 
@@ -618,12 +622,13 @@ def refresh():
         futures     = fetch_futures(spot)
         vix         = fetch_vix()
 
-        # 🔥 THE FIX: Fetch 1-minute candles and group them properly
         candles_1m  = fetch_base_1m_candles()
         
+        candles_3m  = resample_candles(candles_1m, 3)[-60:] if candles_1m else candle_cache_3m
         candles_5m  = resample_candles(candles_1m, 5)[-60:] if candles_1m else candle_cache
         candles_15m = resample_candles(candles_1m, 15)[-40:] if candles_1m else candle_cache_15
         
+        if candles_3m: candle_cache_3m = candles_3m
         if candles_5m: candle_cache = candles_5m
         if candles_15m: candle_cache_15 = candles_15m
         
@@ -646,7 +651,7 @@ def refresh():
             cf, pf, nf = classify_strike_oi_flow(s, v, prev_spot, spot)
             v["call_flow"], v["put_flow"], v["net_flow"] = cf, pf, nf
 
-        index_tech = compute_index_technicals(candle_cache, candle_cache_15)
+        index_tech = compute_index_technicals(candle_cache_3m, candle_cache, candle_cache_15)
         strike_tech = compute_strike_technicals(atm_strikes)
         for s, tech in strike_tech.items():
             if s in atm_strikes: atm_strikes[s]["ltp_technicals"] = tech
