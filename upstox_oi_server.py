@@ -26,6 +26,14 @@ import requests
 app  = Flask(__name__)
 CORS(app)
 
+# 🔥 FIX: Force browsers to never cache your API responses
+@app.after_request
+def add_header(response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
@@ -124,10 +132,9 @@ def get_futures_symbol():
     from datetime import date
     now = date.today()
     months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
-    # Try current month first, then next month
     for delta in [0, 1]:
         m = (now.month - 1 + delta) % 12
-        y = str(now.year)[2:]  # 2-digit year e.g. 26
+        y = str(now.year)[2:] 
         if now.month + delta > 12:
             y = str(now.year + 1)[2:]
         sym = f"NSE_FO|NIFTY{y}{months[m]}FUT"
@@ -143,7 +150,7 @@ def get_futures_symbol():
                         print(f"[FUT] Using {sym}")
                         return sym, float(p)
         except Exception as e:
-            print(f"[FUT] {sym} failed: {e}")
+            pass
     return None, None
 
 def fetch_futures(spot):
@@ -186,7 +193,6 @@ def fetch_candles():
                                    "volume": float(c[5]) if len(c) > 5 else 0})
             result.sort(key=lambda x: x["time"])
             candle_cache = result[-40:]
-            print(f"[CANDLES-5m] {len(candle_cache)} candles")
             return candle_cache
     except Exception as e: print("[CANDLES ERROR]", e)
     return candle_cache
@@ -212,7 +218,6 @@ def fetch_candles_15min():
                                    "volume": float(c[5]) if len(c) > 5 else 0})
             result.sort(key=lambda x: x["time"])
             candle_cache_15 = result[-30:]
-            print(f"[CANDLES-15m] {len(candle_cache_15)} candles")
             return candle_cache_15
     except Exception as e: print("[CANDLES-15m ERROR]", e)
     return candle_cache_15
@@ -316,7 +321,6 @@ def get_indicators(candles):
 # ══════════════════════════════════════════════════
 
 def calc_ema(prices, period):
-    """Standard EMA. Returns None if not enough data."""
     if not prices or len(prices) < period:
         return None
     k   = 2.0 / (period + 1)
@@ -326,7 +330,6 @@ def calc_ema(prices, period):
     return round(ema, 2)
 
 def calc_supertrend(candles, period=7, multiplier=3.0):
-    """Supertrend direction and value. Returns (direction, value, desc)."""
     if len(candles) < period + 1:
         return None, None, "Not enough candles"
     highs  = [c["high"]  for c in candles]
@@ -350,7 +353,6 @@ def calc_supertrend(candles, period=7, multiplier=3.0):
     return direction, st_val, desc
 
 def compute_tf_signals(candles, label):
-    """EMA + Supertrend + RSI for one timeframe."""
     if not candles:
         return {"label": label, "candle_count": 0, "error": "No data"}
     closes = [c["close"] for c in candles]
@@ -363,7 +365,6 @@ def compute_tf_signals(candles, label):
     price_above_ema15 = price > ema15 if (price and ema15) else None
     ema7_above_ema15  = ema7  > ema15 if (ema7  and ema15) else None
 
-    # Crossover detection (last 2 EMA values)
     crossover = None
     if len(closes) >= 9:
         prev_ema7  = calc_ema(closes[:-1], 7)
@@ -374,7 +375,6 @@ def compute_tf_signals(candles, label):
             elif prev_ema7 >= prev_ema15 and ema7 < ema15:
                 crossover = "DEATH CROSS"
 
-    # Trend string
     if price_above_ema7 and ema7_above_ema15:
         trend = "STRONG BULLISH"
         trend_desc = f"Price > EMA7({ema7}) > EMA15({ema15}) — strong uptrend"
@@ -395,8 +395,6 @@ def compute_tf_signals(candles, label):
         trend_desc += f" | {crossover}!"
 
     st_dir, st_val, st_desc = calc_supertrend(candles, period=7, multiplier=3.0)
-
-    # RSI for this TF
     rsi_tf = calc_rsi(closes, 14) if len(closes) >= 15 else None
 
     return {
@@ -419,14 +417,12 @@ def compute_tf_signals(candles, label):
     }
 
 def compute_index_technicals(candles_5m, candles_15m):
-    """Returns EMA+Supertrend signals for 5min and 15min TF."""
     return {
         "5min":  compute_tf_signals(candles_5m,  "5min"),
         "15min": compute_tf_signals(candles_15m, "15min"),
     }
 
 def compute_strike_technicals(atm_strikes):
-    """Build EMA7/EMA15 from LTP history for each strike's CE and PE."""
     global ltp_history
     result = {}
     for s, v in atm_strikes.items():
@@ -482,46 +478,34 @@ def compute_strike_technicals(atm_strikes):
 # ══════════════════════════════════════════════════
 
 def classify_strike_oi_flow(strike, v, prev_spot, spot):
-    """
-    Full 4-condition OI+Price matrix for each strike.
-    Returns call_flow, put_flow, net_flow dicts.
-    """
     if prev_spot is None:
         price_up = price_dn = False
     else:
         price_up = spot > prev_spot + 5
         price_dn = spot < prev_spot - 5
 
-    THRESH = 100_000   # 1L = significant
+    THRESH = 100_000   
 
     c_chg   = v.get("call_oi_chg", 0) or 0
     c_ltp_c = v.get("call_ltp_chg", 0) or 0
     c_oi    = v.get("call_oi", 0) or 0
 
     if price_up and c_chg > THRESH and c_ltp_c > 0:
-        cf = ("CALL LONG BUILDUP",   "BULLISH",       "🟢",
-              "Price ↑ + CE OI ↑ + LTP ↑ = Fresh call buyers in. Strong breakout conviction.")
+        cf = ("CALL LONG BUILDUP",   "BULLISH",       "🟢", "Price ↑ + CE OI ↑ + LTP ↑ = Fresh call buyers in.")
     elif price_up and c_chg < -THRESH and c_ltp_c > 0:
-        cf = ("SHORT COVERING",      "WEAK BULLISH",  "📈",
-              "Price ↑ + CE OI ↓ + LTP ↑ = Call shorts exiting. Rally may lack fresh fuel.")
+        cf = ("SHORT COVERING",      "WEAK BULLISH",  "📈", "Price ↑ + CE OI ↓ + LTP ↑ = Call shorts exiting.")
     elif price_up and abs(c_chg) < THRESH:
-        cf = ("FAKE CALL MOVE",      "NO CONVICTION", "⚠️",
-              "Price up but CE OI flat = no fresh buying. Possible trap — avoid chasing.")
+        cf = ("FAKE CALL MOVE",      "NO CONVICTION", "⚠️", "Price up but CE OI flat = no fresh buying.")
     elif price_dn and c_chg > THRESH and c_ltp_c < 0:
-        cf = ("FRESH CALL WRITING",  "BEARISH",       "🔴",
-              "Price ↓ + CE OI ↑ + LTP ↓ = New call sellers. Strong resistance forming here.")
+        cf = ("FRESH CALL WRITING",  "BEARISH",       "🔴", "Price ↓ + CE OI ↑ + LTP ↓ = New call sellers.")
     elif price_dn and c_chg < -THRESH:
-        cf = ("CALL LONG UNWINDING", "WEAK BEARISH",  "🟡",
-              "Price ↓ + CE OI ↓ = Call longs exiting. Resistance may ease if spot stabilises.")
+        cf = ("CALL LONG UNWINDING", "WEAK BEARISH",  "🟡", "Price ↓ + CE OI ↓ = Call longs exiting.")
     elif c_chg > 500_000:
-        cf = ("HEAVY CALL ADDITION", "WATCH",         "🔴",
-              f"Large CE OI build (+{c_chg/100000:.1f}L). Strong resistance wall forming.")
+        cf = ("HEAVY CALL ADDITION", "WATCH",         "🔴", f"Large CE OI build (+{c_chg/100000:.1f}L).")
     elif c_chg < -500_000:
-        cf = ("HEAVY CALL EXIT",     "BULLISH",       "✅",
-              f"Large CE OI exit ({abs(c_chg)/100000:.1f}L). Resistance ceiling collapsing — watch for breakout.")
+        cf = ("HEAVY CALL EXIT",     "BULLISH",       "✅", f"Large CE OI exit ({abs(c_chg)/100000:.1f}L).")
     else:
-        cf = ("STABLE / NO CHANGE",  "NEUTRAL",       "⚪",
-              "CE OI unchanged this cycle. No directional signal yet.")
+        cf = ("STABLE / NO CHANGE",  "NEUTRAL",       "⚪", "CE OI unchanged this cycle.")
 
     call_flow = {
         "condition": cf[0], "signal": cf[1], "emoji": cf[2], "desc": cf[3],
@@ -535,29 +519,21 @@ def classify_strike_oi_flow(strike, v, prev_spot, spot):
     p_oi    = v.get("put_oi", 0) or 0
 
     if price_dn and p_chg > THRESH and p_ltp_c > 0:
-        pf = ("PUT LONG BUILDUP",   "BEARISH",       "🔴",
-              "Price ↓ + PE OI ↑ + LTP ↑ = Fresh put buyers in. Strong breakdown conviction.")
+        pf = ("PUT LONG BUILDUP",   "BEARISH",       "🔴", "Price ↓ + PE OI ↑ + LTP ↑ = Fresh put buyers in.")
     elif price_dn and p_chg < -THRESH and p_ltp_c > 0:
-        pf = ("PUT SHORT COVERING", "WEAK BEARISH",  "🟡",
-              "Price ↓ + PE OI ↓ + LTP ↑ = Put shorts exiting. Downside limited.")
+        pf = ("PUT SHORT COVERING", "WEAK BEARISH",  "🟡", "Price ↓ + PE OI ↓ + LTP ↑ = Put shorts exiting.")
     elif price_dn and abs(p_chg) < THRESH:
-        pf = ("FAKE PUT MOVE",      "NO CONVICTION", "⚠️",
-              "Price down but PE OI flat = no fresh put buying. Possible false breakdown.")
+        pf = ("FAKE PUT MOVE",      "NO CONVICTION", "⚠️", "Price down but PE OI flat = no fresh put buying.")
     elif price_up and p_chg > THRESH and p_ltp_c < 0:
-        pf = ("FRESH PUT WRITING",  "BULLISH",       "✅",
-              "Price ↑ + PE OI ↑ + LTP ↓ = New put sellers. Strong support floor building.")
+        pf = ("FRESH PUT WRITING",  "BULLISH",       "✅", "Price ↑ + PE OI ↑ + LTP ↓ = New put sellers.")
     elif price_up and p_chg < -THRESH:
-        pf = ("PUT LONG UNWINDING", "WEAK BULLISH",  "📈",
-              "Price ↑ + PE OI ↓ = Put longs exiting. Support weakening — watch for reversal.")
+        pf = ("PUT LONG UNWINDING", "WEAK BULLISH",  "📈", "Price ↑ + PE OI ↓ = Put longs exiting.")
     elif p_chg > 500_000:
-        pf = ("HEAVY PUT ADDITION", "WATCH",         "✅",
-              f"Large PE OI build (+{p_chg/100000:.1f}L). Strong support floor forming.")
+        pf = ("HEAVY PUT ADDITION", "WATCH",         "✅", f"Large PE OI build (+{p_chg/100000:.1f}L).")
     elif p_chg < -500_000:
-        pf = ("HEAVY PUT EXIT",     "BEARISH",       "🔴",
-              f"Large PE OI exit ({abs(p_chg)/100000:.1f}L). Support floor collapsing.")
+        pf = ("HEAVY PUT EXIT",     "BEARISH",       "🔴", f"Large PE OI exit ({abs(p_chg)/100000:.1f}L).")
     else:
-        pf = ("STABLE / NO CHANGE", "NEUTRAL",       "⚪",
-              "PE OI unchanged this cycle. No directional signal yet.")
+        pf = ("STABLE / NO CHANGE", "NEUTRAL",       "⚪", "PE OI unchanged this cycle.")
 
     put_flow = {
         "condition": pf[0], "signal": pf[1], "emoji": pf[2], "desc": pf[3],
@@ -568,13 +544,13 @@ def classify_strike_oi_flow(strike, v, prev_spot, spot):
 
     total_chg = c_chg + p_chg
     if c_chg > THRESH and p_chg < -THRESH:
-        net_note = "🔄 OI SHIFT: Money moving to CALL side. Bears building resistance."
+        net_note = "🔄 OI SHIFT: Money moving to CALL side."
     elif p_chg > THRESH and c_chg < -THRESH:
-        net_note = "🔄 OI SHIFT: Money moving to PUT side. Bulls building support."
+        net_note = "🔄 OI SHIFT: Money moving to PUT side."
     elif c_chg > THRESH and p_chg > THRESH:
-        net_note = "💥 BOTH SIDES ADDING OI: High uncertainty — big move expected. Straddle zone."
+        net_note = "💥 BOTH SIDES ADDING OI: High uncertainty."
     elif c_chg < -THRESH and p_chg < -THRESH:
-        net_note = "🌀 BOTH SIDES EXITING: Position squareoff. Directionless — wait for clarity."
+        net_note = "🌀 BOTH SIDES EXITING: Position squareoff."
     else:
         net_note = "— No significant OI flow this cycle."
 
@@ -1003,8 +979,7 @@ def refresh():
         t5 = index_tech.get("5min", {})
         print(f"[OI] ✅ Spot={spot} | Fut={futures} | VIX={vix} | PCR={pcr}({pcr_chg:+.3f}) | ATM={atm} | State={mkt_state}")
         print(f"[IND] RSI={ind['rsi']} | ADX={ind['adx']} | OI Matrix={oi_cond} | Alerts={len(alerts)}")
-        print(f"[TECH] 5m EMA7={t5.get('ema7')} EMA15={t5.get('ema15')} ST={t5.get('supertrend')} Trend={t5.get('trend')}")
-
+        
     except Exception as e:
         import traceback; print("[REFRESH ERROR]", e); traceback.print_exc()
 
@@ -1027,12 +1002,23 @@ def dashboard():
 
 @app.route("/oi/json")
 def oi_json():
-    if not oi_cache["data"]: return jsonify({"error":"No data — login at /login"})
+    if not oi_cache["data"]: 
+        return jsonify({"error":"No data — login at /login"})
+    
+    # 🔥 FIX: Self-Healing Check. If data is older than 180 seconds, force a refresh!
+    try:
+        last_upd = datetime.fromisoformat(oi_cache["data"]["timestamp"])
+        if (datetime.now() - last_upd).total_seconds() > 180:
+            print("[WARN] Data stale! Background thread asleep. Forcing manual refresh...")
+            refresh()
+    except:
+        pass
+        
     return jsonify(oi_cache["data"])
 
 @app.route("/oi/histogram")
 def histogram():
-    if not oi_cache["data"]: return jsonify([])
+    if not oi_cache.get("data") or not oi_cache["data"].get("chain"): return jsonify([])
     chain=oi_cache["data"]["chain"]; atm=oi_cache["data"]["atm"]
     return jsonify(sorted([v for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP],
                           key=lambda x:x["strike"]))
