@@ -17,7 +17,7 @@
 ====================================================
 """
 
-import os, csv, time, math, threading
+import os, csv, time, math, threading, json
 from datetime import datetime, date, timedelta
 from flask import Flask, jsonify, request, redirect, send_file
 from flask_cors import CORS
@@ -34,6 +34,7 @@ CACHE_TTL    = 300
 STRIKE_STEP  = 50
 ATM_RANGE    = 5
 SNAPSHOT_DIR = "snapshots"
+TOKEN_FILE   = "token_data.json"
 
 token_store     = {"access_token": None}
 oi_cache        = {"data": None}
@@ -44,6 +45,27 @@ prev_spot       = None
 candle_cache    = []
 candle_cache_15 = []          # 15-min candles
 ltp_history     = {}          # {strike: {"call": [...], "put": [...]}}
+
+def save_token(token):
+    token_store["access_token"] = token
+    try:
+        with open(TOKEN_FILE, "w") as f:
+            json.dump({"access_token": token}, f)
+    except Exception as e:
+        print("[TOKEN SAVE ERROR]", e)
+
+def load_token():
+    if os.path.exists(TOKEN_FILE):
+        try:
+            with open(TOKEN_FILE, "r") as f:
+                data = json.load(f)
+                token_store["access_token"] = data.get("access_token")
+                print("[LOGIN] Loaded token from file.")
+        except Exception as e:
+            print("[TOKEN LOAD ERROR]", e)
+
+# Load token on startup
+load_token()
 
 
 # ══════════════════════════════════════════════════
@@ -67,7 +89,7 @@ def callback():
         headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}
     )
     data = resp.json()
-    token_store["access_token"] = data.get("access_token")
+    save_token(data.get("access_token"))
     print("[LOGIN] Token:", (token_store["access_token"] or "")[:20])
     refresh()
     return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px">

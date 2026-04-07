@@ -158,9 +158,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .vel-arrow{font-size:12px;margin-left:2px;}
 .vel-up2{color:var(--bear)}.vel-up1{color:rgba(255,61,87,.6)}.vel-dn1{color:rgba(0,230,118,.6)}.vel-dn2{color:var(--bull)}.vel-flat{color:var(--text2)}
 
-/* ══ IMPROVEMENT #8 — HEATMAP intensity in table cells ══ */
-/* Applied via inline style background on td */
-
 /* ══ IMPROVEMENT #5 — FLOW SCORE badges ══ */
 .flow-score{display:inline-flex;align-items:center;justify-content:center;
   width:30px;height:16px;border-radius:3px;font-size:10px;font-weight:700;font-family:var(--ui);}
@@ -199,10 +196,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .hnet{font-size:10px;width:36px;text-align:right;}
 .hstr{font-size:9px;width:26px;text-align:right;color:var(--text2);}
 .hatm{font-size:9px;color:var(--atm);}
-.hchg-ca{height:8px;background:var(--bear);border-radius:2px;min-width:2px;}
-.hchg-cx{height:8px;background:var(--bull);border-radius:2px;min-width:2px;}
-.hchg-pa{height:8px;background:var(--bull);border-radius:2px;min-width:2px;}
-.hchg-px{height:8px;background:var(--warn);border-radius:2px;min-width:2px;}
 
 /* FLOW MATRIX */
 .flow-tbl td{font-size:11px;padding:4px 6px;vertical-align:top;}
@@ -274,7 +267,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
 </div>
 <div id="err">⚠ Cannot reach server — start upstox_oi_server.py and login at /login</div>
 
-<!-- ══ #1 ONE-GLANCE VERDICT BANNER ══ -->
 <div class="verdict-banner" id="verdict-banner">
   <div class="vb-icon" id="vb-icon">⏳</div>
   <div class="vb-main" id="vb-main">Connecting to server...</div>
@@ -282,7 +274,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="vb-time" id="vb-time">—</div>
 </div>
 
-<!-- MARKET STATE -->
 <div class="state-bar" id="state-bar" style="background:var(--bg2);border-bottom:2px solid var(--border);">
   <div class="state-icon" id="state-icon">⏳</div>
   <div>
@@ -301,13 +292,11 @@ tr:hover td{background:rgba(255,255,255,.02);}
   </div>
 </div>
 
-<!-- ALERTS -->
 <div class="alerts-bar">
   <span style="font-size:10px;color:var(--text2);letter-spacing:1px;">ALERTS:</span>
   <span class="no-alert" id="alerts-content">No alerts — OI stable</span>
 </div>
 
-<!-- STRIP -->
 <div class="strip">
   <div class="si"><span class="sl">SPOT</span><span class="sv" id="m-spot">—</span></div><div class="sdv"></div>
   <div class="si"><span class="sl">FUTURES</span><span class="sv bull" id="m-fut">—</span></div>
@@ -319,7 +308,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="si"><span class="sl">BIAS</span><span class="sv" id="m-bias">—</span></div>
 </div>
 
-<!-- ══ TOTAL MARKET OI SUMMARY ══ -->
 <div id="total-oi-bar" style="background:var(--bg3);border-bottom:1px solid var(--border);padding:5px 14px;display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center;font-size:11px;">
   <span style="font-size:9px;color:var(--text2);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;flex-shrink:0">TOTAL MARKET OI:</span>
   <span style="color:var(--text2);font-size:9px;font-family:var(--ui)">CE:</span><span id="tot-ce-oi" style="font-weight:700;color:var(--bear)">—</span>
@@ -333,7 +321,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <span id="tot-market-flow" style="font-size:11px;font-weight:700;font-family:var(--ui)">—</span>
 </div>
 
-<!-- ══ #2 STRADDLE COST BAR ══ -->
 <div class="straddle-bar">
   <div class="sb-item">
     <span class="sb-lbl">ATM STRADDLE</span>
@@ -362,14 +349,12 @@ tr:hover td{background:rgba(255,255,255,.02);}
   </div>
 </div>
 
-<!-- INDEX TECHNICALS BAR -->
 <div class="tech-bar" id="index-tech-bar">
   <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;align-self:center;margin-right:14px;flex-shrink:0">NIFTY TECH</div>
   <div class="tech-tf" id="tf-5min"><div class="tech-tf-lbl">5 MIN — Loading...</div></div>
   <div class="tech-tf" id="tf-15min"><div class="tech-tf-lbl">15 MIN — Loading...</div></div>
 </div>
 
-<!-- RSI + ADX -->
 <div class="ind-bar">
   <div class="ib"><span class="il">RSI(14)</span><span class="iv2" id="rsi-val">—</span>
     <div class="rsi-bar"><div class="rsi-fill" id="rsi-fill" style="width:50%"></div></div>
@@ -385,7 +370,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="ib"><span class="il">IV SKEW</span><span class="iv2" id="skew-val">—</span></div>
 </div>
 
-<!-- TREND -->
 <div class="trend-bar">
   <span style="font-size:10px;color:var(--text2);letter-spacing:1.5px;">OI TREND</span>
   <span class="tv" id="trend-val">—</span>
@@ -394,13 +378,11 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <span style="font-size:10px;color:var(--text2);" id="trend-str">—</span>
 </div>
 
-<!-- INTEL CARDS -->
 <div class="intel-row">
   <div class="ic">
     <div class="ic-lbl">PCR ZONE</div>
     <div class="ic-val" id="pcr-zone">—</div>
     <div class="ic-sub" id="pcr-note">—</div>
-    <!-- ══ #6 PCR SPARKLINE ══ -->
     <div class="pcr-spark-row">
       <svg class="pcr-spark" id="pcr-spark" viewBox="0 0 80 20"></svg>
       <span class="pcr-trend-lbl" id="pcr-trend-lbl">—</span>
@@ -411,10 +393,8 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="ic"><div class="ic-lbl">VIX SIGNAL</div><div class="ic-val" id="sig-vix">—</div><div class="ic-sub" id="sig-vix-s">—</div></div>
 </div>
 
-<!-- MAIN GRID -->
 <div class="grid">
 
-  <!-- CALL TABLE with heatmap + velocity + flow score -->
   <div class="card">
     <div class="ch"><span class="ct bear">CALL SIDE — RESISTANCE (ATM ±5)  <span style="color:var(--text2);font-weight:400;font-size:9px">· color=OI intensity · ↑↑=velocity · score=conviction</span></span></div>
     <table><thead><tr>
@@ -425,7 +405,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <tbody id="call-tbody"><tr><td colspan="10" class="loading">Waiting...</td></tr></tbody></table>
   </div>
 
-  <!-- PUT TABLE with heatmap + velocity + flow score -->
   <div class="card">
     <div class="ch"><span class="ct bull">PUT SIDE — SUPPORT (ATM ±5)  <span style="color:var(--text2);font-weight:400;font-size:9px">· color=OI intensity · ↑↑=velocity · score=conviction</span></span></div>
     <table><thead><tr>
@@ -436,7 +415,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <tbody id="put-tbody"><tr><td colspan="10" class="loading">Waiting...</td></tr></tbody></table>
   </div>
 
-  <!-- ══ OI FLOW MATRIX (full width) ══ -->
   <div class="card full">
     <div class="ch">
       <span class="ct warn">⚡ OI FLOW MATRIX — WHAT'S HAPPENING AT EACH STRIKE</span>
@@ -469,14 +447,12 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
   </div>
 
-  <!-- ══ #4 OI MIGRATION + #7 PIN RISK ══ -->
   <div class="card">
     <div class="ch">
       <span class="ct" style="color:var(--info)">🔄 OI MIGRATION TRACKER</span>
       <span class="cs" id="mig-time">OI exiting one strike → entering another</span>
     </div>
     <div id="mig-body"><div class="loading">Waiting for 2nd cycle...</div></div>
-    <!-- PIN RISK -->
     <div class="pin-box" id="pin-box">
       <div style="font-size:9px;color:var(--text2);letter-spacing:1.5px;margin-bottom:5px;font-family:var(--ui);font-weight:700">⏰ EXPIRY PIN RISK</div>
       <div class="pin-inner" id="pin-inner" style="background:var(--bg3);border:1px solid var(--border)">
@@ -487,7 +463,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
   </div>
 
-  <!-- OI HISTOGRAM improved -->
   <div class="card">
     <div class="ch">
       <span class="ct info">OI HISTOGRAM — CE vs PE  (ATM ±5)</span>
@@ -498,7 +473,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <span><span style="color:var(--warn)">●</span> PE Exiting</span>
       </span>
     </div>
-    <!-- COLUMN HEADERS -->
     <div style="display:flex;align-items:center;gap:4px;padding:3px 12px;border-bottom:1px solid var(--border);background:var(--bg3)">
       <div style="width:44px;font-size:9px;color:var(--bear);text-align:right;flex-shrink:0;font-family:var(--ui);font-weight:700">CE OI</div>
       <div style="flex:1;text-align:center;font-size:9px;color:var(--bear);font-family:var(--ui);font-weight:700">← CALL SIDE</div>
@@ -510,7 +484,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="hw" id="histogram"><div class="loading">Waiting...</div></div>
   </div>
 
-  <!-- NIFTY 50 TECHNICALS FULL PANEL -->
   <div class="card">
     <div class="ch">
       <span class="ct info">📊 NIFTY 50 TECHNICALS — 5min &amp; 15min</span>
@@ -526,7 +499,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <div id="tech-15m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
       </div>
     </div>
-    <!-- COMBINED BIAS -->
     <div style="padding:7px 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <div style="font-size:9px;color:var(--text2);letter-spacing:1px;font-family:var(--ui);font-weight:700">OVERALL BIAS</div>
       <div id="tech-overall-bias" style="font-size:13px;font-weight:700;font-family:var(--ui)">—</div>
@@ -534,7 +506,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
   </div>
 
-  <!-- GEX + IV SKEW -->
   <div class="card">
     <div class="ch"><span class="ct" style="color:var(--purple)">GEX PROFILE</span><span class="cs" id="gex-flip-label">Flip zone: —</span></div>
     <div id="gex-panel"><div class="loading">Waiting...</div></div>
@@ -544,19 +515,16 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div id="skew-panel"><div class="loading">Waiting...</div></div>
   </div>
 
-  <!-- GREEKS -->
   <div class="card">
     <div class="ch"><span class="ct atmc">GREEKS — ATM SNAPSHOT</span><span class="cs" id="atm-lbl">ATM: —</span></div>
     <div class="gg" id="greeks"><div class="loading" style="grid-column:1/-1">Waiting...</div></div>
   </div>
 
-  <!-- ACTIVITY -->
   <div class="card full">
     <div class="ch"><span class="ct warn">OI ACTIVITY — SELLERS ADDING vs EXITING (ATM ±5)</span><span class="cs" id="act-time">—</span></div>
     <div class="ag" id="activity"><div class="loading" style="grid-column:1/-1">Waiting...</div></div>
   </div>
 
-  <!-- ANALYSIS -->
   <div class="card full">
     <div class="ch"><span class="ct atmc">COMPLETE MARKET ANALYSIS</span><span class="cs" id="analysis-time">—</span></div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;" id="analysis-grid">
@@ -589,14 +557,12 @@ function saveScreenshot(auto){
   const ts=new Date().toISOString().replace(/[:.]/g,'-').slice(0,19)
   html2canvas(document.body,{scale:1,useCORS:true,allowTaint:true,logging:false}).then(c=>{
     const dataUrl=c.toDataURL('image/png')
-    // Silent download — goes straight to browser Downloads folder (no dialog if Chrome auto-download is on)
     const a=document.createElement('a')
     a.download=`nifty_oi_${auto?'auto':'snap'}_${ts}.png`
     a.href=dataUrl; a.style.display='none'
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
     snapCount++
     g('snap-status').textContent=`📸 Saved #${snapCount} at ${new Date().toLocaleTimeString('en-IN')}`
-    // Also store in IndexedDB so nothing is lost even if download is missed
     try{
       const req=indexedDB.open('NiftyOI_Snaps',1)
       req.onupgradeneeded=e=>e.target.result.createObjectStore('snaps',{keyPath:'ts'})
@@ -604,7 +570,6 @@ function saveScreenshot(auto){
         const db=e.target.result
         const tx=db.transaction('snaps','readwrite')
         tx.objectStore('snaps').put({ts,data:dataUrl})
-        // Keep only last 100 snaps
       }
     }catch(ex){}
   }).catch(e=>console.warn(e))
@@ -617,7 +582,19 @@ async function doFetch(){
     const [jr,hr]=await Promise.all([fetch('/oi/json'),fetch('/oi/histogram')])
     if(!jr.ok) throw new Error('HTTP '+jr.status)
     const raw=await jr.json()
-    if(raw.error) throw new Error(raw.error)
+    
+    // NEW FIX: Gracefully handle the missing login token
+    if(raw.error) {
+      if (raw.error.includes('login') || raw.error.includes('token')) {
+         g('vb-icon').textContent = '🔒';
+         g('vb-main').textContent = 'Authentication Required';
+         g('vb-main').style.color = 'var(--warn)';
+         g('vb-detail').innerHTML = `<a href="/login" style="color:var(--info); text-decoration:underline; font-weight:bold;">Click here to authenticate with Upstox</a>`;
+         g('state-bar').style.borderBottomColor = 'var(--warn)';
+      }
+      throw new Error(raw.error)
+    }
+
     const norm=obj=>{const r={};Object.keys(obj||{}).forEach(k=>{const nk=parseFloat(k);r[nk]={...obj[k],strike:nk}});return r}
     raw.chain=norm(raw.chain); raw.atm_strikes=norm(raw.atm_strikes)
     raw.atm=parseFloat(raw.atm)||0; raw.max_pain=parseFloat(raw.max_pain)||0
@@ -1171,8 +1148,6 @@ function renderNiftyTechFull(tech){
   if(el2){el2.textContent='Bias: '+bias;el2.style.color=biasCol}
 }
 
-}
-
 /* ══ TABLES with heatmap + velocity + score ══════════ */
 function rowHTML(r,atm,maxOI,isCall){
   const s=parseFloat(r.strike),isA=Math.abs(s-atm)<1
@@ -1399,48 +1374,35 @@ function renderHist(hist,atm){
     const str=Math.max(h.sr_strength_call||0,h.sr_strength_put||0)
 
     return `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.025);${isA?'background:rgba(124,77,255,.06)':''}">
-      <!-- ROW 1: TOTAL OI BARS -->
       <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
-        <!-- CE OI value + bar (right-aligned going toward center) -->
         <div style="width:44px;text-align:right;font-size:10px;font-weight:700;color:var(--bear);flex-shrink:0">${(coi/100000).toFixed(1)}L</div>
         <div style="flex:1;display:flex;justify-content:flex-end;height:11px;background:rgba(255,61,87,.06);border-radius:2px 0 0 2px;overflow:hidden">
           <div style="width:${cw}px;background:var(--bear);opacity:.7;border-radius:2px 0 0 2px"></div>
         </div>
-        <!-- STRIKE LABEL -->
         <div style="width:64px;text-align:center;font-size:${isA?12:11}px;font-weight:${isA?700:400};color:${isA?'var(--atm)':'var(--text2)'};flex-shrink:0">
           ${Math.round(s).toLocaleString('en-IN')}${isA?' ◄':''}
         </div>
-        <!-- PE OI bar + value (left-aligned going away from center) -->
         <div style="flex:1;display:flex;justify-content:flex-start;height:11px;background:rgba(0,230,118,.05);border-radius:0 2px 2px 0;overflow:hidden">
           <div style="width:${pw}px;background:var(--bull);opacity:.7;border-radius:0 2px 2px 0"></div>
         </div>
         <div style="width:44px;font-size:10px;font-weight:700;color:var(--bull);flex-shrink:0">${(poi/100000).toFixed(1)}L</div>
         <div style="width:36px;font-size:9px;color:var(--text2);text-align:right;flex-shrink:0">${str}</div>
       </div>
-      <!-- ROW 2: OI CHANGE BARS -->
       <div style="display:flex;align-items:center;gap:4px">
-        <!-- CE change label -->
         <div style="width:44px;text-align:right;font-size:9px;font-weight:700;color:${ceStatusCol};flex-shrink:0">${cc!==0?fc(cc):'—'}</div>
-        <!-- CE change bar -->
         <div style="flex:1;display:flex;justify-content:flex-end;height:7px;border-radius:2px 0 0 2px;overflow:hidden;background:rgba(255,255,255,.03)">
           ${ccW>0?`<div style="width:${ccW}px;background:${cc>0?'var(--bear)':'var(--info)'};border-radius:2px 0 0 2px"></div>`:''}
         </div>
-        <!-- Center signal label -->
         <div style="width:64px;text-align:center;font-size:9px;font-weight:700;color:${signalCol};flex-shrink:0;font-family:var(--ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${signal||''}</div>
-        <!-- PE change bar -->
         <div style="flex:1;display:flex;justify-content:flex-start;height:7px;border-radius:0 2px 2px 0;overflow:hidden;background:rgba(255,255,255,.03)">
           ${pcW>0?`<div style="width:${pcW}px;background:${pc>0?'var(--bull)':'var(--warn)'};border-radius:0 2px 2px 0"></div>`:''}
         </div>
-        <!-- PE change label -->
         <div style="width:44px;font-size:9px;font-weight:700;color:${peStatusCol};flex-shrink:0">${pc!==0?fc(pc):'—'}</div>
-        <!-- Net -->
         <div style="width:36px;font-size:9px;color:${nc};text-align:right;flex-shrink:0">${net>=0?'+':''}${(net/100000).toFixed(1)}</div>
       </div>
     </div>`
   }).join('')
 }
-
-
 
 /* ══ GEX, SKEW, GREEKS, ACTIVITY, ANALYSIS ═══════════ */
 function renderGEX(gexData,flip,atm){
