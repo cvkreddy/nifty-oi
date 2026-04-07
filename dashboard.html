@@ -328,6 +328,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 
 <div class="tech-bar" id="index-tech-bar">
   <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;align-self:center;margin-right:14px;flex-shrink:0">NIFTY TECH</div>
+  <div class="tech-tf" id="tf-3min"><div class="tech-tf-lbl">3 MIN — Loading...</div></div>
   <div class="tech-tf" id="tf-5min"><div class="tech-tf-lbl">5 MIN — Loading...</div></div>
   <div class="tech-tf" id="tf-15min"><div class="tech-tf-lbl">15 MIN — Loading...</div></div>
 </div>
@@ -463,10 +464,14 @@ tr:hover td{background:rgba(255,255,255,.02);}
 
   <div class="card">
     <div class="ch">
-      <span class="ct info">📊 NIFTY 50 TECHNICALS — 5min &amp; 15min</span>
+      <span class="ct info">📊 NIFTY 50 TECHNICALS — 3m, 5m &amp; 15m</span>
       <span class="cs" id="tech-bias-lbl">Bias: —</span>
     </div>
-    <div id="nifty-tech-full" style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)">
+    <div id="nifty-tech-full" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--border)">
+      <div style="padding:8px 10px;border-right:1px solid var(--border)">
+        <div style="font-size:9px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:6px">3 MIN TIMEFRAME</div>
+        <div id="tech-3m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
+      </div>
       <div style="padding:8px 10px;border-right:1px solid var(--border)">
         <div style="font-size:9px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:6px">5 MIN TIMEFRAME</div>
         <div id="tech-5m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
@@ -540,7 +545,6 @@ function saveScreenshot(auto){
   }).catch(e=>console.warn(e))
 }
 
-/* 🔥 FIX: Cache-buster forces the browser to ALWAYS pull the absolute latest data */
 async function doFetch(){
   g('dot').style.background='var(--warn)'
   try{
@@ -553,7 +557,7 @@ async function doFetch(){
     if(raw.error) {
       if (raw.error.includes('login') || raw.error.includes('token') || raw.error.includes('stuck')) {
          g('vb-icon').textContent = '🔒';
-         g('vb-main').textContent = 'Authentication Required / Token Expired';
+         g('vb-main').textContent = 'Authentication Required';
          g('vb-main').style.color = 'var(--warn)';
          g('vb-detail').innerHTML = `<a href="/login" style="color:var(--info); text-decoration:underline; font-weight:bold; font-size:14px">Click here to re-authenticate with Upstox</a>`;
          g('state-bar').style.borderBottomColor = 'var(--warn)';
@@ -561,7 +565,6 @@ async function doFetch(){
       throw new Error(raw.error)
     }
 
-    // 🔥 FIX: If the backend fails to talk to Upstox, show a bright red warning
     if (raw.backend_error) {
         g('err').style.display = 'block';
         g('err').innerHTML = `⚠ BACKEND DATA FROZEN: ${raw.backend_error} <a href="/login" style="color:#fff; text-decoration:underline; margin-left:10px">Try Re-Login</a>`;
@@ -581,7 +584,6 @@ async function doFetch(){
     secs=300
     g('dot').style.background='var(--bull)'
     
-    // 🔥 FIX: Show the EXACT backend timestamp so you know if data is stale
     const bTime = new Date(raw.timestamp).toLocaleTimeString('en-IN');
     const fTime = new Date().toLocaleTimeString('en-IN');
     g('upd').innerHTML = `<span style="color:${raw.backend_error?'var(--bear)':'var(--bull)'}">DATA: ${bTime}</span> | FETCHED: ${fTime}`;
@@ -870,7 +872,7 @@ function renderPinRisk(d,atm){
 }
 
 function renderIndexTech(tech){
-  ;['5min','15min'].forEach(tf=>{
+  ;['3min','5min','15min'].forEach(tf=>{
     const t=tech[tf]||{},el=g('tf-'+tf)
     if(!el) return
     if(!t.ema7&&(t.candle_count||0)<8){
@@ -884,7 +886,7 @@ function renderIndexTech(tech){
     const e7e15=t.ema7_above_ema15===null?'—':t.ema7_above_ema15?'<span class="bull">▲ ABOVE</span>':'<span class="bear">▼ BELOW</span>'
     el.innerHTML=`
       <div class="tech-tf-lbl">${tf.toUpperCase()} TF <span style="color:var(--text2);font-size:8px">(${t.candle_count||0})</span></div>
-      <div class="tech-item"><span class="tech-key">EMA 7/15/21</span><span class="tech-val">${t.ema7||'—'} / ${t.ema15||'—'} / ${t.ema21||'—'}</span></div>
+      <div class="tech-item"><span class="tech-key">EMA 7/15</span><span class="tech-val">${t.ema7||'—'} / ${t.ema15||'—'}</span></div>
       <div class="tech-item"><span class="tech-key">Price vs EMA7</span><span class="tech-val">${p2e7}</span></div>
       <div class="tech-item"><span class="tech-key">EMA7 vs EMA15</span><span class="tech-val">${e7e15}</span></div>
       <div class="tech-item"><span class="tech-key">Supertrend</span><span class="tech-pill ${stCls}">${t.supertrend||'N/A'}</span><span style="font-size:9px;color:var(--text2);margin-left:4px">${t.supertrend_val||''}</span></div>
@@ -898,20 +900,19 @@ function renderNiftyTechFull(tech){
   const mkRow=(key,val,col,note)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.03)"><span style="font-size:10px;color:var(--text2);font-family:var(--ui)">${key}</span><span style="font-size:11px;font-weight:700;color:${col||'var(--text)'}">${val}</span>${note?`<span style="font-size:9px;color:var(--text2);font-family:var(--ui)">${note}</span>`:''}</div>`
   const mkPill=(label,cls)=>`<span class="tech-pill ${cls}" style="font-size:10px">${label}</span>`
 
-  ;['5min','15min'].forEach(tf=>{
-    const t=tech[tf]||{}, elId=tf==='5min'?'tech-5m-full':'tech-15m-full', el=g(elId); if(!el) return
+  ;['3min','5min','15min'].forEach(tf=>{
+    const t=tech[tf]||{}, elId=tf==='3min'?'tech-3m-full':tf==='5min'?'tech-5m-full':'tech-15m-full', el=g(elId); if(!el) return
     if(!t.ema7&&(t.candle_count||0)<8){ el.innerHTML=`<div style="font-size:10px;color:var(--warn);font-family:var(--ui);padding:4px 0">${t.candle_count||0} candles — needs 15+</div>`; return }
-    const price=t.current_price||0, ema7=t.ema7, ema15=t.ema15, ema21=t.ema21, stDir=t.supertrend, stVal=t.supertrend_val
+    const price=t.current_price||0, ema7=t.ema7, ema15=t.ema15, stDir=t.supertrend, stVal=t.supertrend_val
     const trendCls=t.trend&&t.trend.includes('STRONG BULL')?'tp-bull':t.trend&&t.trend.includes('STRONG BEAR')?'tp-bear':'tp-warn'
     const stCls=stDir==='BULLISH'?'tp-bull':stDir==='BEARISH'?'tp-bear':'tp-neu'
     const d7col=ema7?(price>ema7?'var(--bull)':'var(--bear)'):'var(--text2)', d15col=ema15?(price>ema15?'var(--bull)':'var(--bear)'):'var(--text2)', e7e15col=t.ema7_above_ema15?'var(--bull)':'var(--bear)'
     const xover=t.crossover?`<span class="xover-pill ${t.crossover.includes('GOLDEN')?'xover-gold':'xover-death'}" style="font-size:9px">🔔 ${t.crossover}</span>`:''
-    const d7=ema7?((price-ema7)/ema7*100).toFixed(2)+'%':'—', d15=ema15?((price-ema15)/ema15*100).toFixed(2)+'%':'—', d21=ema21?((price-ema21)/ema21*100).toFixed(2)+'%':'—'
+    const d7=ema7?((price-ema7)/ema7*100).toFixed(2)+'%':'—', d15=ema15?((price-ema15)/ema15*100).toFixed(2)+'%':'—'
 
     let emaScore=0
     if(ema7&&ema15&&price>ema7&&price>ema15) emaScore+=2
     if(ema7&&ema15&&ema7>ema15) emaScore+=1
-    if(ema15&&ema21&&ema15>ema21) emaScore+=1
     const emaAlign=emaScore>=3?'PERFECT BULLISH STACK':emaScore>=2?'BULLISH ALIGNED':emaScore===1?'PARTIAL ALIGN':'BEARISH STACK'
     const emaAlignCol=emaScore>=3?'var(--bull)':emaScore>=2?'var(--bull)':emaScore===1?'var(--warn)':'var(--bear)'
 
@@ -922,7 +923,6 @@ function renderNiftyTechFull(tech){
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">${mkPill(t.trend||'N/A',trendCls)}${mkPill(stDir||'ST N/A',stCls)}${xover}</div>
       ${mkRow('EMA 7',ema7||'—',d7col,`${t.price_above_ema7?'Price ABOVE':'Price BELOW'} · dist ${d7}`)}
       ${mkRow('EMA 15',ema15||'—',d15col,`${t.price_above_ema15?'ABOVE':'BELOW'} · dist ${d15}`)}
-      ${mkRow('EMA 21',ema21||'—','var(--text2)',`dist ${d21}`)}
       ${mkRow('EMA Stack',emaAlign,emaAlignCol,'')}
       ${mkRow('Supertrend',stDir?`${stDir} @ ${stVal}`:'N/A',stCls,stDist?`${stDist}pts away`:'')}
       ${rsi?mkRow('RSI (14)',rsi.toFixed(1),rsiCol,rsiNote):''}
@@ -930,8 +930,11 @@ function renderNiftyTechFull(tech){
     `
   })
 
-  const t5=tech['5min']||{}, t15=tech['15min']||{}
+  const t3=tech['3min']||{}, t5=tech['5min']||{}, t15=tech['15min']||{}
   let bullPoints=0, bearPoints=0
+  if(t3.price_above_ema7)  bullPoints++; else bearPoints++
+  if(t3.ema7_above_ema15) bullPoints++; else bearPoints++
+  if(t3.supertrend==='BULLISH') bullPoints+=2; else if(t3.supertrend==='BEARISH') bearPoints+=2
   if(t5.price_above_ema7)  bullPoints++; else bearPoints++
   if(t5.ema7_above_ema15) bullPoints++; else bearPoints++
   if(t5.supertrend==='BULLISH') bullPoints+=2; else if(t5.supertrend==='BEARISH') bearPoints+=2
