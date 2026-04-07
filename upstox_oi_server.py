@@ -95,16 +95,37 @@ def fetch_spot():
         return float(d[key].get("last_price", 0)) if key else 0
     except Exception as e: print("[SPOT ERROR]", e); return 0
 
+def get_futures_symbol():
+    """Auto-detect the current near-month NIFTY futures symbol."""
+    from datetime import date
+    now = date.today()
+    months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
+    # Try current month first, then next month
+    for delta in [0, 1]:
+        m = (now.month - 1 + delta) % 12
+        y = str(now.year)[2:]  # 2-digit year e.g. 26
+        if now.month + delta > 12:
+            y = str(now.year + 1)[2:]
+        sym = f"NSE_FO|NIFTY{y}{months[m]}FUT"
+        try:
+            r = requests.get("https://api.upstox.com/v2/market-quote/ltp",
+                             params={"symbol": sym}, headers=hdrs(), timeout=5)
+            if r.status_code == 200:
+                d = r.json().get("data", {})
+                if d:
+                    key = list(d.keys())[0]
+                    p = d[key].get("last_price") or d[key].get("ltp") or 0
+                    if p:
+                        print(f"[FUT] Using {sym}")
+                        return sym, float(p)
+        except Exception as e:
+            print(f"[FUT] {sym} failed: {e}")
+    return None, None
+
 def fetch_futures(spot):
     try:
-        r = requests.get("https://api.upstox.com/v2/market-quote/ltp",
-                         params={"symbol": "NSE_FO|NIFTY25APRFUT"}, headers=hdrs(), timeout=10)
-        if r.status_code == 200:
-            d = r.json().get("data", {})
-            if d:
-                key = list(d.keys())[0]
-                p = d[key].get("last_price") or d[key].get("ltp") or 0
-                if p: return float(p)
+        sym, price = get_futures_symbol()
+        if price: return price
     except Exception as e: print("[FUT ERROR]", e)
     return round(spot * 1.005, 2)
 
@@ -974,7 +995,7 @@ def loop():
 
 @app.route("/")
 def dashboard():
-    return send_file("index.html")
+    return send_file("dashboard.html")
 
 @app.route("/oi/json")
 def oi_json():
