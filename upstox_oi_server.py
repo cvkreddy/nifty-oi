@@ -1,11 +1,11 @@
 """
 ====================================================
   NIFTY50 OI Server — Full Intelligence Mode v2
-  Includes: Render Gunicorn Multi-Worker Fix + Error Reporting
+  Includes: Render Gunicorn Fix + Candle API Fixes
 ====================================================
 """
 
-import os, csv, time, math, threading, json
+import os, csv, time, math, threading, json, urllib.parse
 from datetime import datetime, date, timedelta
 from flask import Flask, jsonify, request, redirect, send_file
 from flask_cors import CORS
@@ -62,10 +62,12 @@ def load_token():
 load_token()
 
 def hdrs():
-    # 🔥 FIX: Load token from disk on every single request. 
-    # This ensures all Render Gunicorn workers share the exact same active token.
     load_token()
-    return {"Authorization": f"Bearer {token_store['access_token']}", "Accept": "application/json"}
+    return {
+        "Authorization": f"Bearer {token_store['access_token']}", 
+        "Accept": "application/json",
+        "Api-Version": "2.0"  # 🔥 FIX: Required by Upstox historical endpoints
+    }
 
 # ══════════════════════════════════════════════════
 #  AUTH ROUTES
@@ -153,17 +155,16 @@ def fetch_vix():
                 return float(d[key].get("last_price") or d[key].get("ltp") or 0)
     except: pass
     return 0
+
 def fetch_candles():
     global candle_cache
     try:
-        # 1. URL Encode the symbol so the API doesn't crash on the pipe '|' and space
-        enc_key = "NSE_INDEX%7CNifty%2050"
-        
-        # 2. Fetch the last 5 days so we ALWAYS have enough candles for RSI & EMA
+        # 🔥 FIX: Safely encode the symbol to prevent Upstox API crashes
+        safe_key = urllib.parse.quote(NIFTY_KEY)
         to_date = date.today().strftime("%Y-%m-%d")
-        from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
+        from_date = (date.today() - timedelta(days=6)).strftime("%Y-%m-%d")
         
-        url = f"https://api.upstox.com/v2/historical-candle/{enc_key}/5minute/{to_date}/{from_date}"
+        url = f"https://api.upstox.com/v2/historical-candle/{safe_key}/5minute/{to_date}/{from_date}"
         r = requests.get(url, headers=hdrs(), timeout=10)
         
         if r.status_code == 200:
@@ -172,25 +173,26 @@ def fetch_candles():
             result = []
             for c in cr:
                 if len(c) >= 5:
-                    result.append({"time": c[0], "open": float(c[1]), "high": float(c[2]), 
+                    result.append({"time": c[0], "open": float(c[1]), "high": float(c[2]),
                                    "low": float(c[3]), "close": float(c[4])})
+            # 🔥 FIX: Sort chronological (oldest first) for accurate EMA/RSI math
             result.sort(key=lambda x: x["time"])
-            candle_cache = result[-50:] # Keep the last 50 candles
+            if result:
+                candle_cache = result[-60:]
             return candle_cache
         else:
-            print(f"[CANDLES API ERROR] {r.status_code}: {r.text}")
-    except Exception as e: 
-        print("[CANDLES ERROR]", e)
+            print(f"[CANDLES 5M ERROR] HTTP {r.status_code}: {r.text}")
+    except Exception as e: print("[CANDLES 5M EXCEPTION]", e)
     return candle_cache
 
 def fetch_candles_15min():
     global candle_cache_15
     try:
-        enc_key = "NSE_INDEX%7CNifty%2050"
+        safe_key = urllib.parse.quote(NIFTY_KEY)
         to_date = date.today().strftime("%Y-%m-%d")
-        from_date = (date.today() - timedelta(days=10)).strftime("%Y-%m-%d") # 10 days needed for 15min chart
+        from_date = (date.today() - timedelta(days=12)).strftime("%Y-%m-%d")
         
-        url = f"https://api.upstox.com/v2/historical-candle/{enc_key}/15minute/{to_date}/{from_date}"
+        url = f"https://api.upstox.com/v2/historical-candle/{safe_key}/15minute/{to_date}/{from_date}"
         r = requests.get(url, headers=hdrs(), timeout=10)
         
         if r.status_code == 200:
@@ -199,16 +201,17 @@ def fetch_candles_15min():
             result = []
             for c in cr:
                 if len(c) >= 5:
-                    result.append({"time": c[0], "open": float(c[1]), "high": float(c[2]), 
+                    result.append({"time": c[0], "open": float(c[1]), "high": float(c[2]),
                                    "low": float(c[3]), "close": float(c[4])})
             result.sort(key=lambda x: x["time"])
-            candle_cache_15 = result[-40:]
+            if result:
+                candle_cache_15 = result[-40:]
             return candle_cache_15
         else:
-            print(f"[CANDLES-15m API ERROR] {r.status_code}: {r.text}")
-    except Exception as e: 
-        print("[CANDLES-15M ERROR]", e)
+            print(f"[CANDLES 15M ERROR] HTTP {r.status_code}: {r.text}")
+    except Exception as e: print("[CANDLES 15M EXCEPTION]", e)
     return candle_cache_15
+
 def get_expiry():
     try:
         r = requests.get("https://api.upstox.com/v2/option/contract",
@@ -236,7 +239,6 @@ def fetch_chain(expiry):
         r = requests.get("https://api.upstox.com/v2/option/chain",
                          params={"instrument_key": NIFTY_KEY, "expiry_date": expiry},
                          headers=hdrs(), timeout=15)
-        # 🔥 FIX: Log exactly why Upstox rejects the request
         if r.status_code != 200:
             print(f"[CHAIN API REJECTED] HTTP {r.status_code}: {r.text}")
         data = r.json().get("data", [])
@@ -245,7 +247,10 @@ def fetch_chain(expiry):
         print("[CHAIN ERROR]", e)
         return []
 
-# (Keeping standard analytical functions tight to save space)
+# ══════════════════════════════════════════════════
+#  INDICATOR MATH
+# ══════════════════════════════════════════════════
+
 def calc_rsi(closes, p=14):
     if len(closes) < p+1: return None
     gains=[max(closes[i]-closes[i-1],0) for i in range(1,len(closes))]
@@ -568,13 +573,12 @@ def analyse_trend(atm_strikes, atm):
 
 
 # ══════════════════════════════════════════════════
-#  MAIN REFRESH (WITH ERROR REPORTING FIX)
+#  MAIN REFRESH
 # ══════════════════════════════════════════════════
 
 def refresh():
     global prev_oi, prev_pcr, prev_spot, candle_cache, candle_cache_15
 
-    # Force check from file in case it was written by another worker
     load_token()
     if not token_store.get("access_token"): 
         print("[REFRESH] No token found in memory or disk.")
@@ -585,12 +589,10 @@ def refresh():
         expiry = get_expiry()
         raw    = fetch_chain(expiry)
         
-        # 🔥 FIX: If Upstox API fails/rejects, explicitly save this error to the cache
-        # so the frontend can display it in bright red, instead of failing silently.
         if not raw:
             err_msg = f"Upstox API returned no chain data for Expiry [{expiry}]. Token might be expired or IP rate-limited."
             print(f"[REFRESH FAILED] {err_msg}")
-            if oi_cache["data"]:
+            if oi_cache.get("data"):
                 oi_cache["data"]["backend_error"] = err_msg
             return
 
@@ -642,7 +644,7 @@ def refresh():
         }
 
         data = {
-            "backend_error": None, # clear any previous errors
+            "backend_error": None, 
             "spot": spot, "futures": futures, "premium": round(futures-spot,2),
             "atm": atm, "pcr": pcr, "pcr_chg": pcr_chg, "vix": vix,
             "max_pain": max_pain, "expiry": expiry,
@@ -683,10 +685,9 @@ def dashboard():
 
 @app.route("/oi/json")
 def oi_json():
-    if not oi_cache["data"]: 
+    if not oi_cache.get("data"): 
         return jsonify({"error":"No data — login at /login"})
     
-    # 🔥 FIX: Self-Healing Check. If data is old, force refresh.
     try:
         last_upd = datetime.fromisoformat(oi_cache["data"]["timestamp"])
         age = (datetime.now() - last_upd).total_seconds()
@@ -706,13 +707,13 @@ def histogram():
 
 @app.route("/oi/status")
 def oi_status():
-    d=oi_cache["data"]
+    d=oi_cache.get("data")
     return jsonify({
-        "token":        bool(token_store["access_token"]),
+        "token":        bool(token_store.get("access_token")),
         "has_data":     d is not None,
-        "spot":         d["spot"] if d else None,
+        "spot":         d.get("spot") if d else None,
         "backend_error":d.get("backend_error") if d else None,
-        "updated":      d["timestamp"] if d else None
+        "updated":      d.get("timestamp") if d else None
     })
 
 if __name__ == "__main__":
