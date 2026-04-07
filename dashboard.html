@@ -15,7 +15,6 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;}
 
-/* HEADER */
 .hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:6px 14px;
   display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;
   position:sticky;top:0;z-index:100;}
@@ -29,7 +28,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .btn-ss{font-family:var(--ui);font-size:12px;font-weight:600;background:rgba(64,196,255,.1);
   border:1px solid rgba(64,196,255,.3);color:var(--info);padding:4px 12px;border-radius:4px;cursor:pointer;}
 
-/* ══ ONE-GLANCE VERDICT BANNER ══ */
 .verdict-banner{padding:7px 14px;border-bottom:2px solid transparent;font-family:var(--ui);
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;transition:background .4s,border-color .4s;}
 .vb-icon{font-size:20px;}
@@ -37,7 +35,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .vb-detail{font-size:11px;opacity:.85;flex:1;}
 .vb-time{font-size:10px;opacity:.6;}
 
-/* MARKET STATE BAR */
 .state-bar{padding:7px 14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
   border-bottom:2px solid var(--border);}
 .state-icon{font-size:20px;}
@@ -45,7 +42,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .state-val{font-size:18px;font-weight:700;letter-spacing:1px;}
 .state-divider{width:1px;height:36px;background:var(--border2);}
 
-/* STRIP */
 .strip{background:var(--bg2);border-bottom:1px solid var(--border);padding:5px 14px;
   display:flex;flex-wrap:wrap;gap:5px 14px;align-items:center;}
 .si{display:flex;align-items:baseline;gap:4px;}
@@ -54,7 +50,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .schg{font-size:10px;margin-left:-2px;}
 .sdv{width:1px;height:16px;background:var(--border2);}
 
-/* ══ STRADDLE COST BAR ══ */
 .straddle-bar{background:rgba(64,196,255,.05);border-bottom:1px solid rgba(64,196,255,.15);
   padding:7px 18px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
 .sb-item{display:flex;align-items:baseline;gap:6px;}
@@ -65,14 +60,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .range-fill{position:absolute;height:100%;background:rgba(64,196,255,.4);border-radius:2px;}
 .range-dot{position:absolute;top:-2px;width:8px;height:8px;border-radius:50%;background:var(--info);transform:translateX(-50%);}
 
-/* ALERTS BAR */
 .alerts-bar{padding:5px 18px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 .alert-pill{font-size:10px;padding:3px 10px;border-radius:4px;font-weight:700;}
 .alert-high{background:rgba(255,61,87,.2);color:var(--bear);border:1px solid rgba(255,61,87,.4);}
 .alert-med{background:rgba(255,171,0,.15);color:var(--warn);border:1px solid rgba(255,171,0,.3);}
 .no-alert{font-size:10px;color:var(--text2);}
 
-/* INDEX TECHNICALS BAR */
 .tech-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:5px 14px;
   display:flex;align-items:flex-start;gap:0;flex-wrap:wrap;}
 .tech-tf{padding:4px 14px 4px 0;border-right:1px solid var(--border2);margin-right:14px;}
@@ -90,7 +83,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .xover-gold{background:rgba(0,230,118,.2);color:var(--bull);border:1px solid rgba(0,230,118,.4);}
 .xover-death{background:rgba(255,61,87,.2);color:var(--bear);border:1px solid rgba(255,61,87,.4);}
 
-/* RSI+ADX */
 .ind-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:4px 14px;
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .ib{display:flex;align-items:center;gap:5px;}
@@ -101,7 +93,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .rsi-bar{width:80px;height:4px;background:var(--bg3);border-radius:3px;overflow:hidden;}
 .rsi-fill{height:100%;border-radius:3px;transition:width .5s;}
 
-/* TREND */
 .trend-bar{padding:5px 18px;background:var(--bg2);border-bottom:1px solid var(--border);
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .tv{font-size:12px;font-weight:700;}
@@ -109,22 +100,19 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .tm{width:110px;height:4px;background:var(--bg3);border-radius:3px;overflow:hidden;}
 .tf{height:100%;border-radius:3px;transition:width .6s;}
 
-#err{display:none;background:rgba(255,61,87,.1);border:1px solid rgba(255,61,87,.3);
-  color:var(--bear);padding:5px 14px;font-size:11px;}
+#err{display:none;background:rgba(255,61,87,.15);border-bottom:2px solid rgba(255,61,87,.5);
+  color:#fff;padding:8px 14px;font-size:12px;font-weight:700;text-align:center;}
 
-/* INTEL CARDS */
 .intel-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px 14px;}
 .ic{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:9px 11px;}
 .ic-lbl{font-size:9px;color:var(--text2);letter-spacing:1.5px;margin-bottom:3px;}
 .ic-val{font-size:12px;font-weight:700;margin-bottom:2px;}
 .ic-sub{font-size:10px;color:var(--text2);line-height:1.4;}
 
-/* ══ PCR SPARKLINE ══ */
 .pcr-spark-row{display:flex;align-items:center;gap:6px;margin-top:4px;}
 .pcr-spark{width:80px;height:20px;}
 .pcr-trend-lbl{font-size:10px;font-weight:700;}
 
-/* GRID */
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 14px 14px;}
 .full{grid-column:1/-1;}
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
@@ -132,7 +120,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .ct{font-size:10px;font-weight:700;letter-spacing:2px;}
 .cs{font-size:10px;color:var(--text2);}
 
-/* TABLES */
 table{width:100%;border-collapse:collapse;}
 th{padding:5px 6px;font-size:10px;font-weight:700;color:var(--text2);text-align:right;
   border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg3);}
@@ -154,11 +141,8 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .su{background:rgba(255,171,0,.1);color:var(--warn);border:1px solid rgba(255,171,0,.3);}
 .sn{background:rgba(107,127,160,.1);color:var(--text2);border:1px solid var(--border2);}
 
-/* ══ OI VELOCITY in tables ══ */
 .vel-arrow{font-size:12px;margin-left:2px;}
 .vel-up2{color:var(--bear)}.vel-up1{color:rgba(255,61,87,.6)}.vel-dn1{color:rgba(0,230,118,.6)}.vel-dn2{color:var(--bull)}.vel-flat{color:var(--text2)}
-
-/* ══ FLOW SCORE badges ══ */
 .flow-score{display:inline-flex;align-items:center;justify-content:center;
   width:30px;height:16px;border-radius:3px;font-size:10px;font-weight:700;font-family:var(--ui);}
 .fs-high{background:rgba(255,61,87,.2);color:var(--bear);}
@@ -166,7 +150,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .fs-low{background:rgba(107,127,160,.12);color:var(--text2);}
 .fs-bull{background:rgba(0,230,118,.15);color:var(--bull);}
 
-/* ══ OI MIGRATION TABLE ══ */
 .mig-row{display:flex;align-items:center;gap:8px;padding:4px 12px;border-bottom:1px solid rgba(255,255,255,.03);font-size:11px;}
 .mig-row:last-child{border-bottom:none;}
 .mig-from{width:52px;text-align:right;font-weight:700;}
@@ -175,14 +158,12 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .mig-chg{width:44px;text-align:right;font-weight:700;}
 .mig-note{font-size:10px;color:var(--text2);flex:1;font-family:var(--ui);}
 
-/* ══ PIN RISK ══ */
 .pin-box{padding:8px 12px;border-top:1px solid var(--border);}
 .pin-inner{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:5px;}
 .pin-label{font-size:10px;font-weight:700;letter-spacing:1px;font-family:var(--ui);}
 .pin-note{font-size:10px;font-family:var(--ui);flex:1;}
 .pin-score{font-size:16px;font-weight:700;}
 
-/* HISTOGRAM */
 .hw{padding:8px 12px;}
 .hr{display:flex;align-items:center;gap:4px;margin-bottom:1px;}
 .hrc{display:flex;align-items:center;gap:4px;margin-bottom:7px;}
@@ -197,7 +178,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .hstr{font-size:9px;width:26px;text-align:right;color:var(--text2);}
 .hatm{font-size:9px;color:var(--atm);}
 
-/* FLOW MATRIX */
 .flow-tbl td{font-size:11px;padding:4px 6px;vertical-align:top;}
 .flow-tbl th{font-size:10px;padding:5px 6px;}
 .flow-cond{font-size:11px;font-weight:700;}
@@ -206,7 +186,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .flow-nums{display:flex;gap:6px;margin-top:2px;flex-wrap:wrap;}
 .flow-num{font-size:10px;}
 
-/* GEX */
 .gex-row{display:flex;align-items:center;gap:6px;padding:3px 12px;border-bottom:1px solid rgba(255,255,255,.03);}
 .gex-strike{font-size:11px;width:54px;text-align:right;flex-shrink:0;}
 .gex-bar-wrap{flex:1;display:flex;align-items:center;gap:2px;}
@@ -216,7 +195,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .gex-val{font-size:9px;width:50px;text-align:right;flex-shrink:0;}
 .gex-flip-tag{font-size:9px;color:var(--warn);}
 
-/* greeks */
 .gg{display:grid;grid-template-columns:repeat(4,1fr);}
 .gc{padding:7px 10px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);}
 .gc:nth-child(4n){border-right:none;}.gc:nth-last-child(-n+4){border-bottom:none;}
@@ -224,7 +202,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .gv{font-size:12px;font-weight:700;}.gs{font-size:9px;color:var(--text2);margin-top:1px;}
 .gw{font-size:9px;color:var(--warn);margin-top:1px;}
 
-/* activity */
 .ag{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;}
 .ac{padding:9px 12px;border-right:1px solid var(--border);}
 .ac:last-child{border-right:none;}
@@ -255,7 +232,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div style="display:flex;align-items:center;gap:12px;">
     <div class="logo">NIFTY·OI</div>
     <div style="font-size:11px;background:rgba(64,196,255,.1);border:1px solid rgba(64,196,255,.25);color:var(--info);padding:3px 10px;border-radius:4px;" id="expiry-badge">Expiry: —</div>
-    <div style="font-size:11px;color:var(--text2);" id="upd">—</div>
+    <div style="font-size:11px;color:var(--text2);font-family:var(--ui);font-weight:700" id="upd">Loading...</div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
     <span style="font-size:10px;color:var(--text2);" id="snap-status">📸 Auto-snap ON</span>
@@ -265,7 +242,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <button class="btn" onclick="doFetch()">↺ REFRESH</button>
   </div>
 </div>
-<div id="err">⚠ Cannot reach server — start upstox_oi_server.py and login at /login</div>
+<div id="err">⚠ Error fetching data</div>
 
 <div class="verdict-banner" id="verdict-banner">
   <div class="vb-icon" id="vb-icon">⏳</div>
@@ -537,19 +514,16 @@ tr:hover td{background:rgba(255,255,255,.02);}
 <div style="height:28px"></div>
 <div class="statusbar">
   <span id="st-left">Connecting...</span>
-  <span id="st-right">OI Matrix needs 2 cycles · Auto-PNG every 5min → Chrome Downloads</span>
+  <span id="st-right">OI Matrix needs 2 cycles · Auto-PNG every 5min</span>
 </div>
 
 <script>
 let secs=300, snapCount=0
-
-/* ── STATE FOR NEW FEATURES ─────────────────────────── */
 let pcrHistory   = []      
 let prevOIData   = {}      
 let prevOIChg    = {}      
 let cycleCount   = 0
 
-/* ── SCREENSHOT ─────────────────────────────────────── */
 function loadH2C(){const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';document.head.appendChild(s)}
 loadH2C()
 function saveScreenshot(auto){
@@ -563,39 +537,36 @@ function saveScreenshot(auto){
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
     snapCount++
     g('snap-status').textContent=`📸 Saved #${snapCount} at ${new Date().toLocaleTimeString('en-IN')}`
-    try{
-      const req=indexedDB.open('NiftyOI_Snaps',1)
-      req.onupgradeneeded=e=>e.target.result.createObjectStore('snaps',{keyPath:'ts'})
-      req.onsuccess=e=>{
-        const db=e.target.result
-        const tx=db.transaction('snaps','readwrite')
-        tx.objectStore('snaps').put({ts,data:dataUrl})
-      }
-    }catch(ex){}
   }).catch(e=>console.warn(e))
 }
 
-/* ── FETCH ──────────────────────────────────────────── */
+/* 🔥 FIX: Cache-buster forces the browser to ALWAYS pull the absolute latest data */
 async function doFetch(){
   g('dot').style.background='var(--warn)'
   try{
-    // 🔥 FIX: Cache-buster forces the browser to ALWAYS pull latest data
     const cb = new Date().getTime()
     const [jr,hr]=await Promise.all([fetch('/oi/json?_='+cb),fetch('/oi/histogram?_='+cb)])
     
     if(!jr.ok) throw new Error('HTTP '+jr.status)
     const raw=await jr.json()
     
-    // 🔥 FIX: Error handling for missing tokens
     if(raw.error) {
-      if (raw.error.includes('login') || raw.error.includes('token')) {
+      if (raw.error.includes('login') || raw.error.includes('token') || raw.error.includes('stuck')) {
          g('vb-icon').textContent = '🔒';
-         g('vb-main').textContent = 'Authentication Required';
+         g('vb-main').textContent = 'Authentication Required / Token Expired';
          g('vb-main').style.color = 'var(--warn)';
-         g('vb-detail').innerHTML = `<a href="/login" style="color:var(--info); text-decoration:underline; font-weight:bold;">Click here to authenticate with Upstox</a>`;
+         g('vb-detail').innerHTML = `<a href="/login" style="color:var(--info); text-decoration:underline; font-weight:bold; font-size:14px">Click here to re-authenticate with Upstox</a>`;
          g('state-bar').style.borderBottomColor = 'var(--warn)';
       }
       throw new Error(raw.error)
+    }
+
+    // 🔥 FIX: If the backend fails to talk to Upstox, show a bright red warning
+    if (raw.backend_error) {
+        g('err').style.display = 'block';
+        g('err').innerHTML = `⚠ BACKEND DATA FROZEN: ${raw.backend_error} <a href="/login" style="color:#fff; text-decoration:underline; margin-left:10px">Try Re-Login</a>`;
+    } else {
+        g('err').style.display = 'none';
     }
 
     const norm=obj=>{const r={};Object.keys(obj||{}).forEach(k=>{const nk=parseFloat(k);r[nk]={...obj[k],strike:nk}});return r}
@@ -605,22 +576,27 @@ async function doFetch(){
     raw.premium=parseFloat(raw.premium)||0; raw.pcr=parseFloat(raw.pcr)||0
     raw.vix=parseFloat(raw.vix)||0; raw.pcr_chg=parseFloat(raw.pcr_chg)||0
     let hist=[];try{hist=(await hr.json()).map(h=>({...h,strike:parseFloat(h.strike||0)}))}catch(e){}
-    g('err').style.display='none'
+    
     render(raw,hist)
     secs=300
-    g('upd').textContent='Updated: '+new Date().toLocaleTimeString('en-IN')
     g('dot').style.background='var(--bull)'
+    
+    // 🔥 FIX: Show the EXACT backend timestamp so you know if data is stale
+    const bTime = new Date(raw.timestamp).toLocaleTimeString('en-IN');
+    const fTime = new Date().toLocaleTimeString('en-IN');
+    g('upd').innerHTML = `<span style="color:${raw.backend_error?'var(--bear)':'var(--bull)'}">DATA: ${bTime}</span> | FETCHED: ${fTime}`;
+    
     const ind=raw.indicators||{},intel=raw.intelligence||{}
     g('st-left').textContent='Live · Spot ₹'+fmt(raw.spot)+' · PCR '+raw.pcr.toFixed(2)+' · RSI '+(ind.rsi||'N/A')+' · ADX '+(ind.adx||'N/A')+' · State: '+(intel.market_state||'—')
     setTimeout(()=>saveScreenshot(true),2000)
   }catch(e){
     g('err').style.display='block'
+    g('err').textContent='Error: '+e.message
     g('dot').style.background='var(--bear)'
     g('st-left').textContent='Error: '+e.message
   }
 }
 
-/* ── MAIN RENDER ────────────────────────────────────── */
 function render(d,hist){
   cycleCount++
   const {spot,futures,premium,pcr,pcr_chg,vix,max_pain:mp,atm,trend,trend_reason,trend_strength}=d
@@ -629,7 +605,6 @@ function render(d,hist){
 
   renderVerdictBanner(d,ind,intel,atm)
 
-  // MARKET STATE
   const ms=intel.market_state||'—',mi=intel.market_icon||'⏳'
   const msCol=msColor(ms)
   g('state-bar').style.borderBottomColor=msCol
@@ -639,13 +614,11 @@ function render(d,hist){
   styl('matrix-val',(intel.oi_matrix_condition||'—')+' → '+(intel.oi_matrix_signal||'—'),mxCol)
   set('matrix-desc',intel.oi_matrix_desc||'—')
 
-  // ALERTS
   const alerts=intel.alerts||[]
   g('alerts-content').innerHTML=alerts.length
     ?alerts.map(a=>`<span class="alert-pill ${a.urgency==='HIGH'?'alert-high':'alert-med'}">${a.icon||''} ${a.type}: ${a.message||a.msg||''}</span>`).join('')
     :'<span class="no-alert">No alerts — OI stable at all key levels</span>'
 
-  // STRIP
   set('m-spot','₹'+fmt(spot));set('m-fut','₹'+fmt(futures))
   const pe=g('m-prem');pe.textContent=(premium>=0?'+':'')+premium.toFixed(1)+'pts';pe.className='sv '+(premium>=0?'bull':'bear')
   set('m-vix',vix?vix.toFixed(2):'—')
@@ -660,7 +633,6 @@ function render(d,hist){
   renderStraddle(d.atm_strikes,atm,spot,d.expiry)
   renderIndexTech(intel.index_technicals||{})
 
-  // RSI + ADX
   if(ind.rsi!=null){
     const rc=ind.rsi>=70?'var(--bear)':ind.rsi<=30?'var(--bull)':ind.rsi>=55?'var(--bear)':ind.rsi<=45?'var(--bull)':'var(--warn)'
     set('rsi-val',ind.rsi.toFixed(1));g('rsi-val').style.color=rc
@@ -726,44 +698,17 @@ function render(d,hist){
   })
 }
 
-/* ── HELPERS & RENDERERS ────────────────────────────── */
-
 function renderVerdictBanner(d,ind,intel,atm){
-  const ms=intel.market_state||'—'
-  const msCol=msColor(ms)
-  const mxSig=intel.oi_matrix_signal||'—'
-  const ak=d.atm_strikes||{}
-
+  const ms=intel.market_state||'—', msCol=msColor(ms), ak=d.atm_strikes||{}
   let icon='⏳',main='INITIALIZING',details=[]
 
-  if(ms.includes('BREAK')){
-    icon='⚡'; main='BREAKOUT IMMINENT'
-    details.push('OI unwinding at key level + price approaching')
-  } else if(ms.includes('TRENDING UP')){
-    icon='📈'; main=ms
-    if(ind.rsi>55&&ind.adx>=20) {icon='✅';main='CONFIRMED BULLISH TREND'}
-    details.push('Put writing active — support building')
-    if(ind.rsi) details.push(`RSI ${ind.rsi}`)
-    if(ind.adx) details.push(`ADX ${ind.adx}`)
-  } else if(ms.includes('TRENDING DOWN')){
-    icon='📉'; main=ms
-    if(ind.rsi<45&&ind.adx>=20) {icon='🔴';main='CONFIRMED BEARISH TREND'}
-    details.push('Call writing active — resistance building')
-    if(ind.rsi) details.push(`RSI ${ind.rsi}`)
-    if(ind.adx) details.push(`ADX ${ind.adx}`)
-  } else if(ms.includes('REVERSAL')){
-    icon='🔄'; main='REVERSAL ZONE — EXTREME PCR'
-    details.push(d.pcr>1.5?'PCR extreme greed → watch for reversal DOWN':'PCR extreme fear → watch for reversal UP')
-  } else if(ms.includes('VOLATILITY')){
-    icon='⚡↔'; main='HIGH VOLATILITY RANGE'
-    details.push(`VIX ${d.vix?d.vix.toFixed(1):'—'} — use wide stops, reduce size`)
-  } else if(ms.includes('RANGING')){
-    icon='↔'; main='RANGING MARKET'
-    details.push('ADX below 20 — sell resistance, buy support')
-  } else {
-    icon='⏳'; main='NEUTRAL — WAIT FOR SETUP'
-    details.push('Mixed signals — wait for OI to build at a clear level')
-  }
+  if(ms.includes('BREAK')){icon='⚡'; main='BREAKOUT IMMINENT'; details.push('OI unwinding at key level + price approaching')}
+  else if(ms.includes('TRENDING UP')){icon='📈'; main=ms; if(ind.rsi>55&&ind.adx>=20) {icon='✅';main='CONFIRMED BULLISH TREND'}; details.push('Put writing active — support building'); if(ind.rsi) details.push(`RSI ${ind.rsi}`); if(ind.adx) details.push(`ADX ${ind.adx}`)}
+  else if(ms.includes('TRENDING DOWN')){icon='📉'; main=ms; if(ind.rsi<45&&ind.adx>=20) {icon='🔴';main='CONFIRMED BEARISH TREND'}; details.push('Call writing active — resistance building'); if(ind.rsi) details.push(`RSI ${ind.rsi}`); if(ind.adx) details.push(`ADX ${ind.adx}`)}
+  else if(ms.includes('REVERSAL')){icon='🔄'; main='REVERSAL ZONE — EXTREME PCR'; details.push(d.pcr>1.5?'PCR extreme greed → watch for reversal DOWN':'PCR extreme fear → watch for reversal UP')}
+  else if(ms.includes('VOLATILITY')){icon='⚡↔'; main='HIGH VOLATILITY RANGE'; details.push(`VIX ${d.vix?d.vix.toFixed(1):'—'} — use wide stops, reduce size`)}
+  else if(ms.includes('RANGING')){icon='↔'; main='RANGING MARKET'; details.push('ADX below 20 — sell resistance, buy support')}
+  else {icon='⏳'; main='NEUTRAL — WAIT FOR SETUP'; details.push('Mixed signals — wait for OI to build at a clear level')}
 
   if(d.pcr_chg>0.05) details.push('PCR rising ▲ '+d.pcr_chg.toFixed(3)+' → bullish')
   else if(d.pcr_chg<-0.05) details.push('PCR falling ▼ '+Math.abs(d.pcr_chg).toFixed(3)+' → bearish')
@@ -781,11 +726,8 @@ function renderVerdictBanner(d,ind,intel,atm){
   const bgAlpha=ms.includes('NEUTRAL')||ms.includes('INITIAL')?'.03':'.07'
   banner.style.background=`rgba(${hexToRgb(msCol)},${bgAlpha})`
   banner.style.borderBottomColor=msCol
-  set('vb-icon',icon)
-  set('vb-main',main)
-  g('vb-main').style.color=msCol
-  set('vb-detail',details.slice(0,4).join(' · '))
-  set('vb-time',new Date().toLocaleTimeString('en-IN'))
+  set('vb-icon',icon); set('vb-main',main); g('vb-main').style.color=msCol
+  set('vb-detail',details.slice(0,4).join(' · ')); set('vb-time',new Date().toLocaleTimeString('en-IN'))
 }
 
 function hexToRgb(cssVar){
@@ -798,44 +740,27 @@ function hexToRgb(cssVar){
 }
 
 function msColor(ms){
-  return ms.includes('UP')||ms.includes('BULL')?'var(--bull)':
-         ms.includes('DOWN')||ms.includes('BEAR')?'var(--bear)':
-         ms.includes('BREAK')?'var(--warn)':
-         ms.includes('REVERS')?'var(--purple)':'var(--text2)'
+  return ms.includes('UP')||ms.includes('BULL')?'var(--bull)':ms.includes('DOWN')||ms.includes('BEAR')?'var(--bear)':ms.includes('BREAK')?'var(--warn)':ms.includes('REVERS')?'var(--purple)':'var(--text2)'
 }
 
 function renderStraddle(atk,atm,spot,expiry){
-  const atmV=atk[atm]||{}
-  const cLtp=atmV.call_ltp||0, pLtp=atmV.put_ltp||0
-  const straddle=cLtp+pLtp
+  const atmV=atk[atm]||{}, cLtp=atmV.call_ltp||0, pLtp=atmV.put_ltp||0, straddle=cLtp+pLtp
   if(!straddle){ set('straddle-cost','—'); return }
-
   set('straddle-cost','₹'+Math.round(straddle).toLocaleString('en-IN'))
   set('straddle-detail',`CE ₹${cLtp.toFixed(0)} + PE ₹${pLtp.toFixed(0)} at ATM`)
-
   const low=Math.round(atm-straddle), high=Math.round(atm+straddle)
   set('expected-range','₹'+low.toLocaleString('en-IN')+' — ₹'+high.toLocaleString('en-IN'))
-  const pct=((straddle/atm)*100).toFixed(1)
-  set('expected-pct','±'+pct+'% expected move today')
-
-  const range=high-low
-  const spotPct=Math.min(100,Math.max(0,((spot-low)/range)*100))
+  set('expected-pct','±'+((straddle/atm)*100).toFixed(1)+'% expected move today')
+  const range=high-low, spotPct=Math.min(100,Math.max(0,((spot-low)/range)*100))
   const fillLeft=((atm-low)/range)*100-((straddle*0.5/range)*100)*0.3
   const fillRight=100-fillLeft-((straddle/range)*100)*0.3
-  g('range-fill').style.left=Math.max(5,fillLeft)+'%'
-  g('range-fill').style.right=Math.max(5,fillRight)+'%'
+  g('range-fill').style.left=Math.max(5,fillLeft)+'%'; g('range-fill').style.right=Math.max(5,fillRight)+'%'
   g('range-dot').style.left=spotPct+'%'
-  set('range-low','₹'+low.toLocaleString('en-IN'))
-  set('range-high','₹'+high.toLocaleString('en-IN'))
-
-  if(spot<low){
-    styl('straddle-status','⚠ BELOW RANGE — bearish break','var(--bear)')
-  } else if(spot>high){
-    styl('straddle-status','⚠ ABOVE RANGE — bullish break','var(--bull)')
-  } else {
-    const fromLow=spot-low, fromHigh=high-spot
-    const nearEdge=Math.min(fromLow,fromHigh)<straddle*0.15
-    if(nearEdge) styl('straddle-status','⚡ NEAR RANGE EDGE — breakout watch','var(--warn)')
+  set('range-low','₹'+low.toLocaleString('en-IN')); set('range-high','₹'+high.toLocaleString('en-IN'))
+  if(spot<low) styl('straddle-status','⚠ BELOW RANGE — bearish break','var(--bear)')
+  else if(spot>high) styl('straddle-status','⚠ ABOVE RANGE — bullish break','var(--bull)')
+  else {
+    if(Math.min(spot-low,high-spot)<straddle*0.15) styl('straddle-status','⚡ NEAR RANGE EDGE — breakout watch','var(--warn)')
     else styl('straddle-status','✅ INSIDE RANGE — balanced','var(--text2)')
   }
 }
@@ -855,30 +780,15 @@ function velArrow(strike, isCall, currentChg){
 
 function flowScore(v, isCall){
   let score=0
-  const oi    = isCall?v.call_oi:v.put_oi
-  const chg   = isCall?v.call_oi_chg:v.put_oi_chg
-  const ltpC  = isCall?v.call_ltp_chg:v.put_ltp_chg
-  const voi   = isCall?v.call_vol_oi:v.put_vol_oi
-  const str   = isCall?v.sr_strength_call:v.sr_strength_put
-
-  if(oi>5000000) score+=25
-  else if(oi>2000000) score+=15
-  else if(oi>1000000) score+=8
-
-  if(Math.abs(chg)>1000000) score+=25
-  else if(Math.abs(chg)>500000) score+=15
-  else if(Math.abs(chg)>200000) score+=8
+  const oi = isCall?v.call_oi:v.put_oi, chg = isCall?v.call_oi_chg:v.put_oi_chg, ltpC = isCall?v.call_ltp_chg:v.put_ltp_chg, voi = isCall?v.call_vol_oi:v.put_vol_oi, str = isCall?v.sr_strength_call:v.sr_strength_put
+  if(oi>5000000) score+=25; else if(oi>2000000) score+=15; else if(oi>1000000) score+=8
+  if(Math.abs(chg)>1000000) score+=25; else if(Math.abs(chg)>500000) score+=15; else if(Math.abs(chg)>200000) score+=8
   if(chg>0) score+=5 
-
   if(isCall && chg>0 && (ltpC||0)<0) score+=20  
   if(!isCall && chg>0 && (ltpC||0)<0) score+=20 
   if(Math.abs(ltpC||0)>2) score+=5
-
-  if(voi>1.5) score+=15
-  else if(voi>0.5) score+=8
-
+  if(voi>1.5) score+=15; else if(voi>0.5) score+=8
   score += Math.min(10, (str||0)/10)
-
   score=Math.min(99,Math.round(score))
   if(score>=70) return `<span class="flow-score fs-high">${score}</span>`
   if(score>=40) return `<span class="flow-score fs-med">${score}</span>`
@@ -889,13 +799,8 @@ function flowScore(v, isCall){
 function renderPCRSparkline(pcr,intel){
   const h=pcrHistory
   if(h.length<2){set('pcr-trend-lbl','Building...');return}
-  const mn=Math.min(...h)-0.05, mx=Math.max(...h)+0.05, range=mx-mn||0.1
-  const W=80,H=20
-  const pts=h.map((v,i)=>{
-    const x=Math.round((i/(h.length-1))*W)
-    const y=Math.round(H-(((v-mn)/range)*(H-4)+2))
-    return `${x},${y}`
-  }).join(' ')
+  const mn=Math.min(...h)-0.05, mx=Math.max(...h)+0.05, range=mx-mn||0.1, W=80,H=20
+  const pts=h.map((v,i)=>`${Math.round((i/(h.length-1))*W)},${Math.round(H-(((v-mn)/range)*(H-4)+2))}`).join(' ')
   const trend=h[h.length-1]>h[0]?'var(--bull)':h[h.length-1]<h[0]?'var(--bear)':'var(--text2)'
   const change=h[h.length-1]-h[0]
   g('pcr-spark').innerHTML=`<polyline points="${pts}" fill="none" stroke="${trend}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`
@@ -904,14 +809,8 @@ function renderPCRSparkline(pcr,intel){
 
 function renderMigration(atk,atm){
   set('mig-time',new Date().toLocaleTimeString('en-IN'))
-  if(cycleCount<2||Object.keys(prevOIData).length===0){
-    g('mig-body').innerHTML='<div class="loading" style="font-size:10px;padding:10px 12px">Tracking from next cycle...</div>'
-    return
-  }
-  const sts=Object.keys(atk).map(Number).sort((a,b)=>a-b)
-  const THRESH=300000 
-
-  const migrations=[]
+  if(cycleCount<2||Object.keys(prevOIData).length===0){g('mig-body').innerHTML='<div class="loading" style="font-size:10px;padding:10px 12px">Tracking from next cycle...</div>';return}
+  const sts=Object.keys(atk).map(Number).sort((a,b)=>a-b), THRESH=300000, migrations=[]
   const callExits =sts.filter(s=>(atk[s].call_oi_chg||0)<-THRESH).sort((a,b)=>atk[a].call_oi_chg-atk[b].call_oi_chg)
   const callAdds  =sts.filter(s=>(atk[s].call_oi_chg||0)>THRESH).sort((a,b)=>atk[b].call_oi_chg-atk[a].call_oi_chg)
   const putExits  =sts.filter(s=>(atk[s].put_oi_chg||0)<-THRESH).sort((a,b)=>atk[a].put_oi_chg-atk[b].put_oi_chg)
@@ -921,48 +820,23 @@ function renderMigration(atk,atm){
     const ex=Math.abs(atk[fromS].call_oi_chg||0)
     callAdds.slice(0,2).forEach(toS=>{
       const ad=atk[toS].call_oi_chg||0
-      if(Math.abs(ex-ad)<ex*0.6){
-        const dir=toS>fromS?'Resistance rolling UP':'Resistance rolling DOWN'
-        migrations.push({side:'CE',from:fromS,to:toS,exAmt:ex,adAmt:ad,note:dir,col:'var(--bear)'})
-      }
+      if(Math.abs(ex-ad)<ex*0.6) migrations.push({side:'CE',from:fromS,to:toS,exAmt:ex,adAmt:ad,note:toS>fromS?'Resistance rolling UP':'Resistance rolling DOWN',col:'var(--bear)'})
     })
   })
   putExits.slice(0,2).forEach(fromS=>{
     const ex=Math.abs(atk[fromS].put_oi_chg||0)
     putAdds.slice(0,2).forEach(toS=>{
       const ad=atk[toS].put_oi_chg||0
-      if(Math.abs(ex-ad)<ex*0.6){
-        const dir=toS>fromS?'Support rising UP ✅':'Support dropping DOWN ⚠'
-        migrations.push({side:'PE',from:fromS,to:toS,exAmt:ex,adAmt:ad,note:dir,col:'var(--bull)'})
-      }
+      if(Math.abs(ex-ad)<ex*0.6) migrations.push({side:'PE',from:fromS,to:toS,exAmt:ex,adAmt:ad,note:toS>fromS?'Support rising UP ✅':'Support dropping DOWN ⚠',col:'var(--bull)'})
     })
   })
 
-  callAdds.slice(0,3).forEach(s=>{
-    if(!migrations.find(m=>m.to===s||m.from===s)){
-      migrations.push({side:'CE',from:null,to:s,exAmt:0,adAmt:atk[s].call_oi_chg||0,note:'🔴 Fresh resistance wall building',col:'var(--bear)'})
-    }
-  })
-  putAdds.slice(0,3).forEach(s=>{
-    if(!migrations.find(m=>m.to===s||m.from===s)){
-      migrations.push({side:'PE',from:null,to:s,exAmt:0,adAmt:atk[s].put_oi_chg||0,note:'✅ Fresh support floor building',col:'var(--bull)'})
-    }
-  })
-  callExits.slice(0,2).forEach(s=>{
-    if(!migrations.find(m=>m.from===s)){
-      migrations.push({side:'CE',from:s,to:null,exAmt:Math.abs(atk[s].call_oi_chg||0),adAmt:0,note:'✅ Resistance wall collapsing — breakout watch',col:'var(--bull)'})
-    }
-  })
-  putExits.slice(0,2).forEach(s=>{
-    if(!migrations.find(m=>m.from===s)){
-      migrations.push({side:'PE',from:s,to:null,exAmt:Math.abs(atk[s].put_oi_chg||0),adAmt:0,note:'⚠ Support floor collapsing',col:'var(--warn)'})
-    }
-  })
+  callAdds.slice(0,3).forEach(s=>{if(!migrations.find(m=>m.to===s||m.from===s)) migrations.push({side:'CE',from:null,to:s,exAmt:0,adAmt:atk[s].call_oi_chg||0,note:'🔴 Fresh resistance wall building',col:'var(--bear)'})})
+  putAdds.slice(0,3).forEach(s=>{if(!migrations.find(m=>m.to===s||m.from===s)) migrations.push({side:'PE',from:null,to:s,exAmt:0,adAmt:atk[s].put_oi_chg||0,note:'✅ Fresh support floor building',col:'var(--bull)'})})
+  callExits.slice(0,2).forEach(s=>{if(!migrations.find(m=>m.from===s)) migrations.push({side:'CE',from:s,to:null,exAmt:Math.abs(atk[s].call_oi_chg||0),adAmt:0,note:'✅ Resistance wall collapsing — breakout watch',col:'var(--bull)'})})
+  putExits.slice(0,2).forEach(s=>{if(!migrations.find(m=>m.from===s)) migrations.push({side:'PE',from:s,to:null,exAmt:Math.abs(atk[s].put_oi_chg||0),adAmt:0,note:'⚠ Support floor collapsing',col:'var(--warn)'})})
 
-  if(!migrations.length){
-    g('mig-body').innerHTML='<div style="padding:10px 12px;font-size:11px;color:var(--text2);font-family:var(--ui)">No significant OI migration this cycle</div>'
-    return
-  }
+  if(!migrations.length){g('mig-body').innerHTML='<div style="padding:10px 12px;font-size:11px;color:var(--text2);font-family:var(--ui)">No significant OI migration this cycle</div>';return}
 
   g('mig-body').innerHTML=migrations.slice(0,6).map(m=>`
     <div class="mig-row">
@@ -978,10 +852,7 @@ function renderMigration(atk,atm){
 function renderPinRisk(d,atm){
   const {spot,max_pain:mp,vix,expiry}=d
   if(!mp||!spot){g('pin-inner').style.background='var(--bg3)';return}
-  const dist=Math.abs(mp-spot)
-  const conc=(d.intelligence?.concentration?.avg_concentration)||50
-  const today=new Date().toISOString().slice(0,10)
-  const isExpiry=expiry&&expiry.slice(0,10)===today
+  const dist=Math.abs(mp-spot), conc=(d.intelligence?.concentration?.avg_concentration)||50, isExpiry=expiry&&expiry.slice(0,10)===new Date().toISOString().slice(0,10)
 
   let risk,riskColor,note
   if(dist<50&&conc>60){risk='VERY HIGH';riskColor='var(--bear)';note=`Max pain only ${Math.round(dist)}pts away · OI concentrated · Strong pull toward ₹${Math.round(mp).toLocaleString('en-IN')}`}
@@ -995,9 +866,7 @@ function renderPinRisk(d,atm){
   const inner=g('pin-inner')
   inner.style.background=riskColor==='var(--bear)'?'rgba(255,61,87,.08)':riskColor==='var(--warn)'?'rgba(255,171,0,.06)':'var(--bg3)'
   inner.style.borderColor=riskColor==='var(--text2)'?'var(--border)':riskColor
-  styl('pin-label',risk,riskColor)
-  set('pin-note',note)
-  styl('pin-score',`₹${Math.round(mp).toLocaleString('en-IN')}`,riskColor)
+  styl('pin-label',risk,riskColor); set('pin-note',note); styl('pin-score',`₹${Math.round(mp).toLocaleString('en-IN')}`,riskColor)
 }
 
 function renderIndexTech(tech){
@@ -1026,38 +895,18 @@ function renderIndexTech(tech){
 }
 
 function renderNiftyTechFull(tech){
-  const mkRow=(key,val,col,note)=>`
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.03)">
-      <span style="font-size:10px;color:var(--text2);font-family:var(--ui)">${key}</span>
-      <span style="font-size:11px;font-weight:700;color:${col||'var(--text)'}">${val}</span>
-      ${note?`<span style="font-size:9px;color:var(--text2);font-family:var(--ui)">${note}</span>`:''}
-    </div>`
-
+  const mkRow=(key,val,col,note)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.03)"><span style="font-size:10px;color:var(--text2);font-family:var(--ui)">${key}</span><span style="font-size:11px;font-weight:700;color:${col||'var(--text)'}">${val}</span>${note?`<span style="font-size:9px;color:var(--text2);font-family:var(--ui)">${note}</span>`:''}</div>`
   const mkPill=(label,cls)=>`<span class="tech-pill ${cls}" style="font-size:10px">${label}</span>`
 
   ;['5min','15min'].forEach(tf=>{
-    const t=tech[tf]||{}
-    const elId=tf==='5min'?'tech-5m-full':'tech-15m-full'
-    const el=g(elId); if(!el) return
-
-    if(!t.ema7&&(t.candle_count||0)<8){
-      el.innerHTML=`<div style="font-size:10px;color:var(--warn);font-family:var(--ui);padding:4px 0">${t.candle_count||0} candles — needs 15+</div>`
-      return
-    }
-
-    const price=t.current_price||0
-    const ema7=t.ema7, ema15=t.ema15, ema21=t.ema21
-    const stDir=t.supertrend, stVal=t.supertrend_val
+    const t=tech[tf]||{}, elId=tf==='5min'?'tech-5m-full':'tech-15m-full', el=g(elId); if(!el) return
+    if(!t.ema7&&(t.candle_count||0)<8){ el.innerHTML=`<div style="font-size:10px;color:var(--warn);font-family:var(--ui);padding:4px 0">${t.candle_count||0} candles — needs 15+</div>`; return }
+    const price=t.current_price||0, ema7=t.ema7, ema15=t.ema15, ema21=t.ema21, stDir=t.supertrend, stVal=t.supertrend_val
     const trendCls=t.trend&&t.trend.includes('STRONG BULL')?'tp-bull':t.trend&&t.trend.includes('STRONG BEAR')?'tp-bear':'tp-warn'
     const stCls=stDir==='BULLISH'?'tp-bull':stDir==='BEARISH'?'tp-bear':'tp-neu'
-    const d7col  = ema7  ?(price>ema7?'var(--bull)':'var(--bear)'):'var(--text2)'
-    const d15col = ema15?(price>ema15?'var(--bull)':'var(--bear)'):'var(--text2)'
-    const e7e15col=t.ema7_above_ema15?'var(--bull)':'var(--bear)'
+    const d7col=ema7?(price>ema7?'var(--bull)':'var(--bear)'):'var(--text2)', d15col=ema15?(price>ema15?'var(--bull)':'var(--bear)'):'var(--text2)', e7e15col=t.ema7_above_ema15?'var(--bull)':'var(--bear)'
     const xover=t.crossover?`<span class="xover-pill ${t.crossover.includes('GOLDEN')?'xover-gold':'xover-death'}" style="font-size:9px">🔔 ${t.crossover}</span>`:''
-
-    const d7  = ema7  ? ((price-ema7)/ema7*100).toFixed(2)+'%' : '—'
-    const d15 = ema15 ? ((price-ema15)/ema15*100).toFixed(2)+'%' : '—'
-    const d21 = ema21 ? ((price-ema21)/ema21*100).toFixed(2)+'%' : '—'
+    const d7=ema7?((price-ema7)/ema7*100).toFixed(2)+'%':'—', d15=ema15?((price-ema15)/ema15*100).toFixed(2)+'%':'—', d21=ema21?((price-ema21)/ema21*100).toFixed(2)+'%':'—'
 
     let emaScore=0
     if(ema7&&ema15&&price>ema7&&price>ema15) emaScore+=2
@@ -1066,17 +915,11 @@ function renderNiftyTechFull(tech){
     const emaAlign=emaScore>=3?'PERFECT BULLISH STACK':emaScore>=2?'BULLISH ALIGNED':emaScore===1?'PARTIAL ALIGN':'BEARISH STACK'
     const emaAlignCol=emaScore>=3?'var(--bull)':emaScore>=2?'var(--bull)':emaScore===1?'var(--warn)':'var(--bear)'
 
-    const rsi=t.rsi
-    const rsiNote=!rsi?'N/A':rsi>=70?'Overbought ⚠':rsi>=60?'Bullish':'Neutral'+(rsi<=40?' Bearish':'')
-    const rsiCol=!rsi?'var(--text2)':rsi>=70?'var(--bear)':rsi<=30?'var(--bull)':rsi>=55?'var(--bull)':'var(--warn)'
+    const rsi=t.rsi, rsiNote=!rsi?'N/A':rsi>=70?'Overbought ⚠':rsi>=60?'Bullish':'Neutral'+(rsi<=40?' Bearish':''), rsiCol=!rsi?'var(--text2)':rsi>=70?'var(--bear)':rsi<=30?'var(--bull)':rsi>=55?'var(--bull)':'var(--warn)'
     const stDist=stVal&&price?Math.abs(price-stVal).toFixed(1):null
 
     el.innerHTML=`
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
-        ${mkPill(t.trend||'N/A',trendCls)}
-        ${mkPill(stDir||'ST N/A',stCls)}
-        ${xover}
-      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">${mkPill(t.trend||'N/A',trendCls)}${mkPill(stDir||'ST N/A',stCls)}${xover}</div>
       ${mkRow('EMA 7',ema7||'—',d7col,`${t.price_above_ema7?'Price ABOVE':'Price BELOW'} · dist ${d7}`)}
       ${mkRow('EMA 15',ema15||'—',d15col,`${t.price_above_ema15?'ABOVE':'BELOW'} · dist ${d15}`)}
       ${mkRow('EMA 21',ema21||'—','var(--text2)',`dist ${d21}`)}
@@ -1097,8 +940,7 @@ function renderNiftyTechFull(tech){
   if(t15.supertrend==='BULLISH') bullPoints+=2; else if(t15.supertrend==='BEARISH') bearPoints+=2
   if((t5.rsi||50)>55) bullPoints++; else if((t5.rsi||50)<45) bearPoints++
 
-  const total=bullPoints+bearPoints||1
-  const bullPct=Math.round(bullPoints/total*100)
+  const total=bullPoints+bearPoints||1, bullPct=Math.round(bullPoints/total*100)
   let bias,biasCol,confluence
   if(bullPct>=75)     {bias='STRONG BULLISH';biasCol='var(--bull)';confluence='All EMAs + ST aligned bullish'}
   else if(bullPct>=60){bias='BULLISH';biasCol='var(--bull)';confluence='Most signals bullish — buy dips'}
@@ -1114,26 +956,12 @@ function renderNiftyTechFull(tech){
 }
 
 function rowHTML(r,atm,maxOI,isCall){
-  const s=parseFloat(r.strike),isA=Math.abs(s-atm)<1
-  const oi=isCall?(r.call_oi||0):(r.put_oi||0)
-  const chg=isCall?(r.call_oi_chg||0):(r.put_oi_chg||0)
-  const chgD=isCall?(r.call_oi_chg_day||0):(r.put_oi_chg_day||0)
-  const iv=isCall?(r.call_iv||0):(r.put_iv||0)
-  const ltp=isCall?(r.call_ltp||0):(r.put_ltp||0)
-  const ltpC=isCall?(r.call_ltp_chg||0):(r.put_ltp_chg||0)
-  const str=isCall?(r.sr_strength_call||0):(r.sr_strength_put||0)
-  const cc=chg>0?'var(--bear)':chg<0?'var(--bull)':'var(--text2)'
-  const dc=chgD>0?'var(--bear)':chgD<0?'var(--bull)':'var(--text2)'
-  const lc=ltpC>0?'var(--bull)':ltpC<0?'var(--bear)':'var(--text2)'
-  const skC=isA?'sk-a':isCall?'sk-c':'sk-p'
-  const vel=velArrow(s,isCall,chg) 
-
-  const intensity=maxOI>0?(oi/maxOI):0
-  const heatBg=isCall
-    ?`rgba(255,61,87,${(intensity*0.18).toFixed(2)})`
-    :`rgba(0,230,118,${(intensity*0.15).toFixed(2)})`
-
-  const score=flowScore(r,isCall)
+  const s=parseFloat(r.strike), isA=Math.abs(s-atm)<1, oi=isCall?(r.call_oi||0):(r.put_oi||0)
+  const chg=isCall?(r.call_oi_chg||0):(r.put_oi_chg||0), chgD=isCall?(r.call_oi_chg_day||0):(r.put_oi_chg_day||0)
+  const iv=isCall?(r.call_iv||0):(r.put_iv||0), ltp=isCall?(r.call_ltp||0):(r.put_ltp||0), ltpC=isCall?(r.call_ltp_chg||0):(r.put_ltp_chg||0)
+  const cc=chg>0?'var(--bear)':chg<0?'var(--bull)':'var(--text2)', dc=chgD>0?'var(--bear)':chgD<0?'var(--bull)':'var(--text2)', lc=ltpC>0?'var(--bull)':ltpC<0?'var(--bear)':'var(--text2)'
+  const skC=isA?'sk-a':isCall?'sk-c':'sk-p', vel=velArrow(s,isCall,chg), score=flowScore(r,isCall)
+  const heatBg=isCall ? `rgba(255,61,87,${((maxOI>0?(oi/maxOI):0)*0.18).toFixed(2)})` : `rgba(0,230,118,${((maxOI>0?(oi/maxOI):0)*0.15).toFixed(2)})`
 
   return `<tr class="${isA?'ar':Math.abs(chg)>500000?'hr2':''}" style="${isA?'':'background:'+heatBg}">
     <td class="td-s"><span class="${skC}">${Math.round(s).toLocaleString('en-IN')}${isA?' ◄':''}</span></td>
@@ -1150,61 +978,31 @@ function rowHTML(r,atm,maxOI,isCall){
 }
 
 function renderTotalMarketOI(d){
-  const chain=d.chain||{}
-  const sts=Object.keys(chain).map(Number)
+  const chain=d.chain||{}, sts=Object.keys(chain).map(Number)
   if(!sts.length) return
 
-  const totalCE    = sts.reduce((s,k)=>s+(chain[k].call_oi||0),0)
-  const totalPE    = sts.reduce((s,k)=>s+(chain[k].put_oi||0),0)
-  const totalCEChg = sts.reduce((s,k)=>s+(chain[k].call_oi_chg||0),0)
-  const totalPEChg = sts.reduce((s,k)=>s+(chain[k].put_oi_chg||0),0)
-  const netChg     = totalPEChg - totalCEChg
+  const totalCE = sts.reduce((s,k)=>s+(chain[k].call_oi||0),0), totalPE = sts.reduce((s,k)=>s+(chain[k].put_oi||0),0)
+  const totalCEChg = sts.reduce((s,k)=>s+(chain[k].call_oi_chg||0),0), totalPEChg = sts.reduce((s,k)=>s+(chain[k].put_oi_chg||0),0), netChg = totalPEChg - totalCEChg
 
-  const el=g('tot-ce-oi');   if(el) el.textContent=(totalCE/10000000).toFixed(2)+'Cr'
-  const el2=g('tot-pe-oi');  if(el2) el2.textContent=(totalPE/10000000).toFixed(2)+'Cr'
+  if(g('tot-ce-oi')) g('tot-ce-oi').textContent=(totalCE/10000000).toFixed(2)+'Cr'
+  if(g('tot-pe-oi')) g('tot-pe-oi').textContent=(totalPE/10000000).toFixed(2)+'Cr'
 
-  const cce=g('tot-ce-chg')
-  if(cce){
-    const v=totalCEChg
-    cce.textContent=(v>=0?'+':'')+fc(v)
-    cce.style.color=v>0?'var(--bear)':v<0?'var(--bull)':'var(--text2)'
-  }
-  const cpe=g('tot-pe-chg')
-  if(cpe){
-    const v=totalPEChg
-    cpe.textContent=(v>=0?'+':'')+fc(v)
-    cpe.style.color=v>0?'var(--bull)':v<0?'var(--warn)':'var(--text2)'
-  }
-  const cnet=g('tot-net-chg')
-  if(cnet){
-    cnet.textContent=(netChg>=0?'+':'')+fc(netChg)
-    cnet.style.color=netChg>0?'var(--bull)':netChg<0?'var(--bear)':'var(--text2)'
-  }
+  if(g('tot-ce-chg')){ g('tot-ce-chg').textContent=(totalCEChg>=0?'+':'')+fc(totalCEChg); g('tot-ce-chg').style.color=totalCEChg>0?'var(--bear)':totalCEChg<0?'var(--bull)':'var(--text2)' }
+  if(g('tot-pe-chg')){ g('tot-pe-chg').textContent=(totalPEChg>=0?'+':'')+fc(totalPEChg); g('tot-pe-chg').style.color=totalPEChg>0?'var(--bull)':totalPEChg<0?'var(--warn)':'var(--text2)' }
+  if(g('tot-net-chg')){ g('tot-net-chg').textContent=(netChg>=0?'+':'')+fc(netChg); g('tot-net-chg').style.color=netChg>0?'var(--bull)':netChg<0?'var(--bear)':'var(--text2)' }
 
   let flowTxt='', flowCol='var(--text2)'
-  if(Math.abs(totalCEChg)<500000&&Math.abs(totalPEChg)<500000){
-    flowTxt='⚡ OI FLAT — No conviction yet'; flowCol='var(--warn)'
-  } else if(totalCEChg>2000000&&totalPEChg>2000000){
-    flowTxt='💥 BOTH ADDING — BIG MOVE COMING'; flowCol='var(--info)'
-  } else if(totalCEChg<-2000000&&totalPEChg<-2000000){
-    flowTxt='🌀 BOTH EXITING — Squareoff / caution'; flowCol='var(--text2)'
-  } else if(totalCEChg>2000000&&totalPEChg<-500000){
-    flowTxt='🔄 OI SHIFT→CE — Resistance building'; flowCol='var(--bear)'
-  } else if(totalPEChg>2000000&&totalCEChg<-500000){
-    flowTxt='🔄 OI SHIFT→PE — Support building'; flowCol='var(--bull)'
-  } else if(totalCEChg>2000000){
-    flowTxt='🔴 FRESH CE BUILD — Resistance forming'; flowCol='var(--bear)'
-  } else if(totalCEChg<-2000000){
-    flowTxt='✅ CE UNWINDING — Resistance weakening'; flowCol='var(--bull)'
-  } else if(totalPEChg>2000000){
-    flowTxt='✅ FRESH PE BUILD — Support forming'; flowCol='var(--bull)'
-  } else if(totalPEChg<-2000000){
-    flowTxt='⚠ PE UNWINDING — Support weakening'; flowCol='var(--warn)'
-  } else {
-    flowTxt='→ STABLE — No major OI shift this cycle'; flowCol='var(--text2)'
-  }
-  const mf=g('tot-market-flow')
-  if(mf){mf.textContent=flowTxt; mf.style.color=flowCol}
+  if(Math.abs(totalCEChg)<500000&&Math.abs(totalPEChg)<500000){ flowTxt='⚡ OI FLAT — No conviction yet'; flowCol='var(--warn)' }
+  else if(totalCEChg>2000000&&totalPEChg>2000000){ flowTxt='💥 BOTH ADDING — BIG MOVE COMING'; flowCol='var(--info)' }
+  else if(totalCEChg<-2000000&&totalPEChg<-2000000){ flowTxt='🌀 BOTH EXITING — Squareoff / caution'; flowCol='var(--text2)' }
+  else if(totalCEChg>2000000&&totalPEChg<-500000){ flowTxt='🔄 OI SHIFT→CE — Resistance building'; flowCol='var(--bear)' }
+  else if(totalPEChg>2000000&&totalCEChg<-500000){ flowTxt='🔄 OI SHIFT→PE — Support building'; flowCol='var(--bull)' }
+  else if(totalCEChg>2000000){ flowTxt='🔴 FRESH CE BUILD — Resistance forming'; flowCol='var(--bear)' }
+  else if(totalCEChg<-2000000){ flowTxt='✅ CE UNWINDING — Resistance weakening'; flowCol='var(--bull)' }
+  else if(totalPEChg>2000000){ flowTxt='✅ FRESH PE BUILD — Support forming'; flowCol='var(--bull)' }
+  else if(totalPEChg<-2000000){ flowTxt='⚠ PE UNWINDING — Support weakening'; flowCol='var(--warn)' }
+  else { flowTxt='→ STABLE — No major OI shift this cycle'; flowCol='var(--text2)' }
+  if(g('tot-market-flow')){ g('tot-market-flow').textContent=flowTxt; g('tot-market-flow').style.color=flowCol }
 }
 
 function sigColor(sig){
@@ -1218,56 +1016,24 @@ function sigBg(sig){const c=sigColor(sig);return c==='var(--bull)'?'rgba(0,230,1
 
 function renderFlowMatrix(atk,atm){
   set('flow-time',new Date().toLocaleTimeString('en-IN'))
-  const strikes=Object.keys(atk).map(Number).sort((a,b)=>a-b)
-  const rows=strikes.map(s=>{
-    const v=atk[s]||{},isATM=s===atm
-    const cf=v.call_flow||{},pf=v.put_flow||{},nf=v.net_flow||{}
-    const tech=v.ltp_technicals||{},ct=tech.call||{},pt=tech.put||{}
-
+  const rows=Object.keys(atk).map(Number).sort((a,b)=>a-b).map(s=>{
+    const v=atk[s]||{},isATM=s===atm, cf=v.call_flow||{},pf=v.put_flow||{},nf=v.net_flow||{}, tech=v.ltp_technicals||{},ct=tech.call||{},pt=tech.put||{}
     const mkTech=t=>{
       if(!t||!t.ema7) return `<span style="font-size:9px;color:var(--text2)">Needs ${7-(tech.data_points||0)} cycles</span>`
       const tc=t.trend&&t.trend.includes('STRONG BULL')?'var(--bull)':t.trend&&t.trend.includes('STRONG BEAR')?'var(--bear)':'var(--warn)'
       const xo=t.crossover?`<br><span style="font-size:9px;font-weight:700;color:${t.crossover.includes('GOLDEN')?'var(--bull)':'var(--bear)'}">🔔 ${t.crossover}</span>`:''
-      return `<span style="font-size:10px;font-weight:700;color:${tc}">${t.trend||'N/A'}</span>
-              <br><span style="font-size:9px;color:var(--text2)">E7:${t.ema7} E15:${t.ema15||'—'}</span>
-              <br><span style="font-size:9px;color:${t.price_above_ema7?'var(--bull)':'var(--bear)'}">${t.price_above_ema7?'✅ >EMA7':'❌ <EMA7'}</span>${xo}`
+      return `<span style="font-size:10px;font-weight:700;color:${tc}">${t.trend||'N/A'}</span><br><span style="font-size:9px;color:var(--text2)">E7:${t.ema7} E15:${t.ema15||'—'}</span><br><span style="font-size:9px;color:${t.price_above_ema7?'var(--bull)':'var(--bear)'}">${t.price_above_ema7?'✅ >EMA7':'❌ <EMA7'}</span>${xo}`
     }
-
     const netCol=nf.net_note&&nf.net_note.includes('💥')?'var(--info)':nf.net_note&&nf.net_note.includes('🔄')?'var(--info)':'var(--text2)'
-    const ceVel=velArrow(s,true,v.call_oi_chg||0)
-    const peVel=velArrow(s,false,v.put_oi_chg||0)
-
     return `<tr style="${isATM?'background:rgba(124,77,255,.08)':''}">
-      <td class="td-s">
-        <span class="${isATM?'sk-a':s>atm?'sk-c':'sk-p'}">${Math.round(s).toLocaleString('en-IN')}${isATM?' ◄':''}</span>
-        <br><span style="font-size:9px;color:var(--warn)">CE ₹${v.call_ltp?Number(v.call_ltp).toFixed(0):'—'}</span>
-        <br><span style="font-size:9px;color:var(--bull)">PE ₹${v.put_ltp?Number(v.put_ltp).toFixed(0):'—'}</span>
-        <br><span style="font-size:9px;color:${v.pcr>1.2?'var(--bull)':v.pcr<0.8?'var(--bear)':'var(--warn)'}">PCR:${v.pcr?Number(v.pcr).toFixed(2):'—'}</span>
-      </td>
-      <td style="text-align:left;background:${sigBg(cf.signal)};border-left:2px solid ${sigColor(cf.signal)}">
-        <div class="flow-cond" style="color:${sigColor(cf.signal)}">${cf.emoji||'⚪'} ${cf.condition||'Waiting...'}</div>
-        <span class="flow-sig" style="color:${sigColor(cf.signal)};border:1px solid ${sigColor(cf.signal)};background:${sigBg(cf.signal)}">${cf.signal||'—'}</span>
-        <div class="flow-desc">${cf.desc||'Need 2nd cycle'}</div>
-      </td>
-      <td style="text-align:left">
-        <div style="font-size:11px;font-weight:700;color:${(cf.oi_chg_l||0)>0?'var(--bear)':(cf.oi_chg_l||0)<0?'var(--bull)':'var(--text2)'}">${cf.oi_chg_l!==undefined?(cf.oi_chg_l>=0?'+':'')+cf.oi_chg_l+'L':'—'}</div>
-        <div style="font-size:10px;color:var(--text2)">Total:${cf.oi_total_l||0}L</div>
-      </td>
-      <td style="text-align:left">${ceVel}</td>
-      <td style="text-align:center;padding:4px 6px">
-        <div style="font-size:11px;color:${netCol};font-family:var(--ui);font-weight:700;line-height:1.4">${nf.net_note||'—'}</div>
-        <div style="font-size:9px;color:var(--text2)">Total:${nf.total_oi_l||0}L</div>
-      </td>
-      <td style="text-align:left;background:${sigBg(pf.signal)};border-left:2px solid ${sigColor(pf.signal)}">
-        <div class="flow-cond" style="color:${sigColor(pf.signal)}">${pf.emoji||'⚪'} ${pf.condition||'Waiting...'}</div>
-        <span class="flow-sig" style="color:${sigColor(pf.signal)};border:1px solid ${sigColor(pf.signal)};background:${sigBg(pf.signal)}">${pf.signal||'—'}</span>
-        <div class="flow-desc">${pf.desc||'Need 2nd cycle'}</div>
-      </td>
-      <td style="text-align:left">
-        <div style="font-size:11px;font-weight:700;color:${(pf.oi_chg_l||0)>0?'var(--bull)':(pf.oi_chg_l||0)<0?'var(--warn)':'var(--text2)'}">${pf.oi_chg_l!==undefined?(pf.oi_chg_l>=0?'+':'')+pf.oi_chg_l+'L':'—'}</div>
-        <div style="font-size:10px;color:var(--text2)">Total:${pf.oi_total_l||0}L</div>
-      </td>
-      <td style="text-align:left">${peVel}</td>
+      <td class="td-s"><span class="${isATM?'sk-a':s>atm?'sk-c':'sk-p'}">${Math.round(s).toLocaleString('en-IN')}${isATM?' ◄':''}</span><br><span style="font-size:9px;color:var(--warn)">CE ₹${v.call_ltp?Number(v.call_ltp).toFixed(0):'—'}</span><br><span style="font-size:9px;color:var(--bull)">PE ₹${v.put_ltp?Number(v.put_ltp).toFixed(0):'—'}</span><br><span style="font-size:9px;color:${v.pcr>1.2?'var(--bull)':v.pcr<0.8?'var(--bear)':'var(--warn)'}">PCR:${v.pcr?Number(v.pcr).toFixed(2):'—'}</span></td>
+      <td style="text-align:left;background:${sigBg(cf.signal)};border-left:2px solid ${sigColor(cf.signal)}"><div class="flow-cond" style="color:${sigColor(cf.signal)}">${cf.emoji||'⚪'} ${cf.condition||'Waiting...'}</div><span class="flow-sig" style="color:${sigColor(cf.signal)};border:1px solid ${sigColor(cf.signal)};background:${sigBg(cf.signal)}">${cf.signal||'—'}</span><div class="flow-desc">${cf.desc||'Need 2nd cycle'}</div></td>
+      <td style="text-align:left"><div style="font-size:11px;font-weight:700;color:${(cf.oi_chg_l||0)>0?'var(--bear)':(cf.oi_chg_l||0)<0?'var(--bull)':'var(--text2)'}">${cf.oi_chg_l!==undefined?(cf.oi_chg_l>=0?'+':'')+cf.oi_chg_l+'L':'—'}</div><div style="font-size:10px;color:var(--text2)">Total:${cf.oi_total_l||0}L</div></td>
+      <td style="text-align:left">${velArrow(s,true,v.call_oi_chg||0)}</td>
+      <td style="text-align:center;padding:4px 6px"><div style="font-size:11px;color:${netCol};font-family:var(--ui);font-weight:700;line-height:1.4">${nf.net_note||'—'}</div><div style="font-size:9px;color:var(--text2)">Total:${nf.total_oi_l||0}L</div></td>
+      <td style="text-align:left;background:${sigBg(pf.signal)};border-left:2px solid ${sigColor(pf.signal)}"><div class="flow-cond" style="color:${sigColor(pf.signal)}">${pf.emoji||'⚪'} ${pf.condition||'Waiting...'}</div><span class="flow-sig" style="color:${sigColor(pf.signal)};border:1px solid ${sigColor(pf.signal)};background:${sigBg(pf.signal)}">${pf.signal||'—'}</span><div class="flow-desc">${pf.desc||'Need 2nd cycle'}</div></td>
+      <td style="text-align:left"><div style="font-size:11px;font-weight:700;color:${(pf.oi_chg_l||0)>0?'var(--bull)':(pf.oi_chg_l||0)<0?'var(--warn)':'var(--text2)'}">${pf.oi_chg_l!==undefined?(pf.oi_chg_l>=0?'+':'')+pf.oi_chg_l+'L':'—'}</div><div style="font-size:10px;color:var(--text2)">Total:${pf.oi_total_l||0}L</div></td>
+      <td style="text-align:left">${velArrow(s,false,v.put_oi_chg||0)}</td>
       <td style="text-align:left;min-width:100px">${mkTech(ct)}</td>
       <td style="text-align:left;min-width:100px">${mkTech(pt)}</td>
     </tr>`
@@ -1279,36 +1045,16 @@ function renderHist(hist,atm){
   const el=g('histogram')
   if(!hist||!hist.length){el.innerHTML='<div class="loading">No data</div>';return}
 
-  const maxC  = Math.max(...hist.map(h=>h.call_oi||0))||1
-  const maxP  = Math.max(...hist.map(h=>h.put_oi||0))||1
-  const maxOI = Math.max(maxC,maxP)
-  const allChg= [...hist.map(h=>Math.abs(h.call_oi_chg||0)),...hist.map(h=>Math.abs(h.put_oi_chg||0))]
-  const maxChg= Math.max(...allChg)||1
-  const W=110
+  const maxC = Math.max(...hist.map(h=>h.call_oi||0))||1, maxP = Math.max(...hist.map(h=>h.put_oi||0))||1, maxOI = Math.max(maxC,maxP)
+  const maxChg = Math.max(...[...hist.map(h=>Math.abs(h.call_oi_chg||0)),...hist.map(h=>Math.abs(h.put_oi_chg||0))])||1, W=110
 
   el.innerHTML=hist.map(h=>{
-    const s=parseFloat(h.strike||0), isA=Math.abs(s-atm)<1
-    const coi=h.call_oi||0, poi=h.put_oi||0
-    const cc=h.call_oi_chg||0, pc=h.put_oi_chg||0
-
-    const cw=Math.round((coi/maxOI)*W)
-    const pw=Math.round((poi/maxOI)*W)
-    const ccW=cc!==0?Math.max(3,Math.round((Math.abs(cc)/maxChg)*W)):0
-    const pcW=pc!==0?Math.max(3,Math.round((Math.abs(pc)/maxChg)*W)):0
-
+    const s=parseFloat(h.strike||0), isA=Math.abs(s-atm)<1, coi=h.call_oi||0, poi=h.put_oi||0, cc=h.call_oi_chg||0, pc=h.put_oi_chg||0
+    const cw=Math.round((coi/maxOI)*W), pw=Math.round((poi/maxOI)*W), ccW=cc!==0?Math.max(3,Math.round((Math.abs(cc)/maxChg)*W)):0, pcW=pc!==0?Math.max(3,Math.round((Math.abs(pc)/maxChg)*W)):0
     const bigT=maxChg*0.05
-    let ceStatus='', peStatus=''
-    let ceStatusCol='var(--text2)', peStatusCol='var(--text2)'
-    if(Math.abs(cc)>bigT){
-      if(cc>0){ceStatus='▲ ADDING';ceStatusCol='var(--bear)'}
-      else{ceStatus='▼ EXITING';ceStatusCol='var(--bull)'}
-    }
-    if(Math.abs(pc)>bigT){
-      if(pc>0){peStatus='▲ ADDING';peStatusCol='var(--bull)'}
-      else{peStatus='▼ EXITING';peStatusCol='var(--warn)'}
-    }
-
-    let signal='', signalCol='var(--text2)'
+    let ceStatusCol='var(--text2)', peStatusCol='var(--text2)', signal='', signalCol='var(--text2)'
+    if(Math.abs(cc)>bigT) ceStatusCol=cc>0?'var(--bear)':'var(--bull)'
+    if(Math.abs(pc)>bigT) peStatusCol=pc>0?'var(--bull)':'var(--warn)'
     if(cc>bigT&&pc>bigT){signal='💥 BOTH ADDING';signalCol='var(--info)'}
     else if(cc<-bigT&&pc<-bigT){signal='🌀 BOTH EXIT';signalCol='var(--text2)'}
     else if(cc>bigT&&Math.abs(pc)<=bigT){signal='🔴 CE WALL';signalCol='var(--bear)'}
@@ -1317,34 +1063,22 @@ function renderHist(hist,atm){
     else if(pc<-bigT&&Math.abs(cc)<=bigT){signal='⚠ PE FLOOR WEAK';signalCol='var(--warn)'}
     else if(cc>bigT&&pc<-bigT){signal='🔄 SHIFT→CE';signalCol='var(--info)'}
     else if(pc>bigT&&cc<-bigT){signal='🔄 SHIFT→PE';signalCol='var(--info)'}
-
-    const net=poi-coi, nc=net>0?'var(--bull)':net<0?'var(--bear)':'var(--text2)'
-    const str=Math.max(h.sr_strength_call||0,h.sr_strength_put||0)
+    const net=poi-coi, nc=net>0?'var(--bull)':net<0?'var(--bear)':'var(--text2)', str=Math.max(h.sr_strength_call||0,h.sr_strength_put||0)
 
     return `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.025);${isA?'background:rgba(124,77,255,.06)':''}">
       <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
         <div style="width:44px;text-align:right;font-size:10px;font-weight:700;color:var(--bear);flex-shrink:0">${(coi/100000).toFixed(1)}L</div>
-        <div style="flex:1;display:flex;justify-content:flex-end;height:11px;background:rgba(255,61,87,.06);border-radius:2px 0 0 2px;overflow:hidden">
-          <div style="width:${cw}px;background:var(--bear);opacity:.7;border-radius:2px 0 0 2px"></div>
-        </div>
-        <div style="width:64px;text-align:center;font-size:${isA?12:11}px;font-weight:${isA?700:400};color:${isA?'var(--atm)':'var(--text2)'};flex-shrink:0">
-          ${Math.round(s).toLocaleString('en-IN')}${isA?' ◄':''}
-        </div>
-        <div style="flex:1;display:flex;justify-content:flex-start;height:11px;background:rgba(0,230,118,.05);border-radius:0 2px 2px 0;overflow:hidden">
-          <div style="width:${pw}px;background:var(--bull);opacity:.7;border-radius:0 2px 2px 0"></div>
-        </div>
+        <div style="flex:1;display:flex;justify-content:flex-end;height:11px;background:rgba(255,61,87,.06);border-radius:2px 0 0 2px;overflow:hidden"><div style="width:${cw}px;background:var(--bear);opacity:.7;border-radius:2px 0 0 2px"></div></div>
+        <div style="width:64px;text-align:center;font-size:${isA?12:11}px;font-weight:${isA?700:400};color:${isA?'var(--atm)':'var(--text2)'};flex-shrink:0">${Math.round(s).toLocaleString('en-IN')}${isA?' ◄':''}</div>
+        <div style="flex:1;display:flex;justify-content:flex-start;height:11px;background:rgba(0,230,118,.05);border-radius:0 2px 2px 0;overflow:hidden"><div style="width:${pw}px;background:var(--bull);opacity:.7;border-radius:0 2px 2px 0"></div></div>
         <div style="width:44px;font-size:10px;font-weight:700;color:var(--bull);flex-shrink:0">${(poi/100000).toFixed(1)}L</div>
         <div style="width:36px;font-size:9px;color:var(--text2);text-align:right;flex-shrink:0">${str}</div>
       </div>
       <div style="display:flex;align-items:center;gap:4px">
         <div style="width:44px;text-align:right;font-size:9px;font-weight:700;color:${ceStatusCol};flex-shrink:0">${cc!==0?fc(cc):'—'}</div>
-        <div style="flex:1;display:flex;justify-content:flex-end;height:7px;border-radius:2px 0 0 2px;overflow:hidden;background:rgba(255,255,255,.03)">
-          ${ccW>0?`<div style="width:${ccW}px;background:${cc>0?'var(--bear)':'var(--info)'};border-radius:2px 0 0 2px"></div>`:''}
-        </div>
+        <div style="flex:1;display:flex;justify-content:flex-end;height:7px;border-radius:2px 0 0 2px;overflow:hidden;background:rgba(255,255,255,.03)">${ccW>0?`<div style="width:${ccW}px;background:${cc>0?'var(--bear)':'var(--info)'};border-radius:2px 0 0 2px"></div>`:''}</div>
         <div style="width:64px;text-align:center;font-size:9px;font-weight:700;color:${signalCol};flex-shrink:0;font-family:var(--ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${signal||''}</div>
-        <div style="flex:1;display:flex;justify-content:flex-start;height:7px;border-radius:0 2px 2px 0;overflow:hidden;background:rgba(255,255,255,.03)">
-          ${pcW>0?`<div style="width:${pcW}px;background:${pc>0?'var(--bull)':'var(--warn)'};border-radius:0 2px 2px 0"></div>`:''}
-        </div>
+        <div style="flex:1;display:flex;justify-content:flex-start;height:7px;border-radius:0 2px 2px 0;overflow:hidden;background:rgba(255,255,255,.03)">${pcW>0?`<div style="width:${pcW}px;background:${pc>0?'var(--bull)':'var(--warn)'};border-radius:0 2px 2px 0"></div>`:''}</div>
         <div style="width:44px;font-size:9px;font-weight:700;color:${peStatusCol};flex-shrink:0">${pc!==0?fc(pc):'—'}</div>
         <div style="width:36px;font-size:9px;color:${nc};text-align:right;flex-shrink:0">${net>=0?'+':''}${(net/100000).toFixed(1)}</div>
       </div>
@@ -1360,14 +1094,7 @@ function renderGEX(gexData,flip,atm){
   el.innerHTML=gexData.map(gd=>{
     const s=parseFloat(gd.strike),isA=Math.abs(s-atm)<1,isFlip=flip&&Math.abs(s-parseFloat(flip.strike||0))<1
     const ng=gd.net_gex||0,pct=Math.round((Math.abs(ng)/maxGEX)*W),col=ng>0?'var(--bear)':'var(--bull)'
-    return `<div class="gex-row">
-      <div class="gex-strike" style="color:${isA?'var(--atm)':isFlip?'var(--warn)':'var(--text2)'};font-weight:${isA||isFlip?700:400}">₹${Math.round(s).toLocaleString('en-IN')}</div>
-      <div class="gex-bar-wrap">
-        ${ng>0?`<div style="display:flex;justify-content:flex-end;flex:1"><div class="gex-pos" style="width:${pct}px"></div></div><div class="gex-mid"></div><div style="flex:1"></div>`:`<div style="flex:1"></div><div class="gex-mid"></div><div style="flex:1"><div class="gex-neg" style="width:${pct}px"></div></div>`}
-      </div>
-      <div class="gex-val" style="color:${col}">${ng>=0?'+':''}${(ng/1000).toFixed(0)}K</div>
-      ${isFlip?'<span class="gex-flip-tag"> ⚡FLIP</span>':''}${isA?`<span style="font-size:9px;color:var(--atm)"> ◄ATM</span>`:''}
-    </div>`
+    return `<div class="gex-row"><div class="gex-strike" style="color:${isA?'var(--atm)':isFlip?'var(--warn)':'var(--text2)'};font-weight:${isA||isFlip?700:400}">₹${Math.round(s).toLocaleString('en-IN')}</div><div class="gex-bar-wrap">${ng>0?`<div style="display:flex;justify-content:flex-end;flex:1"><div class="gex-pos" style="width:${pct}px"></div></div><div class="gex-mid"></div><div style="flex:1"></div>`:`<div style="flex:1"></div><div class="gex-mid"></div><div style="flex:1"><div class="gex-neg" style="width:${pct}px"></div></div>`}</div><div class="gex-val" style="color:${col}">${ng>=0?'+':''}${(ng/1000).toFixed(0)}K</div>${isFlip?'<span class="gex-flip-tag"> ⚡FLIP</span>':''}${isA?`<span style="font-size:9px;color:var(--atm)"> ◄ATM</span>`:''}</div>`
   }).join('')
 }
 
@@ -1376,16 +1103,8 @@ function renderSkew(skewObj,_){
   styl('skew-signal',skewObj.signal||'—',avg>3?'var(--bear)':avg<-3?'var(--bull)':'var(--text2)')
   styl('skew-val',(avg>0?'PUT IV+':'CALL IV+')+Math.abs(avg).toFixed(1)+'%',avg>3?'var(--bear)':avg<-3?'var(--bull)':'var(--text2)')
   if(!data.length){el.innerHTML='<div class="loading">Need ±3 strikes</div>';return}
-  el.innerHTML=`<div style="padding:8px 12px"><div style="font-size:11px;color:var(--text2);margin-bottom:6px">${skewObj.signal||'—'}</div>
-    ${data.map(s=>{const skew=s.skew||0,col=skew>0?'var(--bear)':skew<0?'var(--bull)':'var(--text2)',pct=Math.min(100,Math.abs(skew)*3)
-    return `<div class="skew-row">
-      <span style="font-size:10px;color:var(--text2);width:24px">±${s.dist}</span>
-      <span style="font-size:10px;color:var(--bear);width:40px;text-align:right">${(s.call_iv||0).toFixed(1)}%</span>
-      <div class="skew-bar"><div class="skew-fill" style="width:${pct}%;background:${col}"></div></div>
-      <span style="font-size:10px;color:var(--bull);width:40px">${(s.put_iv||0).toFixed(1)}%</span>
-      <span style="font-size:10px;color:${col};width:44px;text-align:right">${skew>=0?'PUT+':'CALL+'}${Math.abs(skew).toFixed(1)}%</span>
-      <span style="font-size:9px;color:var(--text2);margin-left:6px">${Math.abs(skew)>3?skew>0?'Bears paying premium→bearish':'Bulls paying premium→squeeze':'Balanced'}</span>
-    </div>`}).join('')}</div>`
+  el.innerHTML=`<div style="padding:8px 12px"><div style="font-size:11px;color:var(--text2);margin-bottom:6px">${skewObj.signal||'—'}</div>${data.map(s=>{const skew=s.skew||0,col=skew>0?'var(--bear)':skew<0?'var(--bull)':'var(--text2)',pct=Math.min(100,Math.abs(skew)*3)
+  return `<div class="skew-row"><span style="font-size:10px;color:var(--text2);width:24px">±${s.dist}</span><span style="font-size:10px;color:var(--bear);width:40px;text-align:right">${(s.call_iv||0).toFixed(1)}%</span><div class="skew-bar"><div class="skew-fill" style="width:${pct}%;background:${col}"></div></div><span style="font-size:10px;color:var(--bull);width:40px">${(s.put_iv||0).toFixed(1)}%</span><span style="font-size:10px;color:${col};width:44px;text-align:right">${skew>=0?'PUT+':'CALL+'}${Math.abs(skew).toFixed(1)}%</span><span style="font-size:9px;color:var(--text2);margin-left:6px">${Math.abs(skew)>3?skew>0?'Bears paying premium→bearish':'Bulls paying premium→squeeze':'Balanced'}</span></div>`}).join('')}</div>`
 }
 
 function renderGreeks(atm,pcr,vix,atk,ind){
@@ -1417,26 +1136,16 @@ function renderActivity(callRows,putRows){
     return `<div class="ac"><div class="at2" style="color:${col}">${title}</div>${rows||`<div class="aempty">No change yet<br><span style="font-size:9px">After 2nd cycle</span></div>`}${arr.length?`<div class="anote">${note}</div>`:''}</div>`
   }
   set('act-time',new Date().toLocaleTimeString('en-IN'))
-  g('activity').innerHTML=
-    mkCol(cA,'call_oi','call_oi_chg','var(--bear)','🔴 CALL SELLERS ADDING ▼','Fresh shorts at resistance — ceiling strengthening')+
-    mkCol(cE,'call_oi','call_oi_chg','var(--bull)','✅ CALL SELLERS EXITING ▲','Short covering — ceiling weakening, breakout possible')+
-    mkCol(pA,'put_oi','put_oi_chg','var(--bull)','✅ PUT SELLERS ADDING ▲','Put writing — floor building, buy dips here')+
-    mkCol(pE,'put_oi','put_oi_chg','var(--warn)','⚠ PUT SELLERS EXITING ▼','Put unwinding — floor weakening, avoid buying dips')
+  g('activity').innerHTML=mkCol(cA,'call_oi','call_oi_chg','var(--bear)','🔴 CALL SELLERS ADDING ▼','Fresh shorts at resistance — ceiling strengthening')+mkCol(cE,'call_oi','call_oi_chg','var(--bull)','✅ CALL SELLERS EXITING ▲','Short covering — ceiling weakening, breakout possible')+mkCol(pA,'put_oi','put_oi_chg','var(--bull)','✅ PUT SELLERS ADDING ▲','Put writing — floor building, buy dips here')+mkCol(pE,'put_oi','put_oi_chg','var(--warn)','⚠ PUT SELLERS EXITING ▼','Put unwinding — floor weakening, avoid buying dips')
 }
 
 function renderAnalysis(d,atk,atm,ind,intel){
-  const sts=Object.keys(atk).map(Number).sort((a,b)=>a-b)
-  const ca=sts.filter(s=>s>atm),pb=sts.filter(s=>s<atm)
-  const tc=ca.reduce((s,k)=>s+(atk[k].call_oi||0),0),tp=pb.reduce((s,k)=>s+(atk[k].put_oi||0),0)
-  const cadd=ca.reduce((s,k)=>s+Math.max(0,atk[k].call_oi_chg||0),0)
-  const padd=pb.reduce((s,k)=>s+Math.max(0,atk[k].put_oi_chg||0),0)
-  const cex=ca.reduce((s,k)=>s+Math.abs(Math.min(0,atk[k].call_oi_chg||0)),0)
-  const pex=pb.reduce((s,k)=>s+Math.abs(Math.min(0,atk[k].put_oi_chg||0)),0)
-  const topR=ca.slice().sort((a,b)=>atk[b].call_oi-atk[a].call_oi)[0]
-  const topS=pb.slice().sort((a,b)=>atk[b].put_oi-atk[a].put_oi)[0]
-  const conc=intel.concentration||{},skew=intel.iv_skew||{},gexFlip=intel.gex_flip
-  set('analysis-time',new Date().toLocaleTimeString('en-IN'))
-  const ms=intel.market_state||'—',msCol=msColor(ms)
+  const sts=Object.keys(atk).map(Number).sort((a,b)=>a-b), ca=sts.filter(s=>s>atm), pb=sts.filter(s=>s<atm)
+  const cadd=ca.reduce((s,k)=>s+Math.max(0,atk[k].call_oi_chg||0),0), padd=pb.reduce((s,k)=>s+Math.max(0,atk[k].put_oi_chg||0),0)
+  const cex=ca.reduce((s,k)=>s+Math.abs(Math.min(0,atk[k].call_oi_chg||0)),0), pex=pb.reduce((s,k)=>s+Math.abs(Math.min(0,atk[k].put_oi_chg||0)),0)
+  const topR=ca.slice().sort((a,b)=>atk[b].call_oi-atk[a].call_oi)[0], topS=pb.slice().sort((a,b)=>atk[b].put_oi-atk[a].put_oi)[0]
+  const conc=intel.concentration||{},skew=intel.iv_skew||{},gexFlip=intel.gex_flip, ms=intel.market_state||'—',msCol=msColor(ms)
+  
   let verdictNotes=[]
   const ri=ind.rsi,ai=ind.adx
   if(ri&&ai){
@@ -1463,7 +1172,6 @@ function renderAnalysis(d,atk,atm,ind,intel){
       <div class="ts-row"><span class="ts-l">OI Conc.</span><span class="ts-v">${(conc.avg_concentration||0).toFixed(0)}% — ${conc.signal||'—'}</span></div>
       <div class="ts-row"><span class="ts-l">IV Skew</span><span class="ts-v">${skew.signal||'—'}</span></div>
       <div class="ts-row"><span class="ts-l">PCR Zone</span><span class="ts-v" style="color:${(d.pcr||0)>1.2?'var(--bull)':(d.pcr||0)<0.8?'var(--bear)':'var(--warn)'}">${intel.pcr_zone||'—'}</span></div>
-      <div class="ts-row"><span class="ts-l">PCR Change</span><span class="ts-v ${(d.pcr_chg||0)>0?'bull':'bear'}">${d.pcr_chg?(d.pcr_chg>0?'+':'')+d.pcr_chg.toFixed(3):'—'}</span></div>
     </div>
     <div style="padding:10px 13px;border-right:1px solid var(--border)">
       <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;margin-bottom:7px;font-weight:700">OI FLOW</div>
@@ -1473,8 +1181,7 @@ function renderAnalysis(d,atk,atm,ind,intel){
       <div class="ts-row"><span class="ts-l">Put OI Exited</span><span class="ts-v warn">−${(pex/100000).toFixed(2)}L → support ↓</span></div>
       <div class="ts-row"><span class="ts-l">Net Pressure</span><span class="ts-v" style="color:${(padd-cadd)>0?'var(--bull)':'var(--bear)'}">${(padd-cadd)>0?'PUTS adding more → bullish':'CALLS adding more → bearish'}</span></div>
       <div class="ts-row"><span class="ts-l">OI Matrix</span><span class="ts-v" style="color:${intel.oi_matrix_signal==='BULLISH'||intel.oi_matrix_signal==='WEAK BULLISH'?'var(--bull)':'var(--bear)'}">${intel.oi_matrix_condition||'—'}</span></div>
-      <div class="ts-row"><span class="ts-l">RSI</span><span class="ts-v" style="color:${ind.rsi>=70?'var(--bear)':ind.rsi<=30?'var(--bull)':'var(--warn)'}">${ind.rsi||'N/A'} — ${ind.rsi_signal||'N/A'}</span></div>
-      <div class="ts-row"><span class="ts-l">ADX/DI</span><span class="ts-v" style="color:${ind.adx>=25?'var(--bull)':'var(--warn)'}">${ind.adx||'N/A'} <span class="bull">${ind.pdi||'—'}</span>/<span class="bear">${ind.ndi||'—'}</span></span></div>
+      <div class="ts-row"><span class="ts-l">RSI</span><span class="ts-v" style="color:${ind.rsi>=70?'var(--bear)':ind.rsi<=30?'var(--bull)':'var(--warn)'}">${ind.rsi||'N/A'}</span></div>
     </div>
     <div style="padding:10px 13px;border-right:1px solid var(--border)">
       <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;margin-bottom:7px;font-weight:700">VERDICT</div>
@@ -1484,11 +1191,10 @@ function renderAnalysis(d,atk,atm,ind,intel){
     <div style="padding:10px 13px">
       <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;margin-bottom:7px;font-weight:700">TRADE GUIDE</div>
       <div style="font-size:11px;color:var(--text2);line-height:1.9">
-        <div><span class="bull">BULLISH:</span> PCR rising + CE unwinding + PE building + ADX ↑ + RSI 50-60</div>
-        <div><span class="bear">BEARISH:</span> PCR falling + CE building + PE unwinding + ADX ↑ + RSI 40-50</div>
-        <div><span class="warn">RANGE:</span> ADX below 20 + OI stable → sell resistance, buy support</div>
-        <div><span style="color:var(--purple)">BREAKOUT:</span> OI dropping at key level + price approaching</div>
-        <div><span style="color:var(--info)">EXPIRY:</span> Max Pain pull strongest in last 1hr</div>
+        <div><span class="bull">BULLISH:</span> PCR rising + CE unwinding + PE building</div>
+        <div><span class="bear">BEARISH:</span> PCR falling + CE building + PE unwinding</div>
+        <div><span class="warn">RANGE:</span> ADX below 20 + OI stable</div>
+        <div><span style="color:var(--purple)">BREAKOUT:</span> OI dropping at key level + price approaches</div>
         <div style="margin-top:6px;padding:5px 8px;background:var(--bg3);border-radius:4px;border:1px solid var(--border)">
           <div style="font-size:10px;color:var(--bull)">📸 PNG auto-saved every 5min</div>
         </div>
@@ -1496,7 +1202,6 @@ function renderAnalysis(d,atk,atm,ind,intel){
     </div>`
 }
 
-/* ── UTILS ──────────────────────────────────────────── */
 function g(id){return document.getElementById(id)}
 function fc(n){const a=Math.abs(n);if(a>=100000)return(n>=0?'+':'−')+(a/100000).toFixed(2)+'L';if(a>=1000)return(n>=0?'+':'−')+(a/1000).toFixed(1)+'K';return(n>=0?'+':'−')+Math.round(a)}
 function strBar(s,c){return`<div class="stbar"><div class="stfill" style="width:${s}%;background:${c}"></div></div><span style="font-size:9px;color:var(--text2)">${s}</span>`}
