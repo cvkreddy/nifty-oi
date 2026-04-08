@@ -1,7 +1,7 @@
 """
 ====================================================
   NIFTY50 OI Server — Full Intelligence Mode v2
-  Includes: Render Master Shutdown Fix + Resampler + Telegram
+  Includes: Render Fix + Resampler + FULL TELEGRAM REPORT
 ====================================================
 """
 
@@ -35,7 +35,7 @@ STRIKE_STEP  = 50
 ATM_RANGE    = 5
 SNAPSHOT_DIR = "snapshots"
 TOKEN_FILE   = "token_data.json"
-DATA_FILE    = "data_cache.json"  # 🔥 FIX: Persistent data cache to survive Render restarts
+DATA_FILE    = "data_cache.json"  
 
 token_store     = {"access_token": None}
 oi_cache        = {"data": None}
@@ -65,7 +65,70 @@ def send_telegram_alert(message):
     except Exception as e:
         print("[TELEGRAM ERROR]", e)
 
-def process_telegram_alerts(alerts, spot, pcr, trend, mkt_state, max_pain, pcr_zone):
+def generate_full_summary(data, atm_strikes, atm):
+    """Generates the full 'Complete Market Analysis' grid for Telegram"""
+    spot = data.get("spot", 0)
+    pcr = data.get("pcr", 0)
+    pcr_chg = data.get("pcr_chg", 0)
+    max_pain = data.get("max_pain", 0)
+    trend = data.get("trend", "N/A")
+    
+    intel = data.get("intelligence", {})
+    ind = data.get("indicators", {})
+    
+    gex_flip = intel.get("gex_flip")
+    gex_text = f"₹{int(gex_flip['strike'])}" if gex_flip else "N/A"
+    skew = intel.get("iv_skew", {}).get("signal", "N/A").split("—")[0].strip()
+    conc = intel.get("concentration", {}).get("avg_concentration", 0)
+    
+    # Calculate Resistance, Support, and Flow rates
+    ca = [s for s in atm_strikes if s > atm]
+    pb = [s for s in atm_strikes if s < atm]
+    
+    cadd = sum(max(0, atm_strikes[s].get("call_oi_chg", 0)) for s in ca)
+    padd = sum(max(0, atm_strikes[s].get("put_oi_chg", 0)) for s in pb)
+    cex = sum(abs(min(0, atm_strikes[s].get("call_oi_chg", 0))) for s in ca)
+    pex = sum(abs(min(0, atm_strikes[s].get("put_oi_chg", 0))) for s in pb)
+    
+    topR = max(ca, key=lambda s: atm_strikes[s].get("call_oi", 0), default=None)
+    topS = max(pb, key=lambda s: atm_strikes[s].get("put_oi", 0), default=None)
+    
+    topR_text = f"₹{int(topR)} (Str {atm_strikes[topR].get('sr_strength_call',0)}/100)" if topR else "N/A"
+    topS_text = f"₹{int(topS)} (Str {atm_strikes[topS].get('sr_strength_put',0)}/100)" if topS else "N/A"
+    
+    net_pressure = "🟢 PUTS adding faster → Bullish" if padd > cadd else "🔴 CALLS adding faster → Bearish"
+    
+    msg = (
+        f"📊 <b>NIFTY COMPLETE ANALYSIS</b> 📊\n"
+        f"⏰ <i>{datetime.now().strftime('%I:%M %p')}</i>\n\n"
+        
+        f"🎯 <b>Spot:</b> ₹{spot}\n"
+        f"⚡ <b>Max Pain:</b> ₹{int(max_pain)}\n"
+        f"🧲 <b>GEX Flip:</b> {gex_text}\n"
+        f"⚖️ <b>PCR:</b> {pcr} ({pcr_chg:+.3f})\n"
+        f"Zone: <i>{intel.get('pcr_zone', 'N/A').split('—')[0].strip()}</i>\n\n"
+        
+        f"🚧 <b>KEY LEVELS</b>\n"
+        f"🔴 Top Res: {topR_text}\n"
+        f"🟢 Top Sup: {topS_text}\n\n"
+        
+        f"🌊 <b>OI FLOW (Last 5m)</b>\n"
+        f"🔴 CE Add: +{cadd/100000:.2f}L | Exit: -{cex/100000:.2f}L\n"
+        f"🟢 PE Add: +{padd/100000:.2f}L | Exit: -{pex/100000:.2f}L\n"
+        f"<i>{net_pressure}</i>\n\n"
+        
+        f"🧩 <b>TECH & MATRIX</b>\n"
+        f"State: {intel.get('oi_matrix_condition', 'N/A')}\n"
+        f"RSI: {ind.get('rsi', 'N/A')} | ADX: {ind.get('adx', 'N/A')}\n"
+        f"Trend: {trend}\n"
+        f"Conc: {int(conc)}% | Skew: {skew}\n\n"
+        
+        f"💡 <b>VERDICT</b>\n"
+        f"<b>{intel.get('market_state', 'N/A')}</b>"
+    )
+    return msg
+
+def process_telegram_alerts(alerts, data, atm_strikes, atm):
     global sent_alerts, last_hourly_summary
     current_time = time.time()
     
@@ -80,17 +143,10 @@ def process_telegram_alerts(alerts, spot, pcr, trend, mkt_state, max_pain, pcr_z
         # Cleanup memory
         sent_alerts = {k: v for k, v in sent_alerts.items() if current_time - v < 3600}
 
-        # 2. Hourly Summary
+        # 2. Hourly Full Summary
         current_hour = datetime.now().hour
         if last_hourly_summary != current_hour:
-            summary = (
-                f"📊 <b>NIFTY HOURLY SUMMARY</b> 📊\n\n"
-                f"🎯 <b>Spot:</b> ₹{spot}\n"
-                f"⚖️ <b>PCR:</b> {pcr} ({pcr_zone})\n"
-                f"📈 <b>Trend:</b> {trend}\n"
-                f"🧭 <b>State:</b> {mkt_state}\n"
-                f"⚡ <b>Max Pain:</b> ₹{int(max_pain)}"
-            )
+            summary = generate_full_summary(data, atm_strikes, atm)
             send_telegram_alert(summary)
             last_hourly_summary = current_hour
     except Exception as e:
@@ -675,7 +731,6 @@ def refresh():
         if not raw:
             err_msg = f"Upstox API returned no chain data for Expiry [{expiry}]. Token might be expired or IP rate-limited."
             print(f"[REFRESH FAILED] {err_msg}")
-            # Ensure the frontend gets an explicitly marked error state
             if oi_cache.get("data"):
                 oi_cache["data"]["backend_error"] = err_msg
             else:
@@ -708,7 +763,7 @@ def refresh():
         ind   = get_indicators(candle_cache)
         trend, trend_reason, trend_strength = analyse_trend(atm_strikes, atm)
 
-        oi_cond, oi_signal, oi_desc        = price_oi_matrix(spot, prev_spot, chain, atm)
+        oi_cond, oi_signal, oi_desc       = price_oi_matrix(spot, prev_spot, chain, atm)
         pcr_analysis                       = pcr_zone_analysis(pcr, prev_pcr)
         gex_data, gex_flip                 = compute_gex_profile(chain, atm)
         iv_skew                            = compute_iv_skew(chain, atm)
@@ -751,7 +806,7 @@ def refresh():
         # Update Memory
         oi_cache["data"] = data
 
-        # 🔥 FIX: Save to Disk so multi-workers can read the cached JSON even if memory wipes
+        # Save to Disk
         try:
             with open(DATA_FILE, "w") as f:
                 json.dump(data, f)
@@ -762,7 +817,8 @@ def refresh():
         prev_pcr  = pcr
         prev_spot = spot
         
-        process_telegram_alerts(alerts, spot, pcr, trend, mkt_state, max_pain, pcr_analysis["zone"])
+        # Fire off Telegram Alerts!
+        process_telegram_alerts(alerts, data, atm_strikes, atm)
 
         print(f"[OI REFRESHED] Spot={spot} | PCR={pcr}({pcr_chg:+.3f}) | ATM={atm} | Error: None")
         
@@ -789,10 +845,8 @@ def dashboard():
 
 @app.route("/oi/json")
 def oi_json():
-    # 1. Try fetching from memory
     d = oi_cache.get("data")
     
-    # 2. 🔥 FIX: If memory is wiped (worker restart), load from disk
     if not d and os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r") as f:
@@ -800,18 +854,15 @@ def oi_json():
                 oi_cache["data"] = d
         except: pass
 
-    # 3. If still empty, force login
     if not d: 
         return jsonify({"error":"No data — login at /login"})
     
-    # 4. Self-Healing check: If data is too old, force background refresh
     try:
         last_upd = datetime.fromisoformat(d["timestamp"])
         age = (datetime.now() - last_upd).total_seconds()
         if age > 180:
             print(f"[WARN] Data is {age}s old. Background thread asleep. Forcing manual refresh...")
             refresh()
-            # Try to grab the refreshed data from disk again
             if os.path.exists(DATA_FILE):
                 with open(DATA_FILE, "r") as f:
                     d = json.load(f)
@@ -823,7 +874,6 @@ def oi_json():
 
 @app.route("/oi/histogram")
 def histogram():
-    # Attempt load from memory, fallback to disk
     d = oi_cache.get("data")
     if not d and os.path.exists(DATA_FILE):
         try:
@@ -852,6 +902,23 @@ def oi_status():
         "backend_error":d.get("backend_error") if d else None,
         "updated":      d.get("timestamp") if d else None
     })
+
+# 🔥 FIX: Manually trigger the Telegram Summary without waiting an hour
+@app.route("/telegram/force_summary")
+def force_telegram_summary():
+    d = oi_cache.get("data")
+    if not d and os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r") as f:
+                d = json.load(f)
+        except: pass
+        
+    if not d:
+        return "No data available yet. Please login or wait for the first cycle.", 400
+        
+    msg = generate_full_summary(d, d.get("atm_strikes", {}), d.get("atm", 0))
+    send_telegram_alert(msg)
+    return "Summary sent to Telegram successfully!", 200
 
 if __name__ == "__main__":
     print("=" * 55)
