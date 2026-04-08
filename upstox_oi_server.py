@@ -1,7 +1,9 @@
+
+
 """
 ====================================================
   NIFTY50 OI Server — Full Intelligence Mode v2
-  Includes: Render Fix + Resampler + FULL TELEGRAM REPORT
+  Includes: Render Fix + 5-Min Telegram Intra-day Scanner
 ====================================================
 """
 
@@ -30,9 +32,9 @@ NIFTY_KEY    = "NSE_INDEX|Nifty 50"
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"    
 
-CACHE_TTL    = 120  
+CACHE_TTL    = 150  # 2.5 mins (2 cycles = exactly 5 minutes for Telegram Alerts)
 STRIKE_STEP  = 50
-ATM_RANGE    = 5
+ATM_RANGE    = 5    # 🔥 Ensures EXACTLY ATM +/- 5 Strikes (11 total)
 SNAPSHOT_DIR = "snapshots"
 TOKEN_FILE   = "token_data.json"
 DATA_FILE    = "data_cache.json"  
@@ -49,10 +51,10 @@ candle_cache_15 = []
 ltp_history     = {}          
 
 sent_alerts = {}
-last_hourly_summary = None
+last_5min_summary = 0 
 
 # ══════════════════════════════════════════════════
-#  TELEGRAM BOT ENGINE
+#  TELEGRAM BOT ENGINE (5-MINUTE INTRADAY SCANNER)
 # ══════════════════════════════════════════════════
 
 def send_telegram_alert(message):
@@ -65,71 +67,65 @@ def send_telegram_alert(message):
     except Exception as e:
         print("[TELEGRAM ERROR]", e)
 
-def generate_full_summary(data, atm_strikes, atm):
-    """Generates the full 'Complete Market Analysis' grid for Telegram"""
+def generate_5min_summary(data, atm_strikes, atm):
+    """Generates the highly detailed 5-minute per-strike breakdown for ATM +/- 5"""
     spot = data.get("spot", 0)
     pcr = data.get("pcr", 0)
-    pcr_chg = data.get("pcr_chg", 0)
-    max_pain = data.get("max_pain", 0)
-    trend = data.get("trend", "N/A")
-    
     intel = data.get("intelligence", {})
-    ind = data.get("indicators", {})
-    
-    gex_flip = intel.get("gex_flip")
-    gex_text = f"₹{int(gex_flip['strike'])}" if gex_flip else "N/A"
-    skew = intel.get("iv_skew", {}).get("signal", "N/A").split("—")[0].strip()
-    conc = intel.get("concentration", {}).get("avg_concentration", 0)
-    
-    # Calculate Resistance, Support, and Flow rates
-    ca = [s for s in atm_strikes if s > atm]
-    pb = [s for s in atm_strikes if s < atm]
-    
-    cadd = sum(max(0, atm_strikes[s].get("call_oi_chg", 0)) for s in ca)
-    padd = sum(max(0, atm_strikes[s].get("put_oi_chg", 0)) for s in pb)
-    cex = sum(abs(min(0, atm_strikes[s].get("call_oi_chg", 0))) for s in ca)
-    pex = sum(abs(min(0, atm_strikes[s].get("put_oi_chg", 0))) for s in pb)
-    
-    topR = max(ca, key=lambda s: atm_strikes[s].get("call_oi", 0), default=None)
-    topS = max(pb, key=lambda s: atm_strikes[s].get("put_oi", 0), default=None)
-    
-    topR_text = f"₹{int(topR)} (Str {atm_strikes[topR].get('sr_strength_call',0)}/100)" if topR else "N/A"
-    topS_text = f"₹{int(topS)} (Str {atm_strikes[topS].get('sr_strength_put',0)}/100)" if topS else "N/A"
-    
-    net_pressure = "🟢 PUTS adding faster → Bullish" if padd > cadd else "🔴 CALLS adding faster → Bearish"
     
     msg = (
-        f"📊 <b>NIFTY COMPLETE ANALYSIS</b> 📊\n"
-        f"⏰ <i>{datetime.now().strftime('%I:%M %p')}</i>\n\n"
-        
-        f"🎯 <b>Spot:</b> ₹{spot}\n"
-        f"⚡ <b>Max Pain:</b> ₹{int(max_pain)}\n"
-        f"🧲 <b>GEX Flip:</b> {gex_text}\n"
-        f"⚖️ <b>PCR:</b> {pcr} ({pcr_chg:+.3f})\n"
-        f"Zone: <i>{intel.get('pcr_zone', 'N/A').split('—')[0].strip()}</i>\n\n"
-        
-        f"🚧 <b>KEY LEVELS</b>\n"
-        f"🔴 Top Res: {topR_text}\n"
-        f"🟢 Top Sup: {topS_text}\n\n"
-        
-        f"🌊 <b>OI FLOW (Last 5m)</b>\n"
-        f"🔴 CE Add: +{cadd/100000:.2f}L | Exit: -{cex/100000:.2f}L\n"
-        f"🟢 PE Add: +{padd/100000:.2f}L | Exit: -{pex/100000:.2f}L\n"
-        f"<i>{net_pressure}</i>\n\n"
-        
-        f"🧩 <b>TECH & MATRIX</b>\n"
-        f"State: {intel.get('oi_matrix_condition', 'N/A')}\n"
-        f"RSI: {ind.get('rsi', 'N/A')} | ADX: {ind.get('adx', 'N/A')}\n"
-        f"Trend: {trend}\n"
-        f"Conc: {int(conc)}% | Skew: {skew}\n\n"
-        
-        f"💡 <b>VERDICT</b>\n"
-        f"<b>{intel.get('market_state', 'N/A')}</b>"
+        f"⏱ <b>5-MIN NIFTY SCANNER</b>\n"
+        f"🎯 <b>Spot:</b> ₹{spot} | <b>PCR:</b> {pcr}\n"
+        f"🧭 <b>{intel.get('market_state', 'N/A')}</b>\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
     )
-    return msg
+    
+    # Helper to shorten conditions for mobile screens
+    def get_short_cond(flow):
+        c = flow.get("condition", "")
+        e = flow.get("emoji", "⚪")
+        if "LONG BUILDUP" in c: return f"{e} Long Build"
+        if "SHORT COVERING" in c: return f"{e} Short Cover"
+        if "SHORT BUILDUP" in c or "WRITING" in c: return f"{e} Writing (Resistance/Support)"
+        if "LONG UNWINDING" in c or "EXIT" in c: return f"{e} Long Unwind"
+        if "FAKE" in c or "NO" in c: return f"⚠️ Trap/No Conviction"
+        if "ADDITION" in c: return f"{e} Heavy Add"
+        return f"⚪ Stable"
+
+    # Sort descending so higher strikes are on top
+    for s in sorted(atm_strikes.keys(), reverse=True):
+        v = atm_strikes[s]
+        marker = " ◄ ATM" if s == atm else ""
+        
+        # Call Data
+        c_ltp = v.get("call_ltp", 0)
+        c_ltp_5m = v.get("call_ltp_chg", 0)
+        c_ltp_d = v.get("call_ltp_chg_day", 0)
+        c_oi_5m = v.get("call_oi_chg", 0) / 100000
+        c_oi_d = v.get("call_oi_chg_day", 0) / 100000
+        c_cond = get_short_cond(v.get("call_flow", {}))
+        
+        # Put Data
+        p_ltp = v.get("put_ltp", 0)
+        p_ltp_5m = v.get("put_ltp_chg", 0)
+        p_ltp_d = v.get("put_ltp_chg_day", 0)
+        p_oi_5m = v.get("put_oi_chg", 0) / 100000
+        p_oi_d = v.get("put_oi_chg_day", 0) / 100000
+        p_cond = get_short_cond(v.get("put_flow", {}))
+
+        msg += f"🎯 <b>STRIKE: {int(s)}{marker}</b>\n"
+        msg += f"<b>CE:</b> ₹{c_ltp:.1f} (5m: {c_ltp_5m:+.1f} | Day: {c_ltp_d:+.1f})\n"
+        msg += f"OI: 5m {c_oi_5m:+.2f}L | Day {c_oi_d:+.2f}L\n"
+        msg += f"↳ {c_cond}\n"
+        msg += f"<b>PE:</b> ₹{p_ltp:.1f} (5m: {p_ltp_5m:+.1f} | Day: {p_ltp_d:+.1f})\n"
+        msg += f"OI: 5m {p_oi_5m:+.2f}L | Day {p_oi_d:+.2f}L\n"
+        msg += f"↳ {p_cond}\n"
+        msg += f"〰️〰️〰️〰️〰️〰️〰️〰️〰️\n"
+        
+    return msg.strip()
 
 def process_telegram_alerts(alerts, data, atm_strikes, atm):
-    global sent_alerts, last_hourly_summary
+    global sent_alerts, last_5min_summary
     current_time = time.time()
     
     try:
@@ -143,12 +139,12 @@ def process_telegram_alerts(alerts, data, atm_strikes, atm):
         # Cleanup memory
         sent_alerts = {k: v for k, v in sent_alerts.items() if current_time - v < 3600}
 
-        # 2. Hourly Full Summary
-        current_hour = datetime.now().hour
-        if last_hourly_summary != current_hour:
-            summary = generate_full_summary(data, atm_strikes, atm)
+        # 2. Fire 5-Minute Intra-Day Summary
+        if current_time - last_5min_summary >= 290:  # 290 seconds = roughly 5 mins
+            summary = generate_5min_summary(data, atm_strikes, atm)
             send_telegram_alert(summary)
-            last_hourly_summary = current_hour
+            last_5min_summary = current_time
+            
     except Exception as e:
         print("[TELEGRAM PROCESSING ERROR]", e)
 
@@ -558,26 +554,55 @@ def process_chain(raw):
         raw_civ, raw_piv = float(ce_gk.get("iv",0) or 0), float(pe_gk.get("iv",0) or 0)
         call_iv, put_iv = raw_civ*100 if raw_civ<=5 else raw_civ, raw_piv*100 if raw_piv<=5 else raw_piv
         
+        # Calculate 5-Min changes
         prev = prev_oi.get(strike, {})
         call_oi_chg = call_oi - prev.get("call_oi", call_oi) if prev else 0
         put_oi_chg = put_oi - prev.get("put_oi", put_oi) if prev else 0
+        call_ltp_chg = call_ltp - prev.get("call_ltp", call_ltp) if prev else 0
+        put_ltp_chg = put_ltp - prev.get("put_ltp", put_ltp) if prev else 0
+        
+        # Calculate Full Day changes
         base = baseline_oi.get(strike, {})
+        call_oi_chg_day = call_oi - base.get("call_oi", call_oi) if base else 0
+        put_oi_chg_day = put_oi - base.get("put_oi", put_oi) if base else 0
+        call_ltp_chg_day = call_ltp - base.get("call_ltp", call_ltp) if base else 0
+        put_ltp_chg_day = put_ltp - base.get("put_ltp", put_ltp) if base else 0
 
         result[strike] = {
             "strike": strike,
-            "call_oi": call_oi, "call_oi_chg": call_oi_chg, "call_oi_chg_day": call_oi - base.get("call_oi", call_oi) if base else 0,
+            "call_oi": call_oi, 
+            "call_oi_chg": call_oi_chg, 
+            "call_oi_chg_day": call_oi_chg_day,
             "call_vol": call_vol, "call_vol_oi": round(call_vol/call_oi,2) if call_oi else 0,
-            "call_iv": round(call_iv,2), "call_ltp": call_ltp, "call_ltp_chg": round(call_ltp - prev.get("call_ltp", call_ltp) if prev else 0, 2),
+            "call_iv": round(call_iv,2), 
+            "call_ltp": call_ltp, 
+            "call_ltp_chg": round(call_ltp_chg,2),
+            "call_ltp_chg_day": round(call_ltp_chg_day,2),
             "call_delta": float(ce_gk.get("delta",0) or 0), "call_gamma": float(ce_gk.get("gamma",0) or 0), 
             "call_theta": float(ce_gk.get("theta",0) or 0), "call_vega": float(ce_gk.get("vega",0) or 0), "call_gex": float(ce_gk.get("gamma",0) or 0) * call_oi * 25,
-            "put_oi": put_oi, "put_oi_chg": put_oi_chg, "put_oi_chg_day": put_oi - base.get("put_oi", put_oi) if base else 0,
+            
+            "put_oi": put_oi, 
+            "put_oi_chg": put_oi_chg, 
+            "put_oi_chg_day": put_oi_chg_day,
             "put_vol": put_vol, "put_vol_oi": round(put_vol/put_oi,2) if put_oi else 0,
-            "put_iv": round(put_iv,2), "put_ltp": put_ltp, "put_ltp_chg": round(put_ltp - prev.get("put_ltp", put_ltp) if prev else 0, 2),
+            "put_iv": round(put_iv,2), 
+            "put_ltp": put_ltp, 
+            "put_ltp_chg": round(put_ltp_chg,2),
+            "put_ltp_chg_day": round(put_ltp_chg_day,2),
             "put_delta": float(pe_gk.get("delta",0) or 0), "put_gamma": float(pe_gk.get("gamma",0) or 0), 
             "put_theta": float(pe_gk.get("theta",0) or 0), "put_vega": float(pe_gk.get("vega",0) or 0), "put_gex": float(pe_gk.get("gamma",0) or 0) * put_oi * 25,
+            
             "pcr": round(put_oi/call_oi,2) if call_oi else 0, "net_oi": put_oi - call_oi,
         }
-    if is_first and result: baseline_oi = {s:{"call_oi":v["call_oi"],"put_oi":v["put_oi"]} for s,v in result.items()}
+        
+    # Initialize Baseline with LTP and OI
+    if is_first and result: 
+        baseline_oi = {
+            s: {
+                "call_oi": v["call_oi"], "put_oi": v["put_oi"], 
+                "call_ltp": v["call_ltp"], "put_ltp": v["put_ltp"]
+            } for s,v in result.items()
+        }
     return result
 
 def compute_max_pain(chain):
@@ -817,7 +842,7 @@ def refresh():
         prev_pcr  = pcr
         prev_spot = spot
         
-        # Fire off Telegram Alerts!
+        # 🔥 Process and send Telegram alerts!
         process_telegram_alerts(alerts, data, atm_strikes, atm)
 
         print(f"[OI REFRESHED] Spot={spot} | PCR={pcr}({pcr_chg:+.3f}) | ATM={atm} | Error: None")
@@ -903,7 +928,6 @@ def oi_status():
         "updated":      d.get("timestamp") if d else None
     })
 
-# 🔥 FIX: Manually trigger the Telegram Summary without waiting an hour
 @app.route("/telegram/force_summary")
 def force_telegram_summary():
     d = oi_cache.get("data")
@@ -916,7 +940,7 @@ def force_telegram_summary():
     if not d:
         return "No data available yet. Please login or wait for the first cycle.", 400
         
-    msg = generate_full_summary(d, d.get("atm_strikes", {}), d.get("atm", 0))
+    msg = generate_5min_summary(d, d.get("atm_strikes", {}), d.get("atm", 0))
     send_telegram_alert(msg)
     return "Summary sent to Telegram successfully!", 200
 
