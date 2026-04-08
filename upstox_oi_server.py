@@ -1,7 +1,7 @@
 """
 ====================================================
   NIFTY50 OI Server — Full Intelligence Mode v2
-  Includes: 3m/5m/15m Resampling + Custom Supertrends
+  Includes: Render Gunicorn Fix + 1Min Resampling Engine + Market State Fix
 ====================================================
 """
 
@@ -39,7 +39,7 @@ baseline_oi     = {}
 prev_pcr        = None
 prev_spot       = None
 candle_cache    = []
-candle_cache_3m = []   # New 3m cache
+candle_cache_3m = []
 candle_cache_15 = []          
 ltp_history     = {}          
 
@@ -329,7 +329,6 @@ def calc_supertrend(candles, period=7, multiplier=3.0):
     st_val = round(lower if direction == "BULLISH" else upper, 2)
     return direction, st_val, ""
 
-# 🔥 FIX: Accepts custom Supertrend Period and Multiplier
 def compute_tf_signals(candles, label, st_period, st_multiplier):
     if not candles: return {"label": label, "candle_count": 0, "error": "No data"}
     closes = [c["close"] for c in candles]
@@ -539,6 +538,7 @@ def detect_breakout_alerts(chain, atm, spot):
             if v["put_oi_chg"]>v["put_oi"]*0.05: alerts.append({"type":"FLOOR BUILDING","strike":s,"urgency":"MEDIUM","icon":"✅","message":f"₹{int(s)} put OI surging +{(v['put_oi_chg']/100000):.2f}L"})
     return alerts[:5]
 
+# 🔥 FIX: Expanded conditional returns so Python doesn't crash when unpacking
 def market_state(pcr, adx, oi_matrix_signal, alerts, vix, concentration):
     signals=[]
     if oi_matrix_signal in ("BULLISH","WEAK BULLISH"):   signals.append(1)
@@ -548,16 +548,31 @@ def market_state(pcr, adx, oi_matrix_signal, alerts, vix, concentration):
     if pcr<0.6 or pcr>1.5: signals.append(0)
     elif pcr<0.8: signals.append(-1)
     elif pcr>1.2: signals.append(1)
+    
     if any(a["type"]=="BREAKOUT UP" for a in alerts): return "BREAKOUT IMMINENT","⚡","OI unwinding at resistance — upside breakout possible."
     if any(a["type"]=="BREAKOUT DOWN" for a in alerts): return "BREAKOUT IMMINENT","⚡","OI unwinding at support — downside breakdown possible."
     if pcr<0.6: return "REVERSAL ZONE","🔄","Extreme PCR — contrarian reversal up likely."
     if pcr>1.5: return "REVERSAL ZONE","🔄","Extreme PCR — contrarian reversal down likely."
-    score, conc = sum(signals), concentration.get("avg_concentration",50)
-    if score>=2: return "TRENDING UP","📈","Strong bullish OI." if conc>55 else "TRENDING UP (UNCONFIRMED)","📈?","Bullish signals but scattered OI."
-    elif score<=-2: return "TRENDING DOWN","📉","Strong bearish OI." if conc>55 else "TRENDING DOWN (UNCONFIRMED)","📉?","Bearish signals but scattered OI."
-    elif adx and adx<20: return "RANGING","↔","ADX below 20 — no clear trend."
-    elif vix>25: return "HIGH VOLATILITY RANGE","⚡↔","High VIX + neutral OI = range."
-    else: return "NEUTRAL / WAIT","⏳","Mixed signals."
+    
+    score = sum(signals)
+    conc = concentration.get("avg_concentration", 50)
+    
+    if score >= 2: 
+        if conc > 55: 
+            return "TRENDING UP","📈","Strong bullish OI."
+        else: 
+            return "TRENDING UP (UNCONFIRMED)","📈?","Bullish signals but scattered OI."
+    elif score <= -2:
+        if conc > 55: 
+            return "TRENDING DOWN","📉","Strong bearish OI."
+        else: 
+            return "TRENDING DOWN (UNCONFIRMED)","📉?","Bearish signals but scattered OI."
+    elif adx and adx<20: 
+        return "RANGING","↔","ADX below 20 — no clear trend."
+    elif vix>25: 
+        return "HIGH VOLATILITY RANGE","⚡↔","High VIX + neutral OI = range."
+    else: 
+        return "NEUTRAL / WAIT","⏳","Mixed signals."
 
 def analyse_trend(atm_strikes, atm):
     if not atm_strikes: return "NEUTRAL","Insufficient data",50
