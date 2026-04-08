@@ -1,7 +1,7 @@
 """
 ====================================================
   NIFTY50 OI Server — Full Intelligence Mode v2
-  Includes: Render Gunicorn Fix + 1Min Resampling Engine + Market State Fix
+  Includes: Render Fix + 1Min Resampler + Telegram Bot
 ====================================================
 """
 
@@ -26,6 +26,10 @@ API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 NIFTY_KEY    = "NSE_INDEX|Nifty 50"
 
+# 🚨 PASTE YOUR TELEGRAM CREDENTIALS HERE 🚨
+TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
+TELEGRAM_CHAT_ID   = "7851805837"    
+
 CACHE_TTL    = 120  
 STRIKE_STEP  = 50
 ATM_RANGE    = 5
@@ -42,6 +46,63 @@ candle_cache    = []
 candle_cache_3m = []
 candle_cache_15 = []          
 ltp_history     = {}          
+
+# Telegram tracking states
+sent_alerts = {}
+last_hourly_summary = None
+
+# ══════════════════════════════════════════════════
+#  TELEGRAM BOT ENGINE
+# ══════════════════════════════════════════════════
+
+def send_telegram_alert(message):
+    """Sends a message to your Telegram app."""
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID or TELEGRAM_BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
+        return
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message,
+        "parse_mode": "HTML"
+    }
+    try:
+        requests.post(url, json=payload, timeout=5)
+    except Exception as e:
+        print("[TELEGRAM ERROR]", e)
+
+def process_telegram_alerts(alerts, spot, pcr, trend, mkt_state, max_pain, pcr_zone):
+    """Handles alert spam protection and hourly summaries."""
+    global sent_alerts, last_hourly_summary
+    current_time = time.time()
+    
+    # 1. Process Instant Breakout Alerts
+    for a in alerts:
+        msg = f"{a['icon']} <b>{a['type']}</b>\n{a['message']}"
+        # Only send if we haven't sent this exact alert in the last 30 minutes (1800 seconds)
+        if msg not in sent_alerts or (current_time - sent_alerts[msg] > 1800):
+            send_telegram_alert(msg)
+            sent_alerts[msg] = current_time
+
+    # Clean up old alerts from memory to prevent memory leaks
+    sent_alerts = {k: v for k, v in sent_alerts.items() if current_time - v < 3600}
+
+    # 2. Process Hourly Summary
+    current_hour = datetime.now().hour
+    if last_hourly_summary != current_hour:
+        summary = (
+            f"📊 <b>NIFTY HOURLY SUMMARY</b> 📊\n\n"
+            f"🎯 <b>Spot:</b> ₹{spot}\n"
+            f"⚖️ <b>PCR:</b> {pcr} ({pcr_zone})\n"
+            f"📈 <b>Trend:</b> {trend}\n"
+            f"🧭 <b>State:</b> {mkt_state}\n"
+            f"⚡ <b>Max Pain:</b> ₹{int(max_pain)}"
+        )
+        send_telegram_alert(summary)
+        last_hourly_summary = current_hour
+
+# ══════════════════════════════════════════════════
+#  AUTH
+# ══════════════════════════════════════════════════
 
 def save_token(token):
     token_store["access_token"] = token
@@ -70,10 +131,6 @@ def hdrs():
         "Api-Version": "2.0"  
     }
 
-# ══════════════════════════════════════════════════
-#  AUTH ROUTES
-# ══════════════════════════════════════════════════
-
 @app.route("/login")
 def login():
     return redirect(
@@ -93,6 +150,10 @@ def callback():
     data = resp.json()
     save_token(data.get("access_token"))
     print("[LOGIN] Successfully generated and saved new token.")
+    
+    # Send a telegram message confirming login!
+    send_telegram_alert("✅ <b>Upstox Login Successful!</b> Server is now tracking NIFTY 50.")
+    
     refresh()
     return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px">
     <h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p></body></html>"""
@@ -538,7 +599,6 @@ def detect_breakout_alerts(chain, atm, spot):
             if v["put_oi_chg"]>v["put_oi"]*0.05: alerts.append({"type":"FLOOR BUILDING","strike":s,"urgency":"MEDIUM","icon":"✅","message":f"₹{int(s)} put OI surging +{(v['put_oi_chg']/100000):.2f}L"})
     return alerts[:5]
 
-# 🔥 FIX: Expanded conditional returns so Python doesn't crash when unpacking
 def market_state(pcr, adx, oi_matrix_signal, alerts, vix, concentration):
     signals=[]
     if oi_matrix_signal in ("BULLISH","WEAK BULLISH"):   signals.append(1)
@@ -695,6 +755,9 @@ def refresh():
         prev_oi   = {s:{"call_oi":v["call_oi"],"put_oi":v["put_oi"],"call_ltp":v["call_ltp"],"put_ltp":v["put_ltp"]} for s,v in chain.items()}
         prev_pcr  = pcr
         prev_spot = spot
+        
+        # 🔥 FIX: Process and send Telegram alerts!
+        process_telegram_alerts(alerts, spot, pcr, trend, mkt_state, max_pain, pcr_analysis["zone"])
 
         print(f"[OI REFRESHED] Spot={spot} | PCR={pcr}({pcr_chg:+.3f}) | ATM={atm} | Error: None")
         
