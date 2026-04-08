@@ -1,7 +1,7 @@
 """
 ====================================================
   NIFTY50 OI Server — Full Intelligence Mode v2
-  Includes: Render Fix + 1Min Resampler + Telegram Bot
+  Includes: Render Master Shutdown Fix + Resampler + Telegram
 ====================================================
 """
 
@@ -26,7 +26,7 @@ API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 NIFTY_KEY    = "NSE_INDEX|Nifty 50"
 
-# 🚨 PASTE YOUR TELEGRAM CREDENTIALS HERE 🚨
+# 🚨 TELEGRAM CREDENTIALS 🚨
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"    
 
@@ -35,6 +35,7 @@ STRIKE_STEP  = 50
 ATM_RANGE    = 5
 SNAPSHOT_DIR = "snapshots"
 TOKEN_FILE   = "token_data.json"
+DATA_FILE    = "data_cache.json"  # 🔥 FIX: Persistent data cache to survive Render restarts
 
 token_store     = {"access_token": None}
 oi_cache        = {"data": None}
@@ -47,7 +48,6 @@ candle_cache_3m = []
 candle_cache_15 = []          
 ltp_history     = {}          
 
-# Telegram tracking states
 sent_alerts = {}
 last_hourly_summary = None
 
@@ -56,49 +56,45 @@ last_hourly_summary = None
 # ══════════════════════════════════════════════════
 
 def send_telegram_alert(message):
-    """Sends a message to your Telegram app."""
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID or TELEGRAM_BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
         return
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": TELEGRAM_CHAT_ID,
-        "text": message,
-        "parse_mode": "HTML"
-    }
+    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
     try:
         requests.post(url, json=payload, timeout=5)
     except Exception as e:
         print("[TELEGRAM ERROR]", e)
 
 def process_telegram_alerts(alerts, spot, pcr, trend, mkt_state, max_pain, pcr_zone):
-    """Handles alert spam protection and hourly summaries."""
     global sent_alerts, last_hourly_summary
     current_time = time.time()
     
-    # 1. Process Instant Breakout Alerts
-    for a in alerts:
-        msg = f"{a['icon']} <b>{a['type']}</b>\n{a['message']}"
-        # Only send if we haven't sent this exact alert in the last 30 minutes (1800 seconds)
-        if msg not in sent_alerts or (current_time - sent_alerts[msg] > 1800):
-            send_telegram_alert(msg)
-            sent_alerts[msg] = current_time
+    try:
+        # 1. Instant Breakout Alerts
+        for a in alerts:
+            msg = f"{a['icon']} <b>{a['type']}</b>\n{a['message']}"
+            if msg not in sent_alerts or (current_time - sent_alerts[msg] > 1800):
+                send_telegram_alert(msg)
+                sent_alerts[msg] = current_time
 
-    # Clean up old alerts from memory to prevent memory leaks
-    sent_alerts = {k: v for k, v in sent_alerts.items() if current_time - v < 3600}
+        # Cleanup memory
+        sent_alerts = {k: v for k, v in sent_alerts.items() if current_time - v < 3600}
 
-    # 2. Process Hourly Summary
-    current_hour = datetime.now().hour
-    if last_hourly_summary != current_hour:
-        summary = (
-            f"📊 <b>NIFTY HOURLY SUMMARY</b> 📊\n\n"
-            f"🎯 <b>Spot:</b> ₹{spot}\n"
-            f"⚖️ <b>PCR:</b> {pcr} ({pcr_zone})\n"
-            f"📈 <b>Trend:</b> {trend}\n"
-            f"🧭 <b>State:</b> {mkt_state}\n"
-            f"⚡ <b>Max Pain:</b> ₹{int(max_pain)}"
-        )
-        send_telegram_alert(summary)
-        last_hourly_summary = current_hour
+        # 2. Hourly Summary
+        current_hour = datetime.now().hour
+        if last_hourly_summary != current_hour:
+            summary = (
+                f"📊 <b>NIFTY HOURLY SUMMARY</b> 📊\n\n"
+                f"🎯 <b>Spot:</b> ₹{spot}\n"
+                f"⚖️ <b>PCR:</b> {pcr} ({pcr_zone})\n"
+                f"📈 <b>Trend:</b> {trend}\n"
+                f"🧭 <b>State:</b> {mkt_state}\n"
+                f"⚡ <b>Max Pain:</b> ₹{int(max_pain)}"
+            )
+            send_telegram_alert(summary)
+            last_hourly_summary = current_hour
+    except Exception as e:
+        print("[TELEGRAM PROCESSING ERROR]", e)
 
 # ══════════════════════════════════════════════════
 #  AUTH
@@ -151,7 +147,6 @@ def callback():
     save_token(data.get("access_token"))
     print("[LOGIN] Successfully generated and saved new token.")
     
-    # Send a telegram message confirming login!
     send_telegram_alert("✅ <b>Upstox Login Successful!</b> Server is now tracking NIFTY 50.")
     
     refresh()
@@ -680,8 +675,11 @@ def refresh():
         if not raw:
             err_msg = f"Upstox API returned no chain data for Expiry [{expiry}]. Token might be expired or IP rate-limited."
             print(f"[REFRESH FAILED] {err_msg}")
+            # Ensure the frontend gets an explicitly marked error state
             if oi_cache.get("data"):
                 oi_cache["data"]["backend_error"] = err_msg
+            else:
+                oi_cache["data"] = {"backend_error": err_msg, "timestamp": datetime.now().isoformat()}
             return
 
         atm   = round_to_strike(spot, STRIKE_STEP)
@@ -710,7 +708,7 @@ def refresh():
         ind   = get_indicators(candle_cache)
         trend, trend_reason, trend_strength = analyse_trend(atm_strikes, atm)
 
-        oi_cond, oi_signal, oi_desc       = price_oi_matrix(spot, prev_spot, chain, atm)
+        oi_cond, oi_signal, oi_desc        = price_oi_matrix(spot, prev_spot, chain, atm)
         pcr_analysis                       = pcr_zone_analysis(pcr, prev_pcr)
         gex_data, gex_flip                 = compute_gex_profile(chain, atm)
         iv_skew                            = compute_iv_skew(chain, atm)
@@ -750,13 +748,20 @@ def refresh():
             "timestamp": datetime.now().isoformat()
         }
 
+        # Update Memory
         oi_cache["data"] = data
+
+        # 🔥 FIX: Save to Disk so multi-workers can read the cached JSON even if memory wipes
+        try:
+            with open(DATA_FILE, "w") as f:
+                json.dump(data, f)
+        except Exception as e:
+            print("[DATA SAVE ERROR]", e)
 
         prev_oi   = {s:{"call_oi":v["call_oi"],"put_oi":v["put_oi"],"call_ltp":v["call_ltp"],"put_ltp":v["put_ltp"]} for s,v in chain.items()}
         prev_pcr  = pcr
         prev_spot = spot
         
-        # 🔥 FIX: Process and send Telegram alerts!
         process_telegram_alerts(alerts, spot, pcr, trend, mkt_state, max_pain, pcr_analysis["zone"])
 
         print(f"[OI REFRESHED] Spot={spot} | PCR={pcr}({pcr_chg:+.3f}) | ATM={atm} | Error: None")
@@ -784,29 +789,62 @@ def dashboard():
 
 @app.route("/oi/json")
 def oi_json():
-    if not oi_cache.get("data"): 
+    # 1. Try fetching from memory
+    d = oi_cache.get("data")
+    
+    # 2. 🔥 FIX: If memory is wiped (worker restart), load from disk
+    if not d and os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r") as f:
+                d = json.load(f)
+                oi_cache["data"] = d
+        except: pass
+
+    # 3. If still empty, force login
+    if not d: 
         return jsonify({"error":"No data — login at /login"})
     
+    # 4. Self-Healing check: If data is too old, force background refresh
     try:
-        last_upd = datetime.fromisoformat(oi_cache["data"]["timestamp"])
+        last_upd = datetime.fromisoformat(d["timestamp"])
         age = (datetime.now() - last_upd).total_seconds()
         if age > 180:
             print(f"[WARN] Data is {age}s old. Background thread asleep. Forcing manual refresh...")
             refresh()
+            # Try to grab the refreshed data from disk again
+            if os.path.exists(DATA_FILE):
+                with open(DATA_FILE, "r") as f:
+                    d = json.load(f)
+                    oi_cache["data"] = d
     except Exception as e:
         print("[SELF-HEAL ERROR]", e)
         
-    return jsonify(oi_cache["data"])
+    return jsonify(d)
 
 @app.route("/oi/histogram")
 def histogram():
-    if not oi_cache.get("data") or not oi_cache["data"].get("chain"): return jsonify([])
-    chain=oi_cache["data"]["chain"]; atm=oi_cache["data"]["atm"]
+    # Attempt load from memory, fallback to disk
+    d = oi_cache.get("data")
+    if not d and os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r") as f:
+                d = json.load(f)
+                oi_cache["data"] = d
+        except: pass
+
+    if not d or not d.get("chain"): return jsonify([])
+    chain=d["chain"]; atm=d["atm"]
     return jsonify(sorted([v for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP], key=lambda x:x["strike"]))
 
 @app.route("/oi/status")
 def oi_status():
-    d=oi_cache.get("data")
+    d = oi_cache.get("data")
+    if not d and os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r") as f:
+                d = json.load(f)
+        except: pass
+
     return jsonify({
         "token":        bool(token_store.get("access_token")),
         "has_data":     d is not None,
