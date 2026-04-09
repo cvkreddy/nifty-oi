@@ -2,7 +2,7 @@
 """
 ====================================================
   NIFTY50 OI Server — The Master Edition
-  Restores: Market State, OI Matrix, Anti-Sleep
+  Added: Historical State Machine for EMA/ST Timestamps
 ====================================================
 """
 
@@ -131,6 +131,10 @@ def generate_5min_summary(data, atm_strikes, atm):
     s_high = int(atm + s_curr)
     vix_mat = intel.get("vix_matrix", {})
     
+    # Extract timing data for Telegram
+    t5 = intel.get("index_technicals", {}).get("5min", {})
+    t15 = intel.get("index_technicals", {}).get("15min", {})
+    
     msg = (
         f"⏱ <b>5-MIN NIFTY SCANNER</b>\n"
         f"🎯 <b>Spot:</b> ₹{spot} | <b>PCR:</b> {pcr}\n"
@@ -138,6 +142,8 @@ def generate_5min_summary(data, atm_strikes, atm):
         f"🌊 <b>Smart Flow:</b> {flow_bias} ({net_flow_l:+.1f}L Net)\n"
         f"📊 <b>VIX Matrix: {vix_mat.get('signal', 'N/A')}</b>\n"
         f"↳ <i>{vix_mat.get('desc', 'N/A')}</i>\n"
+        f"⏱ <b>TIMING (5m):</b> Cross: {t5.get('ts_start','-')} | Pull: {t5.get('ts_pull','-')} | Cont: {t5.get('ts_cont','-')} | ST: {t5.get('ts_st','-')}\n"
+        f"⏱ <b>TIMING (15m):</b> Cross: {t15.get('ts_start','-')} | Pull: {t15.get('ts_pull','-')} | Cont: {t15.get('ts_cont','-')} | ST: {t15.get('ts_st','-')}\n"
         f"━━━━━━━━━━━━━━━━\n\n"
     )
     
@@ -314,42 +320,8 @@ def fetch_chain(expiry):
     except: return []
 
 # ══════════════════════════════════════════════════
-#  MATH & PROCESSORS (ALL RESTORED)
+#  MATH & PROCESSORS WITH HISTORICAL STATE MACHINE
 # ══════════════════════════════════════════════════
-
-# 🔥 RESTORED: OI Matrix State Calculator
-def price_oi_matrix(spot, prev_spot, chain, atm):
-    if prev_spot is None or len(prev_oi)==0: return "INITIALIZING","—","Waiting for second data cycle"
-    price_up, price_dn = spot > prev_spot, spot < prev_spot
-    total_oi_chg = sum(v["call_oi_chg"]+v["put_oi_chg"] for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP)
-    if price_up and total_oi_chg > 0: return "FRESH LONG BUILD","BULLISH","New buyers entering — strong upward momentum. Hold longs."
-    elif price_up and total_oi_chg < 0: return "SHORT COVERING","WEAK BULLISH","Bears exiting, not fresh bulls. Rally may lack strength."
-    elif price_dn and total_oi_chg > 0: return "FRESH SHORT BUILD","BEARISH","New sellers entering — strong downward momentum. Hold shorts."
-    elif price_dn and total_oi_chg < 0: return "LONG UNWINDING","WEAK BEARISH","Bulls exiting. Fall may slow — no new shorts yet."
-    else: return "NO CHANGE","NEUTRAL","OI unchanged this cycle."
-
-# 🔥 RESTORED: Overall Market State Calculator
-def market_state(pcr, adx, oi_matrix_signal, alerts, vix):
-    signals=[]
-    if oi_matrix_signal in ("BULLISH","WEAK BULLISH"):   signals.append(1)
-    elif oi_matrix_signal in ("BEARISH","WEAK BEARISH"): signals.append(-1)
-    if adx and adx>=25: signals.append(1 if oi_matrix_signal=="BULLISH" else -1)
-    elif adx and adx<20: signals.append(0)
-    if pcr<0.6 or pcr>1.5: signals.append(0)
-    elif pcr<0.8: signals.append(-1)
-    elif pcr>1.2: signals.append(1)
-    
-    if any(a["type"]=="BREAKOUT UP" for a in alerts): return "BREAKOUT IMMINENT"
-    if any(a["type"]=="BREAKOUT DOWN" for a in alerts): return "BREAKOUT IMMINENT"
-    if pcr<0.6 or pcr>1.5: return "REVERSAL ZONE"
-    
-    score = sum(signals)
-    if score >= 2: return "TRENDING UP"
-    elif score <= -2: return "TRENDING DOWN"
-    elif adx and adx<20: return "RANGING"
-    elif vix>25: return "HIGH VOLATILITY RANGE"
-    else: return "NEUTRAL / WAIT"
-
 def compute_max_pain(chain):
     strikes = sorted(chain.keys())
     if not strikes: return 0
@@ -369,50 +341,16 @@ def get_vwap(candles):
             cum_pv += ((c['high'] + c['low'] + c['close']) / 3) * v
     return round(cum_pv / cum_vol, 2) if cum_vol > 0 else None
 
-def calc_rsi(closes, p=14):
-    if len(closes) < p+1: return None
-    gains=[max(closes[i]-closes[i-1],0) for i in range(1,len(closes))]
-    losses=[max(closes[i-1]-closes[i],0) for i in range(1,len(closes))]
-    ag=sum(gains[:p])/p; al=sum(losses[:p])/p
-    for i in range(p, len(gains)):
-        ag=(ag*(p-1)+gains[i])/p; al=(al*(p-1)+losses[i])/p
-    return 100.0 if al==0 else round(100-100/(1+ag/al), 2)
-
-def calc_adx(candles, p=14):
-    if len(candles)<p+2: return None,None,None
-    trl,pdml,ndml=[],[],[]
-    for i in range(1,len(candles)):
-        h,l,pc=candles[i]["high"],candles[i]["low"],candles[i-1]["close"]
-        ph,pl=candles[i-1]["high"],candles[i-1]["low"]
-        trl.append(max(h-l,abs(h-pc),abs(l-pc)))
-        pdml.append(max(h-ph,0) if (h-ph)>(pl-l) else 0)
-        ndml.append(max(pl-l,0) if (pl-l)>(h-ph) else 0)
-    def sm(lst,p):
-        s=sum(lst[:p]); r=[s]
-        for i in range(p,len(lst)): s=s-s/p+lst[i]; r.append(s)
-        return r
-    atr=sm(trl,p); pDM=sm(pdml,p); nDM=sm(ndml,p)
-    dxl=[]
-    for i in range(len(atr)):
-        if atr[i]==0: continue
-        pdi=100*pDM[i]/atr[i]; ndi=100*nDM[i]/atr[i]
-        dx=100*abs(pdi-ndi)/(pdi+ndi) if (pdi+ndi) else 0
-        dxl.append((dx,pdi,ndi))
-    if not dxl: return None,None,None
-    return round(sum(x[0] for x in dxl[-p:])/min(p,len(dxl)),2), round(dxl[-1][1],2), round(dxl[-1][2],2)
-
-def get_indicators(candles):
-    if not candles or len(candles)<16: return {"rsi":None,"adx":None,"candle_count":len(candles) if candles else 0}
-    closes=[c["close"] for c in candles]
-    rsi=calc_rsi(closes,14)
-    adx,pdi,ndi=calc_adx(candles,14)
-    return {"rsi":rsi,"adx":adx,"candle_count":len(candles)}
-
-def calc_ema(prices, period):
-    if not prices or len(prices) < period: return None
-    k = 2.0 / (period + 1); ema = sum(prices[:period]) / period
-    for p in prices[period:]: ema = p * k + ema * (1 - k)
-    return round(ema, 2)
+def calc_ema_array(prices, period):
+    if not prices or len(prices) < period: return [None] * len(prices)
+    emas = [None] * (period - 1)
+    k = 2.0 / (period + 1)
+    ema = sum(prices[:period]) / period
+    emas.append(round(ema, 2))
+    for p in prices[period:]:
+        ema = p * k + ema * (1 - k)
+        emas.append(round(ema, 2))
+    return emas
 
 def calc_supertrend(candles, period=7, multiplier=3.0):
     if len(candles) < period + 1: return None, None
@@ -423,13 +361,74 @@ def calc_supertrend(candles, period=7, multiplier=3.0):
     st_val = round((hl2 - multiplier * atr) if direction == "BULLISH" else (hl2 + multiplier * atr), 2)
     return direction, st_val
 
+# 🔥 HISTORICAL STATE MACHINE: Emulates TradingView logic loop
 def compute_tf_signals(candles, label, st_period, st_multiplier):
-    if not candles: return {"label": label, "candle_count": 0}
+    if not candles or len(candles) < 15: 
+        return {"label": label, "candle_count": len(candles) if candles else 0, "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-"}
+    
     vwap = get_vwap(candles)
     closes = [c["close"] for c in candles]
-    ema7, ema15, price = calc_ema(closes, 7), calc_ema(closes, 15), closes[-1]
+    times = [c["time"] for c in candles]
     
-    st_dir, st_val = calc_supertrend(candles, period=st_period, multiplier=st_multiplier)
+    ema7_arr = calc_ema_array(closes, 7)
+    ema15_arr = calc_ema_array(closes, 15)
+    
+    trend_start, pull_time, cont_time, st_time = "-", "-", "-", "-"
+    is_bull = None
+    await_pull_b = await_pull_s = False
+    curr_st = None
+    
+    # Loop over all history to find the exact timestamps of conditions
+    for i in range(15, len(candles)):
+        e7, e15 = ema7_arr[i], ema15_arr[i]
+        if e7 is None or e15 is None: continue
+        c_close = closes[i]
+        
+        try: c_time = times[i][11:16] # Extract HH:MM
+        except: c_time = "-"
+
+        curr_bull = e7 > e15
+        
+        # 1. Trend Start (EMA Crossover)
+        if is_bull is None:
+            is_bull = curr_bull
+            if curr_bull: await_pull_b = True
+            else: await_pull_s = True
+        elif is_bull != curr_bull:
+            trend_start = c_time
+            pull_time = "-"
+            cont_time = "-"
+            is_bull = curr_bull
+            if curr_bull: await_pull_b = True
+            else: await_pull_s = True
+            
+        # 2. Pullback & Continuation
+        if is_bull:
+            if await_pull_b and (c_close < e7 or c_close < e15):
+                pull_time = c_time
+                cont_time = "..."
+                await_pull_b = False
+            elif not await_pull_b and c_close > e7:
+                cont_time = c_time
+                await_pull_b = True
+        else:
+            if await_pull_s and (c_close > e7 or c_close > e15):
+                pull_time = c_time
+                cont_time = "..."
+                await_pull_s = False
+            elif not await_pull_s and c_close < e7:
+                cont_time = c_time
+                await_pull_s = True
+                
+        # 3. Supertrend
+        s_dir, _ = calc_supertrend(candles[:i+1], st_period, st_multiplier)
+        if curr_st is None: curr_st = s_dir
+        elif curr_st != s_dir:
+            st_time = c_time
+            curr_st = s_dir
+
+    ema7, ema15, price = ema7_arr[-1], ema15_arr[-1], closes[-1]
+    st_dir, st_val = calc_supertrend(candles, st_period, st_multiplier)
     
     trend = "N/A"
     if ema7 and ema15:
@@ -446,7 +445,15 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
         for i in range(p, len(g)): ag=(ag*(p-1)+g[i])/p; al=(al*(p-1)+l[i])/p
         return 100.0 if al==0 else round(100-100/(1+ag/al), 2)
 
-    return {"label": label, "candle_count": len(candles), "current_price": round(price, 2) if price else None, "ema7": ema7, "ema15": ema15, "vwap": vwap, "price_above_ema7": price > ema7 if ema7 else None, "price_above_ema15": price > ema15 if ema15 else None, "ema7_above_ema15": ema7 > ema15 if ema7 and ema15 else None, "price_above_vwap": price > vwap if vwap else None, "trend": trend, "supertrend": st_dir, "supertrend_val": st_val, "rsi": calc_rsi_local(closes, 14) if len(closes)>=15 else None}
+    return {
+        "label": label, "candle_count": len(candles), "current_price": round(price, 2) if price else None, 
+        "ema7": ema7, "ema15": ema15, "vwap": vwap, 
+        "price_above_ema7": price > ema7 if ema7 else None, "price_above_ema15": price > ema15 if ema15 else None, 
+        "ema7_above_ema15": ema7 > ema15 if ema7 and ema15 else None, "price_above_vwap": price > vwap if vwap else None,
+        "trend": trend, "supertrend": st_dir, "supertrend_val": st_val, 
+        "rsi": calc_rsi_local(closes, 14) if len(closes)>=15 else None,
+        "ts_start": trend_start, "ts_pull": pull_time, "ts_cont": cont_time, "ts_st": st_time
+    }
 
 def analyze_vix_price(spot, vwap, vix, base_vix):
     if not vwap or not base_vix or base_vix == 0: 
@@ -579,7 +586,6 @@ def refresh():
 
         max_pain = compute_max_pain(chain)
         atm_strikes = {s:v for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP}
-        
         total_call  = sum(v["call_oi"] for v in chain.values())
         total_put   = sum(v["put_oi"]  for v in chain.values())
         pcr         = round(total_put/total_call,2) if total_call else 0
@@ -612,25 +618,16 @@ def refresh():
             if 0 < dist <= 150 and v["call_oi_chg"] < 0 and abs(v["call_oi_chg"]) > v["call_oi"]*0.05: alerts.append({"type":"BREAKOUT UP","icon":"⚡","message":f"Res OI dropping"})
             if -150 <= dist < 0 and v["put_oi_chg"] < 0 and abs(v["put_oi_chg"]) > v["put_oi"]*0.05: alerts.append({"type":"BREAKOUT DOWN","icon":"⚡","message":f"Sup OI dropping"})
 
-        # 🔥 RESTORED: Price Matrix Calculator for Intelligence
-        oi_cond, oi_signal, oi_desc = price_oi_matrix(spot, prev_spot, chain, atm)
-
         for s, v in atm_strikes.items():
             cf, pf, nf = classify_strike_oi_flow(v, prev_spot, spot)
             v["call_flow"], v["put_flow"], v["net_flow"] = cf, pf, nf
-            
             if s not in ltp_history: ltp_history[s] = {"call": [], "put": []}
             if v.get("call_ltp"): ltp_history[s]["call"] = (ltp_history[s]["call"] + [float(v["call_ltp"])])[-25:]
             if v.get("put_ltp"): ltp_history[s]["put"] = (ltp_history[s]["put"] + [float(v["put_ltp"])])[-25:]
-            
             def s_info(prices):
                 e7, e15, price = calc_ema(prices, 7), calc_ema(prices, 15), prices[-1] if prices else None
                 return {"ema7": e7, "ema15": e15, "price_above_ema7": price > e7 if e7 and price else None}
             v["ltp_technicals"] = {"call": s_info(ltp_history[s]["call"]), "put": s_info(ltp_history[s]["put"])}
-
-        ind_data = get_indicators(candle_cache)
-        # 🔥 RESTORED: Market State Calculator
-        mkt_state = market_state(pcr, ind_data.get("adx"), oi_signal, alerts, vix)
 
         vwap_val = get_vwap(candle_cache)
         vix_matrix = analyze_vix_price(spot, vwap_val, vix, baseline_vix)
@@ -647,8 +644,7 @@ def refresh():
         iv_skew = {"data":skew_data,"avg_skew":avg_skew,"signal":"BEARISH SKEW — put IV elevated" if avg_skew>3 else "BULLISH SKEW — call IV elevated" if avg_skew<-3 else "NEUTRAL SKEW — balanced"}
 
         intelligence = {
-            "market_state": mkt_state, # Extracted from the restored function
-            "oi_matrix_condition": oi_cond, "oi_matrix_signal": oi_signal, "oi_matrix_desc": oi_desc, # Extracted from restored function
+            "market_state": "TRENDING UP" if pcr > 1.2 else "TRENDING DOWN" if pcr < 0.8 else "RANGING",
             "pcr_zone": "BULLISH" if pcr > 1.2 else "BEARISH" if pcr < 0.8 else "NEUTRAL",
             "alerts": alerts, 
             "gex_profile": gex_data[:11], "gex_flip": gex_flip, "iv_skew": iv_skew,
@@ -669,7 +665,7 @@ def refresh():
             "atm": atm, "pcr": pcr, "pcr_chg": pcr_chg, "vix": vix,
             "max_pain": max_pain, "expiry": expiry, 
             "total_call_oi": total_call, "total_put_oi": total_put,
-            "indicators": ind_data, "intelligence": intelligence,
+            "indicators": {"candle_count": len(candle_cache)}, "intelligence": intelligence,
             "atm_strikes": atm_strikes, "chain": chain,
             "timestamp": datetime.now().isoformat()
         }
