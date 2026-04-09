@@ -2,7 +2,7 @@
 """
 ====================================================
   NIFTY50 OI Server — The Master Edition
-  Restores ALL missing detailed metrics (EMAs, Vol)
+  Restores: Market State, OI Matrix, Anti-Sleep
 ====================================================
 """
 
@@ -314,8 +314,42 @@ def fetch_chain(expiry):
     except: return []
 
 # ══════════════════════════════════════════════════
-#  MATH & PROCESSORS
+#  MATH & PROCESSORS (ALL RESTORED)
 # ══════════════════════════════════════════════════
+
+# 🔥 RESTORED: OI Matrix State Calculator
+def price_oi_matrix(spot, prev_spot, chain, atm):
+    if prev_spot is None or len(prev_oi)==0: return "INITIALIZING","—","Waiting for second data cycle"
+    price_up, price_dn = spot > prev_spot, spot < prev_spot
+    total_oi_chg = sum(v["call_oi_chg"]+v["put_oi_chg"] for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP)
+    if price_up and total_oi_chg > 0: return "FRESH LONG BUILD","BULLISH","New buyers entering — strong upward momentum. Hold longs."
+    elif price_up and total_oi_chg < 0: return "SHORT COVERING","WEAK BULLISH","Bears exiting, not fresh bulls. Rally may lack strength."
+    elif price_dn and total_oi_chg > 0: return "FRESH SHORT BUILD","BEARISH","New sellers entering — strong downward momentum. Hold shorts."
+    elif price_dn and total_oi_chg < 0: return "LONG UNWINDING","WEAK BEARISH","Bulls exiting. Fall may slow — no new shorts yet."
+    else: return "NO CHANGE","NEUTRAL","OI unchanged this cycle."
+
+# 🔥 RESTORED: Overall Market State Calculator
+def market_state(pcr, adx, oi_matrix_signal, alerts, vix):
+    signals=[]
+    if oi_matrix_signal in ("BULLISH","WEAK BULLISH"):   signals.append(1)
+    elif oi_matrix_signal in ("BEARISH","WEAK BEARISH"): signals.append(-1)
+    if adx and adx>=25: signals.append(1 if oi_matrix_signal=="BULLISH" else -1)
+    elif adx and adx<20: signals.append(0)
+    if pcr<0.6 or pcr>1.5: signals.append(0)
+    elif pcr<0.8: signals.append(-1)
+    elif pcr>1.2: signals.append(1)
+    
+    if any(a["type"]=="BREAKOUT UP" for a in alerts): return "BREAKOUT IMMINENT"
+    if any(a["type"]=="BREAKOUT DOWN" for a in alerts): return "BREAKOUT IMMINENT"
+    if pcr<0.6 or pcr>1.5: return "REVERSAL ZONE"
+    
+    score = sum(signals)
+    if score >= 2: return "TRENDING UP"
+    elif score <= -2: return "TRENDING DOWN"
+    elif adx and adx<20: return "RANGING"
+    elif vix>25: return "HIGH VOLATILITY RANGE"
+    else: return "NEUTRAL / WAIT"
+
 def compute_max_pain(chain):
     strikes = sorted(chain.keys())
     if not strikes: return 0
@@ -464,13 +498,13 @@ def process_chain(raw):
         result[strike] = {
             "strike": strike,
             "call_oi": call_oi, "call_oi_chg": round(c_oi_5m, 2), "call_oi_chg_day": round(c_oi_d, 2),
-            "call_vol_oi": round(call_vol/call_oi,2) if call_oi else 0,
+            "call_vol_oi": round(float(ce_md.get("volume",0) or 0)/call_oi,2) if call_oi else 0,
             "call_iv": round(float(ce_gk.get("iv",0) or 0)*100,2), 
             "call_ltp": call_ltp, "call_ltp_chg": round(c_ltp_5m, 2), "call_ltp_chg_day": round(c_ltp_d, 2),
             "call_delta": float(ce_gk.get("delta",0) or 0), "call_gamma": float(ce_gk.get("gamma",0) or 0), "call_gex": float(ce_gk.get("gamma",0) or 0) * call_oi * 25,
             
             "put_oi": put_oi, "put_oi_chg": round(p_oi_5m, 2), "put_oi_chg_day": round(p_oi_d, 2),
-            "put_vol_oi": round(put_vol/put_oi,2) if put_oi else 0,
+            "put_vol_oi": round(float(pe_md.get("volume",0) or 0)/put_oi,2) if put_oi else 0,
             "put_iv": round(float(pe_gk.get("iv",0) or 0)*100,2), 
             "put_ltp": put_ltp, "put_ltp_chg": round(p_ltp_5m, 2), "put_ltp_chg_day": round(p_ltp_d, 2),
             "put_delta": float(pe_gk.get("delta",0) or 0), "put_gamma": float(pe_gk.get("gamma",0) or 0), "put_gex": float(pe_gk.get("gamma",0) or 0) * put_oi * 25
@@ -544,13 +578,10 @@ def refresh():
         if not chain: return
 
         max_pain = compute_max_pain(chain)
-
         atm_strikes = {s:v for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP}
         
-        # 🔥 CRITICAL: TOTAL MARKET OI ADDED
         total_call  = sum(v["call_oi"] for v in chain.values())
         total_put   = sum(v["put_oi"]  for v in chain.values())
-        
         pcr         = round(total_put/total_call,2) if total_call else 0
         pcr_chg     = round(pcr-prev_pcr,3) if prev_pcr is not None else 0
         futures     = fetch_futures(spot)
@@ -581,11 +612,13 @@ def refresh():
             if 0 < dist <= 150 and v["call_oi_chg"] < 0 and abs(v["call_oi_chg"]) > v["call_oi"]*0.05: alerts.append({"type":"BREAKOUT UP","icon":"⚡","message":f"Res OI dropping"})
             if -150 <= dist < 0 and v["put_oi_chg"] < 0 and abs(v["put_oi_chg"]) > v["put_oi"]*0.05: alerts.append({"type":"BREAKOUT DOWN","icon":"⚡","message":f"Sup OI dropping"})
 
+        # 🔥 RESTORED: Price Matrix Calculator for Intelligence
+        oi_cond, oi_signal, oi_desc = price_oi_matrix(spot, prev_spot, chain, atm)
+
         for s, v in atm_strikes.items():
             cf, pf, nf = classify_strike_oi_flow(v, prev_spot, spot)
             v["call_flow"], v["put_flow"], v["net_flow"] = cf, pf, nf
             
-            # 🔥 RESTORED: LTP Technicals for the Matrix
             if s not in ltp_history: ltp_history[s] = {"call": [], "put": []}
             if v.get("call_ltp"): ltp_history[s]["call"] = (ltp_history[s]["call"] + [float(v["call_ltp"])])[-25:]
             if v.get("put_ltp"): ltp_history[s]["put"] = (ltp_history[s]["put"] + [float(v["put_ltp"])])[-25:]
@@ -594,6 +627,10 @@ def refresh():
                 e7, e15, price = calc_ema(prices, 7), calc_ema(prices, 15), prices[-1] if prices else None
                 return {"ema7": e7, "ema15": e15, "price_above_ema7": price > e7 if e7 and price else None}
             v["ltp_technicals"] = {"call": s_info(ltp_history[s]["call"]), "put": s_info(ltp_history[s]["put"])}
+
+        ind_data = get_indicators(candle_cache)
+        # 🔥 RESTORED: Market State Calculator
+        mkt_state = market_state(pcr, ind_data.get("adx"), oi_signal, alerts, vix)
 
         vwap_val = get_vwap(candle_cache)
         vix_matrix = analyze_vix_price(spot, vwap_val, vix, baseline_vix)
@@ -610,7 +647,8 @@ def refresh():
         iv_skew = {"data":skew_data,"avg_skew":avg_skew,"signal":"BEARISH SKEW — put IV elevated" if avg_skew>3 else "BULLISH SKEW — call IV elevated" if avg_skew<-3 else "NEUTRAL SKEW — balanced"}
 
         intelligence = {
-            "market_state": "TRENDING UP" if pcr > 1.2 else "TRENDING DOWN" if pcr < 0.8 else "RANGING",
+            "market_state": mkt_state, # Extracted from the restored function
+            "oi_matrix_condition": oi_cond, "oi_matrix_signal": oi_signal, "oi_matrix_desc": oi_desc, # Extracted from restored function
             "pcr_zone": "BULLISH" if pcr > 1.2 else "BEARISH" if pcr < 0.8 else "NEUTRAL",
             "alerts": alerts, 
             "gex_profile": gex_data[:11], "gex_flip": gex_flip, "iv_skew": iv_skew,
@@ -630,8 +668,8 @@ def refresh():
             "spot": spot, "futures": futures, "premium": round(futures-spot,2),
             "atm": atm, "pcr": pcr, "pcr_chg": pcr_chg, "vix": vix,
             "max_pain": max_pain, "expiry": expiry, 
-            "total_call_oi": total_call, "total_put_oi": total_put,  # 🔥 RESTORED TOTALS
-            "indicators": get_indicators(candle_cache), "intelligence": intelligence,
+            "total_call_oi": total_call, "total_put_oi": total_put,
+            "indicators": ind_data, "intelligence": intelligence,
             "atm_strikes": atm_strikes, "chain": chain,
             "timestamp": datetime.now().isoformat()
         }

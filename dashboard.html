@@ -35,6 +35,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .vb-detail{font-size:13px;opacity:.9;flex:1;}
 .vb-time{font-size:11px;opacity:.6;}
 
+/* 🔥 RESTORED: State Bar for Top Indicators */
+.state-bar{padding:12px 18px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+  border-bottom:1px solid var(--border);background:var(--bg2);}
+.state-icon{font-size:24px;}
+.state-label{font-size:10px;color:var(--text2);letter-spacing:2px;margin-bottom:4px;text-transform:uppercase;font-family:var(--ui);font-weight:700;}
+.state-val{font-size:18px;font-weight:700;letter-spacing:1px;}
+.state-divider{width:1px;height:40px;background:var(--border2);}
+
 .strip{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 18px;
   display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;}
 .si{display:flex;align-items:baseline;gap:6px;}
@@ -182,6 +190,24 @@ tr:hover td{background:rgba(255,255,255,.03);}
   <div class="vb-main" id="vb-main">Connecting to server...</div>
   <div class="vb-detail" id="vb-detail">Waiting for first data cycle</div>
   <div class="vb-time" id="vb-time">—</div>
+</div>
+
+<div class="state-bar" id="state-bar">
+  <div class="state-icon" id="state-icon">⏳</div>
+  <div>
+    <div class="state-label">MARKET STATE</div>
+    <div class="state-val" id="state-val">—</div>
+  </div>
+  <div class="state-divider"></div>
+  <div style="flex:1">
+    <div class="state-label">OI MATRIX (Price+OI)</div>
+    <div style="font-size:15px;font-weight:700;" id="matrix-val">—</div>
+  </div>
+  <div class="state-divider"></div>
+  <div style="flex:2">
+    <div style="font-size:14px;color:var(--text2);font-weight:600;" id="state-note">—</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:4px;" id="matrix-desc">—</div>
+  </div>
 </div>
 
 <div class="alerts-bar">
@@ -392,7 +418,8 @@ tr:hover td{background:rgba(255,255,255,.03);}
 </div>
 
 <script>
-let secs=300
+// 🔥 NEW: Absolute target timer to prevent Chrome from sleeping the tab
+let targetTime = Date.now() + 300000;
 let pcrHistory   = []      
 let prevOIChg    = {}      
 let cycleCount   = 0
@@ -497,7 +524,6 @@ async function doFetch(){
     let hist=[];try{hist=(await hr.json()).map(h=>({...h,strike:parseFloat(h.strike||0)}))}catch(e){}
     
     render(raw,hist)
-    secs=300
     g('dot').style.background='var(--bull)'
     
     const bTime = new Date(raw.timestamp).toLocaleTimeString('en-IN');
@@ -522,15 +548,28 @@ function render(d,hist){
   const intel=d.intelligence||{}, ind=d.indicators||{}
   g('expiry-badge').textContent='Expiry: '+(d.expiry||'—')
 
+  // 🔥 RESTORED MARKET STATE BAR
   const ms=intel.market_state||'—', msCol=msColor(ms);
-  let icon='⏳',main=ms,details='Wait for confirmation'
+  let icon='⏳',main=ms,details='Waiting for confirmation...'
   if(ms.includes('UP')){icon='📈'; details='Support building'}
   else if(ms.includes('DOWN')){icon='📉'; details='Resistance building'}
+  else if(ms.includes('BREAK')){icon='⚡'; details='Breakout Imminent'}
+  
   const banner=g('verdict-banner')
-  banner.style.background=`linear-gradient(90deg, rgba(${ms.includes('UP')?'0,255,136':'255,59,87'},0.1) 0%, transparent 100%)`
+  banner.style.background=`linear-gradient(90deg, rgba(${ms.includes('UP')?'0,255,136':ms.includes('DOWN')?'255,59,87':'255,184,0'},0.1) 0%, transparent 100%)`
   banner.style.borderBottomColor=msCol
   set('vb-icon',icon); set('vb-main',main); g('vb-main').style.color=msCol;
   set('vb-detail',details); set('vb-time',new Date().toLocaleTimeString('en-IN'))
+  
+  g('state-bar').style.borderBottomColor = msCol;
+  set('state-icon', icon);
+  styl('state-val', ms, msCol);
+  set('state-note', details);
+  const mxCond = intel.oi_matrix_condition || '—';
+  const mxSig = intel.oi_matrix_signal || '—';
+  const mxCol = mxSig.includes('BULL') ? 'var(--bull)' : mxSig.includes('BEAR') ? 'var(--bear)' : 'var(--warn)';
+  styl('matrix-val', mxCond + ' → ' + mxSig, mxCol);
+  set('matrix-desc', intel.oi_matrix_desc || '—');
 
   const alerts=intel.alerts||[]
   g('alerts-content').innerHTML=alerts.length
@@ -556,7 +595,6 @@ function render(d,hist){
   if(netFlowL > 0) { fBar.style.background = 'var(--bull)'; fBar.style.left = '50%'; fBar.style.width = (flowPct/2) + '%'; fBar.style.boxShadow = '0 0 5px var(--bull)'; } 
   else { fBar.style.background = 'var(--bear)'; fBar.style.left = (50 - flowPct/2) + '%'; fBar.style.width = (flowPct/2) + '%'; fBar.style.boxShadow = '0 0 5px var(--bear)'; }
 
-  // 🔥 RESTORED TOTAL MARKET OI
   const tC = d.total_call_oi || 0;
   const tP = d.total_put_oi || 0;
   g('tot-ce').textContent = (tC / 10000000).toFixed(2);
@@ -600,7 +638,6 @@ function render(d,hist){
   styl('sig-mp',(d.max_pain-spot>=0?'+':'')+'₹'+Math.round(d.max_pain-spot).toLocaleString('en-IN')+' from spot','var(--warn)')
   set('sig-mp-s','Max Pain ₹'+Math.round(d.max_pain).toLocaleString('en-IN')+' — expiry pull zone')
 
-  // 🔥 RESTORED FULL TECHNICALS PANEL
   renderNiftyTechFull(intel.index_technicals||{})
 
   const ak=d.atm_strikes,sts=Object.keys(ak).map(Number).sort((a,b)=>a-b)
@@ -642,6 +679,7 @@ function renderNiftyTechFull(tech){
     const d15col=ema15?(price>ema15?'var(--bull)':'var(--bear)'):'var(--text2)'
     const xover=t.crossover?`<span class="xover-pill ${t.crossover.includes('GOLDEN')?'xover-gold':'xover-death'}">🔔 ${t.crossover}</span>`:''
     
+    // 🔥 RESTORED RSI TO TECHNICALS PANEL
     const rsi=t.rsi, rsiNote=!rsi?'N/A':rsi>=70?'Overbought ⚠':rsi>=60?'Bullish':'Neutral'+(rsi<=40?' Bearish':''), rsiCol=!rsi?'var(--text2)':rsi>=70?'var(--bear)':rsi<=30?'var(--bull)':rsi>=55?'var(--bull)':'var(--warn)'
 
     el.innerHTML=`
@@ -710,7 +748,6 @@ function rowHTML(r,atm,maxOI,isCall){
   </tr>`
 }
 
-// 🔥 RESTORED 10-COLUMN DETAILED FLOW MATRIX
 function renderFlowMatrix(atk,atm){
   const rows=Object.keys(atk).map(Number).sort((a,b)=>a-b).map(s=>{
     const v=atk[s]||{},isATM=s===atm, cf=v.call_flow||{},pf=v.put_flow||{},nf=v.net_flow||{}
@@ -939,11 +976,32 @@ function renderAnalysis(d,atk,atm,ind,intel){
     </div>`
 }
 
-setInterval(()=>{
-  secs--;if(secs<=0){secs=300;doFetch()}
-  g('timer').textContent=Math.floor(secs/60)+':'+String(secs%60).padStart(2,'0')
-},1000)
+// 🔥 ANTI-SLEEP TIMER LOGIC
+setInterval(() => {
+  let now = Date.now();
+  let remain = Math.max(0, Math.floor((targetTime - now) / 1000));
+  if (remain <= 0) {
+    targetTime = Date.now() + 300000; // Reset target to exactly 5 mins
+    doFetch();
+  } else {
+    g('timer').textContent = Math.floor(remain / 60) + ':' + String(remain % 60).padStart(2, '0');
+  }
+}, 1000);
 
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    let now = Date.now();
+    if (now >= targetTime) {
+       targetTime = Date.now() + 300000;
+       doFetch();
+    } else {
+       let remain = Math.floor((targetTime - now) / 1000);
+       g('timer').textContent = Math.floor(remain / 60) + ':' + String(remain % 60).padStart(2, '0');
+    }
+  }
+});
+
+// Initial load
 doFetch()
 </script>
 </body>
