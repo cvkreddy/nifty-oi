@@ -1,7 +1,13 @@
+
+
+# 🚨 TELEGRAM CREDENTIALS 🚨
+TELEGRAM_BOT_TOKEN = ""  
+TELEGRAM_CHAT_ID   = ""    
+
 """
 ====================================================
-  NIFTY50 OI Server — Full Intelligence Mode v9 (Final/Stable)
-  Includes: ALL Processors, VIX Matrix, State Persistence
+  NIFTY50 OI Server — Full Intelligence Mode v10 (Final Fix)
+  Restored: net_flow to fix UI Crash
 ====================================================
 """
 
@@ -293,7 +299,7 @@ def fetch_chain(expiry):
     except: return []
 
 # ══════════════════════════════════════════════════
-#  MATH & PROCESSORS (Fully Restored)
+#  MATH & PROCESSORS
 # ══════════════════════════════════════════════════
 
 def compute_max_pain(chain):
@@ -384,7 +390,6 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
         elif price < ema7 and ema7 > ema15: trend = "MILD BEARISH"
         else: trend = "STRONG BEARISH"
 
-    # Local RSI for individual timeframes
     def calc_rsi_local(cls, p=14):
         if len(cls)<p+1: return None
         g=[max(cls[i]-cls[i-1],0) for i in range(1,len(cls))]
@@ -461,24 +466,41 @@ def process_chain(raw):
         baseline_oi = {str(s): {"call_oi": v["call_oi"], "put_oi": v["put_oi"], "call_ltp": v["call_ltp"], "put_ltp": v["put_ltp"]} for s,v in result.items()}
     return result
 
+# 🔥 RESTORED NET FLOW FOR JS FIX
 def classify_strike_oi_flow(v, prev_spot, spot):
     pup, pdn = spot > prev_spot + 5 if prev_spot else False, spot < prev_spot - 5 if prev_spot else False
-    c_c, cl = v.get("call_oi_chg", 0), v.get("call_ltp_chg", 0)
-    p_c, pl = v.get("put_oi_chg", 0), v.get("put_ltp_chg", 0)
+    c_c, cl, c_o = v.get("call_oi_chg", 0), v.get("call_ltp_chg", 0), v.get("call_oi", 0)
+    p_c, pl, p_o = v.get("put_oi_chg", 0), v.get("put_ltp_chg", 0), v.get("put_oi", 0)
     
-    if pup and c_c > 100000 and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
-    elif pup and c_c < -100000 and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
-    elif pdn and c_c > 100000 and cl < 0: cf = ("FRESH CALL WRITING", "BEARISH", "🔴")
-    elif pdn and c_c < -100000: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
-    else: cf = ("STABLE", "NEUTRAL", "⚪")
+    THRESH = 100000
+    if pup and c_c > THRESH and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
+    elif pup and c_c < -THRESH and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
+    elif pdn and c_c > THRESH and cl < 0: cf = ("FRESH CALL WRITING", "BEARISH", "🔴")
+    elif pdn and c_c < -THRESH: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
+    elif c_c > 500000: cf = ("HEAVY CALL ADDITION", "WATCH", "🔴")
+    elif c_c < -500000: cf = ("HEAVY CALL EXIT", "BULLISH", "✅")
+    else: cf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
 
-    if pdn and p_c > 100000 and pl > 0: pf = ("LONG BUILDUP", "BEARISH", "🔴")
-    elif pdn and p_c < -100000 and pl > 0: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
-    elif pup and p_c > 100000 and pl < 0: pf = ("FRESH PUT WRITING", "BULLISH", "✅")
-    elif pup and p_c < -100000: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
-    else: pf = ("STABLE", "NEUTRAL", "⚪")
+    if pdn and p_c > THRESH and pl > 0: pf = ("LONG BUILDUP", "BEARISH", "🔴")
+    elif pdn and p_c < -THRESH and pl > 0: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
+    elif pup and p_c > THRESH and pl < 0: pf = ("FRESH PUT WRITING", "BULLISH", "✅")
+    elif pup and p_c < -THRESH: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
+    elif p_c > 500000: pf = ("HEAVY PUT ADDITION", "WATCH", "✅")
+    elif p_c < -500000: pf = ("HEAVY PUT EXIT", "BEARISH", "🔴")
+    else: pf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
 
-    return {"condition": cf[0], "signal": cf[1], "emoji": cf[2]}, {"condition": pf[0], "signal": pf[1], "emoji": pf[2]}
+    total_chg = c_c + p_c
+    if c_c > THRESH and p_c < -THRESH: net_note = "🔄 OI SHIFT: Money moving to CALL side."
+    elif p_c > THRESH and c_c < -THRESH: net_note = "🔄 OI SHIFT: Money moving to PUT side."
+    elif c_c > THRESH and p_c > THRESH: net_note = "💥 BOTH SIDES ADDING OI: High uncertainty."
+    elif c_c < -THRESH and p_c < -THRESH: net_note = "🌀 BOTH SIDES EXITING: Position squareoff."
+    else: net_note = "— No significant OI flow this cycle."
+
+    return (
+        {"condition": cf[0], "signal": cf[1], "emoji": cf[2], "oi_chg_l": round(c_c/100000,2), "oi_total_l": round(c_o/100000,2)},
+        {"condition": pf[0], "signal": pf[1], "emoji": pf[2], "oi_chg_l": round(p_c/100000,2), "oi_total_l": round(p_o/100000,2)},
+        {"total_oi_chg_l": round(total_chg/100000,2), "total_oi_l": round((c_o+p_o)/100000,2), "net_note": net_note}
+    )
 
 # ══════════════════════════════════════════════════
 #  MAIN REFRESH LOOP
@@ -544,8 +566,8 @@ def refresh():
             if -150 <= dist < 0 and v["put_oi_chg"] < 0 and abs(v["put_oi_chg"]) > v["put_oi"]*0.05: alerts.append({"type":"BREAKOUT DOWN","icon":"⚡","message":f"Sup OI dropping"})
 
         for s, v in atm_strikes.items():
-            cf, pf = classify_strike_oi_flow(v, prev_spot, spot)
-            v["call_flow"], v["put_flow"] = cf, pf
+            cf, pf, nf = classify_strike_oi_flow(v, prev_spot, spot)
+            v["call_flow"], v["put_flow"], v["net_flow"] = cf, pf, nf
             
         vwap_val = get_vwap(candle_cache)
         vix_matrix = analyze_vix_price(spot, vwap_val, vix, baseline_vix)
