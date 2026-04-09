@@ -1,7 +1,8 @@
+
 """
 ====================================================
-  NIFTY50 OI Server — Full Intelligence Mode v7 (Iron-Clad)
-  Includes: VIX Matrix, State Persistence, Pro Telegram
+  NIFTY50 OI Server — Full Intelligence Mode v8 (Restored)
+  Includes: Histogram Route Restored, VIX Matrix, State Save
 ====================================================
 """
 
@@ -35,12 +36,11 @@ STRIKE_STEP  = 50
 ATM_RANGE    = 5
 TOKEN_FILE   = "token_data.json"
 DATA_FILE    = "data_cache.json"  
-STATE_FILE   = "server_state.json" # 🔥 NEW: Prevents Render from wiping Day tracking!
+STATE_FILE   = "server_state.json" 
 
 token_store     = {"access_token": None}
 oi_cache        = {"data": None}
 
-# Persistent State Variables
 baseline_oi     = {}
 baseline_vix    = None
 prev_oi         = {}
@@ -57,7 +57,7 @@ last_5min_summary = 0
 debug_status = {"last_error": "No data fetched yet. Waiting for first cycle."}
 
 # ══════════════════════════════════════════════════
-#  STATE PERSISTENCE (Saves Day Baseline to Hard Drive)
+#  STATE PERSISTENCE
 # ══════════════════════════════════════════════════
 def load_server_state():
     global baseline_oi, baseline_vix, prev_oi, prev_pcr, prev_spot
@@ -65,7 +65,6 @@ def load_server_state():
         try:
             with open(STATE_FILE, "r") as f:
                 st = json.load(f)
-                # Only load if the date is TODAY. Wipes clean at midnight.
                 if st.get("date") == date.today().isoformat():
                     baseline_oi = st.get("baseline_oi", {})
                     baseline_vix = st.get("baseline_vix")
@@ -91,7 +90,7 @@ def save_server_state():
 load_server_state()
 
 # ══════════════════════════════════════════════════
-#  TELEGRAM BOT ENGINE (PRO LAYOUT)
+#  TELEGRAM BOT ENGINE
 # ══════════════════════════════════════════════════
 def send_telegram_alert(message):
     if not TELEGRAM_BOT_TOKEN or TELEGRAM_BOT_TOKEN == "YOUR_BOT_TOKEN_HERE": return
@@ -107,9 +106,8 @@ def generate_5min_summary(data, atm_strikes, atm):
     net_flow_l = intel.get("cumulative_net_flow_l", 0)
     flow_bias = "🟢 BULLISH" if net_flow_l > 0 else "🔴 BEARISH" if net_flow_l < 0 else "⚪ NEUTRAL"
     
-    straddle = intel.get("morning_straddle", 0)
-    s_decay = intel.get("straddle_decay", 0)
     s_curr = atm_strikes.get(atm, {}).get("call_ltp", 0) + atm_strikes.get(atm, {}).get("put_ltp", 0)
+    s_decay = intel.get("straddle_decay", 0)
     s_low = int(atm - s_curr)
     s_high = int(atm + s_curr)
     
@@ -119,7 +117,7 @@ def generate_5min_summary(data, atm_strikes, atm):
         f"⏱ <b>5-MIN NIFTY SCANNER</b>\n"
         f"🎯 <b>Spot:</b> ₹{spot} | <b>PCR:</b> {pcr}\n"
         f"⚖️ <b>Straddle:</b> ₹{s_curr:.1f} ({s_decay:+.1f}% Day) | Range: {s_low}-{s_high}\n"
-        f"🌊 <b>Smart Flow:</b> {flow_bias} ({net_flow_l:+.1f}L)\n"
+        f"🌊 <b>Smart Flow:</b> {flow_bias} ({net_flow_l:+.1f}L Net)\n"
         f"📊 <b>VIX Matrix: {vix_mat.get('signal', 'N/A')}</b>\n"
         f"↳ <i>{vix_mat.get('desc', 'N/A')}</i>\n"
         f"━━━━━━━━━━━━━━━━\n\n"
@@ -338,9 +336,16 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
         elif price < ema7 and ema7 > ema15: trend = "MILD BEARISH"
         else: trend = "STRONG BEARISH"
 
-    return {"label": label, "candle_count": len(candles), "current_price": round(price, 2) if price else None, "ema7": ema7, "ema15": ema15, "vwap": vwap, "price_above_ema7": price > ema7 if ema7 else None, "price_above_ema15": price > ema15 if ema15 else None, "ema7_above_ema15": ema7 > ema15 if ema7 and ema15 else None, "price_above_vwap": price > vwap if vwap else None, "trend": trend, "supertrend": st_dir, "supertrend_val": st_val}
+    def calc_rsi(cls, p=14):
+        if len(cls)<p+1: return None
+        g=[max(cls[i]-cls[i-1],0) for i in range(1,len(cls))]
+        l=[max(cls[i-1]-cls[i],0) for i in range(1,len(cls))]
+        ag=sum(g[:p])/p; al=sum(l[:p])/p
+        for i in range(p, len(g)): ag=(ag*(p-1)+g[i])/p; al=(al*(p-1)+l[i])/p
+        return 100.0 if al==0 else round(100-100/(1+ag/al), 2)
 
-# 🔥 VIX & PRICE MATRIX LOGIC
+    return {"label": label, "candle_count": len(candles), "current_price": round(price, 2) if price else None, "ema7": ema7, "ema15": ema15, "vwap": vwap, "price_above_ema7": price > ema7 if ema7 else None, "price_above_ema15": price > ema15 if ema15 else None, "ema7_above_ema15": ema7 > ema15 if ema7 and ema15 else None, "price_above_vwap": price > vwap if vwap else None, "trend": trend, "supertrend": st_dir, "supertrend_val": st_val, "rsi": calc_rsi(closes, 14) if len(closes)>=15 else None}
+
 def analyze_vix_price(spot, vwap, vix, base_vix):
     if not vwap or not base_vix or base_vix == 0: 
         return {"signal": "WAITING", "desc": "Need more data for baseline comparison"}
@@ -366,13 +371,14 @@ def process_chain(raw):
         if not strike: continue
         ce, pe = item.get("call_options",{}), item.get("put_options",{})
         ce_md, pe_md = ce.get("market_data",{}), pe.get("market_data",{})
+        ce_gk, pe_gk = ce.get("option_greeks",{}), pe.get("option_greeks",{})
         
         call_oi, put_oi = float(ce_md.get("oi",0) or 0), float(pe_md.get("oi",0) or 0)
+        call_vol, put_vol = float(ce_md.get("volume",0) or 0), float(pe_md.get("volume",0) or 0)
         call_ltp, put_ltp = float(ce_md.get("ltp",0) or ce_md.get("last_price",0) or 0), float(pe_md.get("ltp",0) or pe_md.get("last_price",0) or 0)
         
-        # 🔥 FIX: Iron-Clad Tracking Logic
-        prev = prev_oi.get(strike, {})
-        base = baseline_oi.get(strike, {})
+        prev = prev_oi.get(str(strike), {}) if prev_oi else {}
+        base = baseline_oi.get(str(strike), {}) if baseline_oi else {}
 
         c_oi_5m = call_oi - prev["call_oi"] if "call_oi" in prev else 0
         p_oi_5m = put_oi - prev["put_oi"] if "put_oi" in prev else 0
@@ -391,15 +397,19 @@ def process_chain(raw):
             "strike": strike,
             "call_oi": call_oi, "call_oi_chg": round(c_oi_5m, 2), "call_oi_chg_day": round(c_oi_d, 2),
             "call_vol_oi": round(float(ce_md.get("volume",0) or 0)/call_oi,2) if call_oi else 0,
+            "call_iv": round(float(ce_gk.get("iv",0) or 0)*100,2), 
             "call_ltp": call_ltp, "call_ltp_chg": round(c_ltp_5m, 2), "call_ltp_chg_day": round(c_ltp_d, 2),
+            "call_delta": float(ce_gk.get("delta",0) or 0), "call_gamma": float(ce_gk.get("gamma",0) or 0), "call_gex": float(ce_gk.get("gamma",0) or 0) * call_oi * 25,
             
             "put_oi": put_oi, "put_oi_chg": round(p_oi_5m, 2), "put_oi_chg_day": round(p_oi_d, 2),
             "put_vol_oi": round(float(pe_md.get("volume",0) or 0)/put_oi,2) if put_oi else 0,
+            "put_iv": round(float(pe_gk.get("iv",0) or 0)*100,2), 
             "put_ltp": put_ltp, "put_ltp_chg": round(p_ltp_5m, 2), "put_ltp_chg_day": round(p_ltp_d, 2),
+            "put_delta": float(pe_gk.get("delta",0) or 0), "put_gamma": float(pe_gk.get("gamma",0) or 0), "put_gex": float(pe_gk.get("gamma",0) or 0) * put_oi * 25
         }
         
     if len(baseline_oi) == 0 and result: 
-        baseline_oi = {s: {"call_oi": v["call_oi"], "put_oi": v["put_oi"], "call_ltp": v["call_ltp"], "put_ltp": v["put_ltp"]} for s,v in result.items()}
+        baseline_oi = {str(s): {"call_oi": v["call_oi"], "put_oi": v["put_oi"], "call_ltp": v["call_ltp"], "put_ltp": v["put_ltp"]} for s,v in result.items()}
     return result
 
 def classify_strike_oi_flow(v, prev_spot, spot):
@@ -488,11 +498,23 @@ def refresh():
             
         vwap_val = get_vwap(candle_cache)
         vix_matrix = analyze_vix_price(spot, vwap_val, vix, baseline_vix)
+        
+        gex_data = [{"strike":s,"net_gex":v["call_gex"] - v["put_gex"]} for s,v in sorted(chain.items()) if abs(s-atm) <= 10*STRIKE_STEP]
+        gex_flip = min(gex_data, key=lambda x:abs(x["net_gex"])) if gex_data else None
+
+        skew_data=[]
+        for dist in [1,2,3]:
+            c_strike, p_strike = atm+dist*STRIKE_STEP, atm-dist*STRIKE_STEP
+            ce, pe = chain.get(c_strike,{}), chain.get(p_strike,{})
+            if ce.get("call_iv") and pe.get("put_iv"): skew_data.append({"dist":dist,"call_strike":c_strike,"call_iv":ce["call_iv"],"put_strike":p_strike,"put_iv":pe["put_iv"],"skew":round(pe["put_iv"]-ce["call_iv"],2)})
+        avg_skew=round(sum(x["skew"] for x in skew_data)/len(skew_data),2) if skew_data else 0
+        iv_skew = {"data":skew_data,"avg_skew":avg_skew,"signal":"BEARISH SKEW — put IV elevated" if avg_skew>3 else "BULLISH SKEW — call IV elevated" if avg_skew<-3 else "NEUTRAL SKEW — balanced"}
 
         intelligence = {
             "market_state": "TRENDING UP" if pcr > 1.2 else "TRENDING DOWN" if pcr < 0.8 else "RANGING",
             "pcr_zone": "BULLISH" if pcr > 1.2 else "BEARISH" if pcr < 0.8 else "NEUTRAL",
             "alerts": alerts, 
+            "gex_profile": gex_data[:11], "gex_flip": gex_flip, "iv_skew": iv_skew,
             "index_technicals": {
                 "3min": compute_tf_signals(candle_cache_3m, "3min", 1, 2.0),
                 "5min": compute_tf_signals(candle_cache, "5min", 1, 2.0),
@@ -508,7 +530,8 @@ def refresh():
             "backend_error": None, 
             "spot": spot, "futures": futures, "premium": round(futures-spot,2),
             "atm": atm, "pcr": pcr, "pcr_chg": pcr_chg, "vix": vix,
-            "expiry": expiry, "intelligence": intelligence,
+            "max_pain": max_pain, "expiry": expiry,
+            "indicators": get_indicators(candle_cache), "intelligence": intelligence,
             "atm_strikes": atm_strikes, "chain": chain,
             "timestamp": datetime.now().isoformat()
         }
@@ -518,11 +541,11 @@ def refresh():
             with open(DATA_FILE, "w") as f: json.dump(data, f)
         except: pass
 
-        prev_oi   = {s:{"call_oi":v["call_oi"],"put_oi":v["put_oi"],"call_ltp":v["call_ltp"],"put_ltp":v["put_ltp"]} for s,v in chain.items()}
+        prev_oi   = {str(s):{"call_oi":v["call_oi"],"put_oi":v["put_oi"],"call_ltp":v["call_ltp"],"put_ltp":v["put_ltp"]} for s,v in chain.items()}
         prev_pcr  = pcr
         prev_spot = spot
         
-        save_server_state() # 🔥 Save baseline to hard drive
+        save_server_state()
         
         debug_status["last_error"] = "Data fetched successfully."
         process_telegram_alerts(alerts, data, atm_strikes, atm)
@@ -571,6 +594,18 @@ def oi_json():
                 with open(DATA_FILE, "r") as f: d = json.load(f)
     except: pass
     return jsonify(d)
+
+# 🔥 RESTORED ROUTE: This fixes the missing UI elements on your website!
+@app.route("/oi/histogram")
+def histogram():
+    d = oi_cache.get("data")
+    if not d and os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r") as f: d = json.load(f)
+        except: pass
+    if not d or not d.get("chain"): return jsonify([])
+    chain=d["chain"]; atm=d["atm"]
+    return jsonify(sorted([v for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP], key=lambda x:x["strike"]))
 
 @app.route("/telegram/force_summary")
 def force_telegram_summary():
