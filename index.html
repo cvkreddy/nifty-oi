@@ -50,16 +50,23 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .sb-lbl{font-size:10px;color:var(--info);letter-spacing:1px;font-family:var(--ui);font-weight:700;}
 .sb-val{font-size:16px;font-weight:700;color:var(--info);text-shadow:0 0 8px rgba(0,184,255,0.3);}
 .sb-sub{font-size:11px;color:var(--text2);}
+.range-bar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;width:140px;position:relative;display:inline-block;vertical-align:middle;margin:0 8px;box-shadow:inset 0 1px 3px rgba(0,0,0,0.5);}
+.range-fill{position:absolute;height:100%;background:rgba(0,184,255,.5);border-radius:3px;}
+.range-dot{position:absolute;top:-3px;width:12px;height:12px;border-radius:50%;background:var(--info);transform:translateX(-50%);box-shadow:0 0 8px var(--info);}
 
 .alerts-bar{padding:8px 18px;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
 .alert-pill{font-size:11px;padding:4px 12px;border-radius:6px;font-weight:700;font-family:var(--ui);letter-spacing:0.5px;}
 .alert-high{background:rgba(255,59,87,.15);color:var(--bear);border:1px solid rgba(255,59,87,.4);box-shadow:0 0 10px rgba(255,59,87,0.1);}
+.alert-med{background:rgba(255,184,0,.15);color:var(--warn);border:1px solid rgba(255,184,0,.3);}
 
 .tech-pill{font-size:10px;padding:3px 8px;border-radius:4px;font-weight:700;font-family:var(--ui);text-transform:uppercase;}
 .tp-bull{background:rgba(0,255,136,.12);color:var(--bull);border:1px solid rgba(0,255,136,.3);text-shadow:0 0 5px rgba(0,255,136,0.3);}
 .tp-bear{background:rgba(255,59,87,.12);color:var(--bear);border:1px solid rgba(255,59,87,.3);text-shadow:0 0 5px rgba(255,59,87,0.3);}
 .tp-warn{background:rgba(255,184,0,.1);color:var(--warn);border:1px solid rgba(255,184,0,.3);}
 .tp-neu{background:var(--bg3);color:var(--text2);border:1px solid var(--border2);}
+.xover-pill{font-size:10px;padding:3px 8px;border-radius:4px;font-weight:700;font-family:var(--ui);animation:blink 1s infinite;}
+.xover-gold{background:rgba(0,255,136,.2);color:var(--bull);border:1px solid rgba(0,255,136,.5);}
+.xover-death{background:rgba(255,59,87,.2);color:var(--bear);border:1px solid rgba(255,59,87,.5);}
 
 #err{display:none;background:rgba(255,59,87,.15);border-bottom:2px solid var(--bear);
   color:#fff;padding:10px 18px;font-size:13px;font-weight:700;text-align:center;text-shadow:0 0 5px rgba(255,0,0,0.5);}
@@ -539,6 +546,7 @@ function render(d,hist){
   styl('vix-mat-sig', vxSig, vxCol); g('vix-mat-sig').style.textShadow=`0 0 8px rgba(${hexToRgb(vxCol)},0.3)`;
   set('vix-mat-desc', vxMat.desc || 'Waiting for cycle');
 
+  // 🔥 RESTORED FULL TECHNICALS PANEL DRAWING
   renderNiftyTechFull(intel.index_technicals||{})
 
   const ak=d.atm_strikes,sts=Object.keys(ak).map(Number).sort((a,b)=>a-b)
@@ -565,34 +573,69 @@ function render(d,hist){
   })
 }
 
+// 🔥 REBUILT TECHNICALS UI RENDERER WITH RSI AND SUPERTREND
 function renderNiftyTechFull(tech){
   const mkRow=(key,val,col,note)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03)"><span style="font-size:11px;color:var(--text2);font-family:var(--ui);font-weight:600">${key}</span><span style="font-size:13px;font-weight:700;color:${col||'var(--text)'}">${val}</span>${note?`<span style="font-size:10px;color:var(--text2);font-family:var(--ui)">${note}</span>`:''}</div>`
   const mkPill=(label,cls)=>`<span class="tech-pill ${cls}">${label}</span>`
 
   ;['3min','5min','15min'].forEach(tf=>{
     const t=tech[tf]||{}, elId=tf==='3min'?'tech-3m-full':tf==='5min'?'tech-5m-full':'tech-15m-full', el=g(elId); if(!el) return
+    if(!t.ema7&&(t.candle_count||0)<8){ el.innerHTML=`<div style="font-size:12px;color:var(--warn);font-family:var(--ui);padding:6px 0">${t.candle_count||0} candles — needs 15+</div>`; return }
+
     const price=t.current_price||0, ema7=t.ema7, ema15=t.ema15, vwap=t.vwap, stDir=t.supertrend, stVal=t.supertrend_val
-    const trendCls=t.trend&&t.trend.includes('BULL')?'tp-bull':t.trend&&t.trend.includes('BEAR')?'tp-bear':'tp-warn'
+    const trendCls=t.trend&&t.trend.includes('STRONG BULL')?'tp-bull':t.trend&&t.trend.includes('STRONG BEAR')?'tp-bear':'tp-warn'
     const stCls=stDir==='BULLISH'?'tp-bull':stDir==='BEARISH'?'tp-bear':'tp-neu'
     const d7col=ema7?(price>ema7?'var(--bull)':'var(--bear)'):'var(--text2)'
     const d15col=ema15?(price>ema15?'var(--bull)':'var(--bear)'):'var(--text2)'
+    const xover=t.crossover?`<span class="xover-pill ${t.crossover.includes('GOLDEN')?'xover-gold':'xover-death'}">🔔 ${t.crossover}</span>`:''
     
+    // RSI Logging
+    const rsi=t.rsi, rsiNote=!rsi?'N/A':rsi>=70?'Overbought ⚠':rsi>=60?'Bullish':'Neutral'+(rsi<=40?' Bearish':''), rsiCol=!rsi?'var(--text2)':rsi>=70?'var(--bear)':rsi<=30?'var(--bull)':rsi>=55?'var(--bull)':'var(--warn)'
+
     el.innerHTML=`
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">${mkPill(t.trend||'N/A',trendCls)}${mkPill(stDir||'ST N/A',stCls)}</div>
-      ${mkRow('VWAP (Day)',vwap||'—',vwap?(price>vwap?'var(--bull)':'var(--bear)'):'var(--text2)', '')}
-      ${mkRow('EMA 7',ema7||'—',d7col, '')}
-      ${mkRow('EMA 15',ema15||'—',d15col, '')}
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">${mkPill(t.trend||'N/A',trendCls)}${mkPill(stDir||'ST N/A',stCls)}${xover}</div>
+      ${mkRow('VWAP (Day)',vwap||'—',vwap?(price>vwap?'var(--bull)':'var(--bear)'):'var(--text2)', t.price_above_vwap?'Price ABOVE':'Price BELOW')}
+      ${mkRow('EMA 7',ema7||'—',d7col, t.price_above_ema7?'Price ABOVE':'Price BELOW')}
+      ${mkRow('EMA 15',ema15||'—',d15col, t.price_above_ema15?'Price ABOVE':'Price BELOW')}
+      ${mkRow('Supertrend',stDir?`${stDir} @ ${stVal}`:'N/A',stCls,'')}
+      ${rsi?mkRow('RSI (14)',rsi.toFixed(1),rsiCol,rsiNote):''}
     `
   })
 
-  const t5=tech['5min']||{}; let bias='NEUTRAL', biasCol='var(--warn)'
-  if(t5.trend&&t5.trend.includes('BULL')) {bias='BULLISH'; biasCol='var(--bull)'}
-  if(t5.trend&&t5.trend.includes('BEAR')) {bias='BEARISH'; biasCol='var(--bear)'}
+  // BIAS CALCULATION ENGINE
+  const t3=tech['3min']||{}, t5=tech['5min']||{}, t15=tech['15min']||{}
+  let bullPoints=0, bearPoints=0
+  
+  if(t3.price_above_vwap) bullPoints++; else bearPoints++
+  if(t3.price_above_ema7)  bullPoints++; else bearPoints++
+  if(t3.ema7_above_ema15) bullPoints++; else bearPoints++
+  if(t3.supertrend==='BULLISH') bullPoints+=2; else if(t3.supertrend==='BEARISH') bearPoints+=2
+  
+  if(t5.price_above_vwap) bullPoints++; else bearPoints++
+  if(t5.price_above_ema7)  bullPoints++; else bearPoints++
+  if(t5.ema7_above_ema15) bullPoints++; else bearPoints++
+  if(t5.supertrend==='BULLISH') bullPoints+=2; else if(t5.supertrend==='BEARISH') bearPoints+=2
+  
+  if(t15.price_above_vwap) bullPoints++; else bearPoints++
+  if(t15.price_above_ema7) bullPoints++; else bearPoints++
+  if(t15.ema7_above_ema15) bullPoints++; else bearPoints++
+  if(t15.supertrend==='BULLISH') bullPoints+=2; else if(t15.supertrend==='BEARISH') bearPoints+=2
+  
+  if((t5.rsi||50)>55) bullPoints++; else if((t5.rsi||50)<45) bearPoints++
 
-  const el=g('tech-overall-bias'),el2=g('tech-bias-lbl'), ec=g('tech-confluence')
+  const total=bullPoints+bearPoints||1, bullPct=Math.round(bullPoints/total*100)
+  let bias,biasCol,confluence
+  if(bullPct>=75)     {bias='STRONG BULLISH';biasCol='var(--bull)';confluence='All EMAs + ST + VWAP aligned bullish'}
+  else if(bullPct>=60){bias='BULLISH';biasCol='var(--bull)';confluence='Most signals bullish — buy dips'}
+  else if(bullPct>=45){bias='MILD BULLISH';biasCol='rgba(0,255,136,.7)';confluence='Slight bullish lean'}
+  else if(bullPct>=35){bias='NEUTRAL';biasCol='var(--warn)';confluence='Mixed signals — range-bound'}
+  else if(bullPct>=25){bias='MILD BEARISH';biasCol='rgba(255,59,87,.7)';confluence='Slight bearish lean'}
+  else                {bias='STRONG BEARISH';biasCol='var(--bear)';confluence='All EMAs + ST + VWAP aligned bearish'}
+
+  const el=g('tech-overall-bias'),ec=g('tech-confluence'),el2=g('tech-bias-lbl')
   if(el){el.textContent=bias;el.style.color=biasCol;el.style.textShadow=`0 0 10px ${biasCol}`}
+  if(ec) ec.textContent=confluence+` (Bull: ${bullPct}% · Bear: ${100-bullPct}%)`
   if(el2){el2.textContent='Bias: '+bias;el2.style.color=biasCol}
-  if(ec){ec.textContent='All EMAs + ST aligned ' + bias.toLowerCase()}
 }
 
 function rowHTML(r,atm,maxOI,isCall){
