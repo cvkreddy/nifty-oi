@@ -1,7 +1,7 @@
 """
 ====================================================
   NIFTY50 OI Server — The Absolute Master Edition
-  Fixes: TradingView "time_close" Timestamp Alignment
+  Fixes: Live Intraday Candles, TV Timestamps, ST(1,1)
 ====================================================
 """
 
@@ -29,7 +29,8 @@ NIFTY_KEY    = "NSE_INDEX|Nifty 50"
 # 🚨 TELEGRAM CREDENTIALS 🚨
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
- 
+
+  
 
 CACHE_TTL    = 150  
 STRIKE_STEP  = 50
@@ -275,18 +276,40 @@ def fetch_vix():
     except: pass
     return 0
 
+# 🔥 INTRADAY FIX: Combines Historical and Today's live 1min candles so dates are perfect
 def fetch_base_1m_candles():
     try:
         safe_key = urllib.parse.quote(NIFTY_KEY)
-        to_date = date.today().strftime("%Y-%m-%d"); from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
-        url = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_date}/{from_date}"
-        r = requests.get(url, headers=hdrs(), timeout=10)
-        if r.status_code == 200:
-            cr = r.json().get("data", {}).get("candles", [])
-            res = [{"time": c[0], "open": float(c[1]), "high": float(c[2]), "low": float(c[3]), "close": float(c[4]), "vol": float(c[5]) if len(c)>5 else 0} for c in cr if len(c)>=5]
-            res.sort(key=lambda x: x["time"])
-            return res
-    except: pass
+        to_date = date.today().strftime("%Y-%m-%d")
+        from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
+        
+        # 1. Fetch Historical (past days)
+        url_hist = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_date}/{from_date}"
+        r_hist = requests.get(url_hist, headers=hdrs(), timeout=10)
+        
+        # 2. Fetch Intraday (Today live)
+        url_intra = f"https://api.upstox.com/v2/historical-candle/intraday/{safe_key}/1minute"
+        r_intra = requests.get(url_intra, headers=hdrs(), timeout=10)
+        
+        candles = []
+        if r_hist.status_code == 200:
+            cr = r_hist.json().get("data", {}).get("candles", [])
+            candles.extend(cr)
+        if r_intra.status_code == 200:
+            cr = r_intra.json().get("data", {}).get("candles", [])
+            candles.extend(cr)
+            
+        res = []
+        seen = set()
+        for c in candles:
+            if len(c) >= 5 and c[0] not in seen:
+                seen.add(c[0])
+                res.append({"time": c[0], "open": float(c[1]), "high": float(c[2]), "low": float(c[3]), "close": float(c[4]), "vol": float(c[5]) if len(c)>5 else 0})
+        res.sort(key=lambda x: x["time"])
+        return res
+    except Exception as e:
+        print("Candle fetch error:", e)
+        pass
     return []
 
 def resample_candles(candles_1m, tf):
@@ -364,14 +387,52 @@ def calc_ema_array(prices, period):
         emas.append(round(ema, 2))
     return emas
 
-def calc_supertrend(candles, period=7, multiplier=3.0):
-    if len(candles) < period + 1: return None, None
-    highs, lows, closes = [c["high"] for c in candles], [c["low"] for c in candles], [c["close"] for c in candles]
-    trs = [max(highs[i]-lows[i], abs(highs[i]-closes[i-1]), abs(lows[i]-closes[i-1])) for i in range(1, len(candles))]
-    atr = sum(trs[-period:]) / period; hl2 = (highs[-1] + lows[-1]) / 2
-    direction = "BULLISH" if closes[-1] > (hl2 - multiplier * atr) else "BEARISH"
-    st_val = round((hl2 - multiplier * atr) if direction == "BULLISH" else (hl2 + multiplier * atr), 2)
-    return direction, st_val
+# 🔥 PERFECTED SUPERTREND (Matches TV ta.supertrend exactly for arrays)
+def calc_supertrend_array(candles, period=1, multiplier=1.0):
+    if not candles or len(candles) < period + 1: return [None] * len(candles)
+    
+    trs = [0.0] * len(candles)
+    for i in range(1, len(candles)):
+        h, l, pc = candles[i]["high"], candles[i]["low"], candles[i-1]["close"]
+        trs[i] = max(h-l, abs(h-pc), abs(l-pc))
+        
+    atrs = [0.0] * len(candles)
+    if period == 1:
+        atrs = trs
+    else:
+        alpha = 1.0 / period
+        atrs[period] = sum(trs[1:period+1]) / period
+        for i in range(period+1, len(candles)):
+            atrs[i] = alpha * trs[i] + (1 - alpha) * atrs[i-1]
+            
+    lower_bands, upper_bands = [0.0] * len(candles), [0.0] * len(candles)
+    st_dirs = [1] * len(candles)
+    dirs = [None] * len(candles)
+    
+    for i in range(period, len(candles)):
+        hl2 = (candles[i]["high"] + candles[i]["low"]) / 2.0
+        basic_ub = hl2 + multiplier * atrs[i]
+        basic_lb = hl2 - multiplier * atrs[i]
+        
+        prev_ub = upper_bands[i-1]
+        prev_lb = lower_bands[i-1]
+        prev_dir = st_dirs[i-1]
+        prev_close = candles[i-1]["close"]
+        
+        final_ub = basic_ub if (basic_ub < prev_ub or prev_close > prev_ub) else prev_ub
+        final_lb = basic_lb if (basic_lb > prev_lb or prev_close < prev_lb) else prev_lb
+            
+        curr_close = candles[i]["close"]
+        
+        if prev_dir == 1 and curr_close <= final_lb: st_dirs[i] = -1
+        elif prev_dir == -1 and curr_close >= final_ub: st_dirs[i] = 1
+        else: st_dirs[i] = prev_dir
+            
+        upper_bands[i] = final_ub
+        lower_bands[i] = final_lb
+        dirs[i] = "BULLISH" if st_dirs[i] == 1 else "BEARISH"
+        
+    return dirs
 
 def calc_rsi(closes, p=14):
     if len(closes) < p+1: return None
@@ -432,7 +493,7 @@ def get_indicators(candles):
     adx_val = calc_adx(candles, 14)
     return {"rsi": rsi_val, "adx": adx_val, "candle_count": len(candles)}
 
-# 🔥 FIX: Shifted Timestamp to perfectly match PineScript 'time_close'
+# 🔥 RESTORED & PERFECTED: DD-MM HH:MM + Timezone shift to match TV Close Times
 def compute_tf_signals(candles, label, st_period, st_multiplier, tf_mins):
     if not candles or len(candles) < 15: 
         return {"label": label, "candle_count": len(candles) if candles else 0, "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-"}
@@ -445,6 +506,7 @@ def compute_tf_signals(candles, label, st_period, st_multiplier, tf_mins):
     
     ema7_arr = calc_ema_array(closes, 7)
     ema15_arr = calc_ema_array(closes, 15)
+    st_dirs_arr = calc_supertrend_array(candles, st_period, st_multiplier)
     
     trend_start, pull_time, cont_time, st_time = "-", "-", "-", "-"
     is_bull = None
@@ -457,9 +519,10 @@ def compute_tf_signals(candles, label, st_period, st_multiplier, tf_mins):
         c_close = closes[i]
         
         try:
-            dt_start = datetime.strptime(times[i][:16], "%Y-%m-%dT%H:%M")
-            dt_close = dt_start + timedelta(minutes=tf_mins)
-            c_time = dt_close.strftime("%d-%m %H:%M")
+            # Shift Upstox start time to TradingView close time by adding tf_mins
+            dt = datetime.strptime(times[i][:16], "%Y-%m-%dT%H:%M")
+            dt_close = dt + timedelta(minutes=tf_mins)
+            c_time = dt_close.strftime("%d-%m %H:%M") # Formatted as DD-MM HH:MM
         except: 
             c_time = "-"
 
@@ -488,7 +551,7 @@ def compute_tf_signals(candles, label, st_period, st_multiplier, tf_mins):
             elif not await_pull_s and c_close < e7:
                 cont_time = c_time; await_pull_s = True
                 
-        s_dir, _ = calc_supertrend(candles[:i+1], st_period, st_multiplier)
+        s_dir = st_dirs_arr[i]
         if curr_st is None: 
             curr_st = s_dir
             st_time = c_time
@@ -497,7 +560,7 @@ def compute_tf_signals(candles, label, st_period, st_multiplier, tf_mins):
             curr_st = s_dir
 
     ema7, ema15, price = ema7_arr[-1], ema15_arr[-1], closes[-1]
-    st_dir, st_val = calc_supertrend(candles, st_period, st_multiplier)
+    st_dir = st_dirs_arr[-1]
     
     trend = "N/A"
     if ema7 and ema15:
@@ -523,7 +586,7 @@ def compute_tf_signals(candles, label, st_period, st_multiplier, tf_mins):
         "ema7": ema7, "ema15": ema15, "vwap": vwap, 
         "price_above_ema7": price > ema7 if ema7 else None, "price_above_ema15": price > ema15 if ema15 else None, 
         "ema7_above_ema15": ema7 > ema15 if ema7 and ema15 else None, "price_above_vwap": price > vwap if vwap else None,
-        "trend": trend, "supertrend": st_dir, "supertrend_val": st_val, 
+        "trend": trend, "supertrend": st_dir, "supertrend_val": None, 
         "rsi": curr_rsi if curr_rsi > 0 else None,
         "rsi_5m_chg": rsi_5m_chg,
         "rsi_day_chg": rsi_day_chg,
@@ -628,6 +691,7 @@ def classify_strike_oi_flow(v, prev_spot, spot):
     c_c, cl, c_o = v.get("call_oi_chg", 0), v.get("call_ltp_chg", 0), v.get("call_oi", 0)
     p_c, pl, p_o = v.get("put_oi_chg", 0), v.get("put_ltp_chg", 0), v.get("put_oi", 0)
     
+    # 🔥 HIGH SENSITIVITY FIX (25,000 contracts trigger)
     THRESH = 25000 
     
     if pup and c_c > THRESH and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
@@ -756,7 +820,7 @@ def refresh():
         avg_skew=round(sum(x["skew"] for x in skew_data)/len(skew_data),2) if skew_data else 0
         iv_skew = {"data":skew_data,"avg_skew":avg_skew,"signal":"BEARISH SKEW — put IV elevated" if avg_skew>3 else "BULLISH SKEW — call IV elevated" if avg_skew<-3 else "NEUTRAL SKEW — balanced"}
 
-        # 🔥 FIX: Passed the correct tf_mins for the DD-MM formatting
+        # 🔥 RESTORED: ST(1,1) logic matching PineScript identically
         intelligence = {
             "market_state": mkt_state,
             "oi_matrix_condition": oi_cond, "oi_matrix_signal": oi_signal, "oi_matrix_desc": oi_desc,
