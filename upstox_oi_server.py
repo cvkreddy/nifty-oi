@@ -1,9 +1,10 @@
-   
+
+
 
 """
 ====================================================
-  NIFTY50 OI Server — The Master Edition
-  Fixes: Restored Market State, DD-MM Timestamps, ST(1,1)
+  NIFTY50 OI Server — The Absolute Master Edition
+  Fixes: get_indicators crash | Adds: RSI & LTP Changes
 ====================================================
 """
 
@@ -30,7 +31,7 @@ NIFTY_KEY    = "NSE_INDEX|Nifty 50"
 
 # 🚨 TELEGRAM CREDENTIALS 🚨
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
-TELEGRAM_CHAT_ID   = "7851805837"   
+TELEGRAM_CHAT_ID   = "7851805837"     
 
 CACHE_TTL    = 150  
 STRIKE_STEP  = 50
@@ -44,6 +45,7 @@ oi_cache        = {"data": None}
 
 baseline_oi     = {}
 baseline_vix    = None
+baseline_rsi    = {}  # 🔥 NEW: Tracks Morning RSI for Day Change
 prev_oi         = {}
 prev_pcr        = None
 prev_spot       = None
@@ -79,7 +81,7 @@ def reverse_engineer_baseline():
     except: pass
 
 def load_server_state():
-    global baseline_oi, baseline_vix, prev_oi, prev_pcr, prev_spot
+    global baseline_oi, baseline_vix, prev_oi, prev_pcr, prev_spot, baseline_rsi
     if os.path.exists(STATE_FILE):
         try:
             with open(STATE_FILE, "r") as f:
@@ -87,6 +89,7 @@ def load_server_state():
                 if st.get("date") == date.today().isoformat():
                     baseline_oi = st.get("baseline_oi", {})
                     baseline_vix = st.get("baseline_vix")
+                    baseline_rsi = st.get("baseline_rsi", {})
                     prev_oi = st.get("prev_oi", {})
                     prev_spot = st.get("prev_spot")
                     prev_pcr = st.get("prev_pcr")
@@ -99,6 +102,7 @@ def save_server_state():
             "date": date.today().isoformat(),
             "baseline_oi": baseline_oi,
             "baseline_vix": baseline_vix,
+            "baseline_rsi": baseline_rsi,
             "prev_oi": prev_oi,
             "prev_spot": prev_spot,
             "prev_pcr": prev_pcr
@@ -126,7 +130,8 @@ def generate_5min_summary(data, atm_strikes, atm):
     net_flow_l = intel.get("cumulative_net_flow_l", 0)
     flow_bias = "🟢 BULLISH" if net_flow_l > 0 else "🔴 BEARISH" if net_flow_l < 0 else "⚪ NEUTRAL"
     
-    s_curr = atm_strikes.get(str(atm), {}).get("call_ltp", 0) + atm_strikes.get(str(atm), {}).get("put_ltp", 0)
+    atm_v = atm_strikes.get(str(atm), {})
+    s_curr = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
     s_decay = intel.get("straddle_decay", 0)
     s_low = int(atm - s_curr)
     s_high = int(atm + s_curr)
@@ -135,10 +140,13 @@ def generate_5min_summary(data, atm_strikes, atm):
     t5 = intel.get("index_technicals", {}).get("5min", {})
     t15 = intel.get("index_technicals", {}).get("15min", {})
     
+    # 🔥 NEW: Straddle Detailed Breakdown sent to Telegram
     msg = (
         f"⏱ <b>5-MIN NIFTY SCANNER</b>\n"
         f"🎯 <b>Spot:</b> ₹{spot} | <b>PCR:</b> {pcr}\n"
-        f"⚖️ <b>Straddle:</b> ₹{s_curr:.1f} ({s_decay:+.1f}% Day) | Range: {s_low}-{s_high}\n"
+        f"⚖️ <b>Straddle:</b> ₹{s_curr:.1f} ({s_decay:+.1f}% Day)\n"
+        f"🔴 <b>ATM CE:</b> ₹{atm_v.get('call_ltp', 0):.1f} ({atm_v.get('call_ltp_chg_day', 0):+.1f} D | {atm_v.get('call_ltp_chg', 0):+.1f} 5m)\n"
+        f"🟢 <b>ATM PE:</b> ₹{atm_v.get('put_ltp', 0):.1f} ({atm_v.get('put_ltp_chg_day', 0):+.1f} D | {atm_v.get('put_ltp_chg', 0):+.1f} 5m)\n"
         f"🌊 <b>Smart Flow:</b> {flow_bias} ({net_flow_l:+.1f}L Net)\n"
         f"📊 <b>VIX Matrix: {vix_mat.get('signal', 'N/A')}</b>\n"
         f"↳ <i>{vix_mat.get('desc', 'N/A')}</i>\n"
@@ -321,7 +329,7 @@ def fetch_chain(expiry):
     except: return []
 
 # ══════════════════════════════════════════════════
-#  MATH & PROCESSORS (CRASH FIXES + TIMESTAMPS)
+#  MATH & PROCESSORS (ALL FIXES APPLIED)
 # ══════════════════════════════════════════════════
 def compute_max_pain(chain):
     strikes = sorted(chain.keys())
@@ -368,10 +376,71 @@ def calc_supertrend(candles, period=7, multiplier=3.0):
     st_val = round((hl2 - multiplier * atr) if direction == "BULLISH" else (hl2 + multiplier * atr), 2)
     return direction, st_val
 
-# 🔥 FORMATTED TIMESTAMPS: DD-MM HH:MM
+# 🔥 RESTORED ADX CALCULATION
+def calc_adx(candles, p=14):
+    if not candles or len(candles) < p + 2: return None
+    trl, pdml, ndml = [], [], []
+    for i in range(1, len(candles)):
+        h, l, pc = candles[i]["high"], candles[i]["low"], candles[i-1]["close"]
+        ph, pl = candles[i-1]["high"], candles[i-1]["low"]
+        trl.append(max(h-l, abs(h-pc), abs(l-pc)))
+        pdml.append(max(h-ph, 0) if (h-ph) > (pl-l) else 0)
+        ndml.append(max(pl-l, 0) if (pl-l) > (h-ph) else 0)
+    
+    def sm(lst, p):
+        if sum(lst[:p]) == 0: return [0]*len(lst)
+        s = sum(lst[:p])
+        r = [s]
+        for i in range(p, len(lst)): 
+            s = s - s/p + lst[i]
+            r.append(s)
+        return r
+        
+    atr = sm(trl, p)
+    pDM = sm(pdml, p)
+    nDM = sm(ndml, p)
+    
+    dxl = []
+    for i in range(len(atr)):
+        if atr[i] == 0: continue
+        pdi = 100 * pDM[i] / atr[i]
+        ndi = 100 * nDM[i] / atr[i]
+        dx = 100 * abs(pdi-ndi) / (pdi+ndi) if (pdi+ndi) else 0
+        dxl.append((dx, pdi, ndi))
+        
+    if not dxl: return None
+    return round(sum(x[0] for x in dxl[-p:]) / min(p, len(dxl)), 2)
+
+# 🔥 RESTORED GET_INDICATORS CRASH FIX
+def get_indicators(candles):
+    if not candles or len(candles) < 16: 
+        return {"rsi": None, "adx": None, "candle_count": len(candles) if candles else 0}
+    closes = [c["close"] for c in candles]
+    rsis = calc_rsi_array(closes, 14)
+    curr_rsi = rsis[-1] if rsis else None
+    adx_val = calc_adx(candles, 14)
+    return {"rsi": curr_rsi, "adx": adx_val, "candle_count": len(candles)}
+
+# 🔥 NEW: Calculates RSI history properly
+def calc_rsi_array(closes, p=14):
+    if len(closes) < p+1: return []
+    gains = [max(closes[i]-closes[i-1], 0) for i in range(1, len(closes))]
+    losses = [max(closes[i-1]-closes[i], 0) for i in range(1, len(closes))]
+    ag = sum(gains[:p])/p
+    al = sum(losses[:p])/p
+    rsis = [None]*p
+    rsis.append(100.0 if al==0 else 100 - (100/(1+ag/al)))
+    for i in range(p, len(gains)):
+        ag = (ag*(p-1) + gains[i])/p
+        al = (al*(p-1) + losses[i])/p
+        rsis.append(100.0 if al==0 else 100 - (100/(1+ag/al)))
+    return rsis
+
 def compute_tf_signals(candles, label, st_period, st_multiplier):
     if not candles or len(candles) < 15: 
         return {"label": label, "candle_count": len(candles) if candles else 0, "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-"}
+    
+    global baseline_rsi
     
     vwap = get_vwap(candles)
     closes = [c["close"] for c in candles]
@@ -444,13 +513,18 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
         elif price < ema7 and ema7 > ema15: trend = "MILD BEARISH"
         else: trend = "STRONG BEARISH"
 
-    def calc_rsi_local(cls, p=14):
-        if len(cls)<p+1: return None
-        g=[max(cls[i]-cls[i-1],0) for i in range(1,len(cls))]
-        l=[max(cls[i-1]-cls[i],0) for i in range(1,len(cls))]
-        ag=sum(g[:p])/p; al=sum(l[:p])/p
-        for i in range(p, len(g)): ag=(ag*(p-1)+g[i])/p; al=(al*(p-1)+l[i])/p
-        return 100.0 if al==0 else round(100-100/(1+ag/al), 2)
+    # 🔥 NEW: Proper RSI array computation for Day and 5m changes
+    rsis = calc_rsi_array(closes, 14)
+    curr_rsi = round(rsis[-1], 2) if rsis and rsis[-1] is not None else 0
+    prev_rsi = round(rsis[-2], 2) if rsis and len(rsis) > 1 and rsis[-2] is not None else curr_rsi
+    
+    base_r = baseline_rsi.get(label)
+    if not base_r and curr_rsi > 0:
+        baseline_rsi[label] = curr_rsi
+        base_r = curr_rsi
+        
+    rsi_5m_chg = round(curr_rsi - prev_rsi, 2) if curr_rsi else 0
+    rsi_day_chg = round(curr_rsi - base_r, 2) if curr_rsi and base_r else 0
 
     return {
         "label": label, "candle_count": len(candles), "current_price": round(price, 2) if price else None, 
@@ -458,11 +532,12 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
         "price_above_ema7": price > ema7 if ema7 else None, "price_above_ema15": price > ema15 if ema15 else None, 
         "ema7_above_ema15": ema7 > ema15 if ema7 and ema15 else None, "price_above_vwap": price > vwap if vwap else None,
         "trend": trend, "supertrend": st_dir, "supertrend_val": st_val, 
-        "rsi": calc_rsi_local(closes, 14) if len(closes)>=15 else None,
+        "rsi": curr_rsi if curr_rsi > 0 else None,
+        "rsi_5m_chg": rsi_5m_chg,
+        "rsi_day_chg": rsi_day_chg,
         "ts_start": trend_start, "ts_pull": pull_time, "ts_cont": cont_time, "ts_st": st_time
     }
 
-# 🔥 RESTORED MARKET STATE AND MATRIX LOGIC
 def price_oi_matrix(spot, prev_spot, chain, atm):
     if prev_spot is None or len(prev_oi)==0: return "INITIALIZING","—","Waiting for second data cycle"
     price_up, price_dn = spot > prev_spot, spot < prev_spot
@@ -561,7 +636,7 @@ def classify_strike_oi_flow(v, prev_spot, spot):
     c_c, cl, c_o = v.get("call_oi_chg", 0), v.get("call_ltp_chg", 0), v.get("call_oi", 0)
     p_c, pl, p_o = v.get("put_oi_chg", 0), v.get("put_ltp_chg", 0), v.get("put_oi", 0)
     
-    # 🔥 HIGH SENSITIVITY FIX: Detects flow much better now
+    # 🔥 INCREASED SENSITIVITY: Lowered to 50k for more accurate live flow detection
     THRESH = 50000 
     
     if pup and c_c > THRESH and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
@@ -656,7 +731,6 @@ def refresh():
             if 0 < dist <= 150 and v["call_oi_chg"] < 0 and abs(v["call_oi_chg"]) > v["call_oi"]*0.05: alerts.append({"type":"BREAKOUT UP","icon":"⚡","message":f"Res OI dropping"})
             if -150 <= dist < 0 and v["put_oi_chg"] < 0 and abs(v["put_oi_chg"]) > v["put_oi"]*0.05: alerts.append({"type":"BREAKOUT DOWN","icon":"⚡","message":f"Sup OI dropping"})
 
-        # 🔥 RESTORED MARKET STATE & MATRIX LOGIC
         oi_cond, oi_signal, oi_desc = price_oi_matrix(spot, prev_spot, chain, atm)
 
         for s_str, v in atm_strikes.items():
@@ -675,7 +749,6 @@ def refresh():
         vwap_val = get_vwap(candle_cache)
         vix_matrix = analyze_vix_price(spot, vwap_val, vix, baseline_vix)
         
-        # 🔥 FULLY RESTORED ST(1,1) CALLS
         ind_data = get_indicators(candle_cache)
         mkt_state = market_state(pcr, ind_data.get("adx"), oi_signal, alerts, vix)
         
