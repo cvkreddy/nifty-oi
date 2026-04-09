@@ -564,10 +564,10 @@ function render(d,hist){
   renderHist(hist,atm)
   renderGEX(intel.gex_profile||[],intel.gex_flip,atm)
   
-  // RESTORED RENDER CALLS
+  // 🔥 RESTORED RENDER CALLS (FIXED `skew` bug)
   renderMigration(ak,atm)
   renderPinRisk(d,atm)
-  renderSkew(intel.iv_skew||{},skew)
+  renderSkew(intel.iv_skew||{}) 
   renderGreeks(atm,pcr,vix,ak,ind)
   renderActivity(callRows,putRows)
   
@@ -878,7 +878,7 @@ function renderPinRisk(d,atm){
   styl('pin-label',risk,riskColor); set('pin-note',note); styl('pin-score',`₹${Math.round(mp).toLocaleString('en-IN')}`,riskColor)
 }
 
-function renderSkew(skewObj,_){
+function renderSkew(skewObj){ // 🔥 FIX: Removed trailing comma parameter that caused the crash
   const el=g('skew-panel'),data=skewObj.data||[],avg=skewObj.avg_skew||0
   styl('skew-signal',skewObj.signal||'—',avg>3?'var(--bear)':avg<-3?'var(--bull)':'var(--text2)')
   if(!data.length){el.innerHTML='<div class="loading">Need ±3 strikes</div>';return}
