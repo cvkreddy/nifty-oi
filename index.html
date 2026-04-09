@@ -35,13 +35,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .vb-detail{font-size:13px;opacity:.9;flex:1;}
 .vb-time{font-size:11px;opacity:.6;}
 
-.state-bar{padding:12px 18px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;
-  border-bottom:1px solid var(--border);background:var(--bg2);}
-.state-icon{font-size:24px;}
-.state-label{font-size:10px;color:var(--text2);letter-spacing:2px;margin-bottom:4px;text-transform:uppercase;font-family:var(--ui);font-weight:700;}
-.state-val{font-size:18px;font-weight:700;letter-spacing:1px;}
-.state-divider{width:1px;height:40px;background:var(--border2);}
-
 .strip{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 18px;
   display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;}
 .si{display:flex;align-items:baseline;gap:6px;}
@@ -57,9 +50,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .sb-lbl{font-size:10px;color:var(--info);letter-spacing:1px;font-family:var(--ui);font-weight:700;}
 .sb-val{font-size:16px;font-weight:700;color:var(--info);text-shadow:0 0 8px rgba(0,184,255,0.3);}
 .sb-sub{font-size:11px;color:var(--text2);}
-.range-bar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;width:140px;position:relative;display:inline-block;vertical-align:middle;margin:0 8px;box-shadow:inset 0 1px 3px rgba(0,0,0,0.5);}
-.range-fill{position:absolute;height:100%;background:rgba(0,184,255,.5);border-radius:3px;}
-.range-dot{position:absolute;top:-3px;width:12px;height:12px;border-radius:50%;background:var(--info);transform:translateX(-50%);box-shadow:0 0 8px var(--info);}
 
 .alerts-bar{padding:8px 18px;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
 .alert-pill{font-size:11px;padding:4px 12px;border-radius:6px;font-weight:700;font-family:var(--ui);letter-spacing:0.5px;}
@@ -98,7 +88,6 @@ tr:hover td{background:rgba(255,255,255,.03);}
 .ar td.td-s{background:rgba(163,113,247,.25)!important;}
 .sk-c{color:var(--bear);font-weight:700;}.sk-p{color:var(--bull);font-weight:700;}.sk-a{color:var(--atm);font-weight:700;}
 .vel-arrow{font-size:14px;margin-left:4px;font-weight:900;}
-.vel-up2{color:var(--bear);text-shadow:0 0 5px var(--bear);}.vel-up1{color:rgba(255,59,87,.7)}.vel-dn1{color:rgba(0,255,136,.7)}.vel-dn2{color:var(--bull);text-shadow:0 0 5px var(--bull);}.vel-flat{color:var(--text2)}
 
 #nifty-tech-full {
   display: grid;
@@ -116,7 +105,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
 .bull{color:var(--bull)!important;}.bear{color:var(--bear)!important;}
 .warn{color:var(--warn)!important;}.info{color:var(--info)!important;}.atmc{color:var(--atm)!important;}
 
-/* UI Restored Classes */
+/* UI Modules */
 .pcr-spark{width:90px;height:24px;margin-top:6px;}
 .flow-tbl td{font-size:12px;padding:6px 10px;vertical-align:top;}
 .flow-tbl th{font-size:11px;padding:8px 10px;}
@@ -214,11 +203,6 @@ tr:hover td{background:rgba(255,255,255,.03);}
     <span class="sb-lbl">ATM STRADDLE</span>
     <span class="sb-val" id="straddle-cost">—</span>
     <span class="sb-sub" id="straddle-decay" style="font-weight:700">—</span>
-  </div>
-  <div class="sdv"></div>
-  <div class="sb-item">
-    <span class="sb-lbl">EXPECTED RANGE</span>
-    <span class="sb-val" id="expected-range">—</span>
   </div>
 </div>
 
@@ -367,6 +351,12 @@ let pcrHistory   = []
 let prevOIChg    = {}      
 let cycleCount   = 0
 
+// 🔥 CRITICAL FIX: The missing color helper function
+function msColor(ms){
+  if(!ms) return 'var(--text2)';
+  return ms.includes('UP')||ms.includes('BULL')?'var(--bull)':ms.includes('DOWN')||ms.includes('BEAR')?'var(--bear)':ms.includes('BREAK')?'var(--warn)':ms.includes('REVERS')?'var(--purple)':'var(--text2)';
+}
+
 async function doFetch(){
   g('dot').style.background='var(--warn)'
   try{
@@ -420,7 +410,7 @@ function render(d,hist){
   const intel=d.intelligence||{}, ind=d.indicators||{}
   g('expiry-badge').textContent='Expiry: '+(d.expiry||'—')
 
-  const ms=intel.market_state||'—', msCol=ms.includes('UP')?'var(--bull)':ms.includes('DOWN')?'var(--bear)':'var(--text2)'
+  const ms=intel.market_state||'—', msCol=msColor(ms);
   let icon='⏳',main=ms,details='Wait for confirmation'
   if(ms.includes('UP')){icon='📈'; details='Support building'}
   else if(ms.includes('DOWN')){icon='📉'; details='Resistance building'}
@@ -454,7 +444,6 @@ function render(d,hist){
   if(netFlowL > 0) { fBar.style.background = 'var(--bull)'; fBar.style.left = '50%'; fBar.style.width = (flowPct/2) + '%'; fBar.style.boxShadow = '0 0 5px var(--bull)'; } 
   else { fBar.style.background = 'var(--bear)'; fBar.style.left = (50 - flowPct/2) + '%'; fBar.style.width = (flowPct/2) + '%'; fBar.style.boxShadow = '0 0 5px var(--bear)'; }
 
-  // Straddle
   const atmV=d.atm_strikes[atm]||{}, straddle=atmV.call_ltp+atmV.put_ltp
   if(straddle){
       set('straddle-cost','₹'+straddle.toFixed(1))
@@ -462,8 +451,6 @@ function render(d,hist){
       const decEl = g('straddle-decay');
       decEl.textContent = (decay > 0 ? '+' : '') + decay.toFixed(1) + '% from open';
       decEl.style.color = decay < 0 ? 'var(--bear)' : 'var(--bull)';
-      const low=Math.round(atm-straddle), high=Math.round(atm+straddle)
-      set('expected-range','₹'+low.toLocaleString('en-IN')+' — ₹'+high.toLocaleString('en-IN'))
   }
 
   pcrHistory.push(pcr); if(pcrHistory.length>20) pcrHistory.shift()
@@ -471,7 +458,6 @@ function render(d,hist){
 
   styl('pcr-zone',(intel.pcr_zone||'—'),(intel.pcr_zone||'').includes('BULL')?'var(--bull)':(intel.pcr_zone||'').includes('BEAR')?'var(--bear)':'var(--warn)')
   
-  // VIX MATRIX
   const vxMat = intel.vix_matrix || {};
   const vxSig = vxMat.signal || 'WAITING';
   const vxCol = vxSig.includes('BULL') ? 'var(--bull)' : vxSig.includes('BEAR') ? 'var(--bear)' : 'var(--text2)';
@@ -533,7 +519,6 @@ function renderNiftyTechFull(tech){
   if(el2){el2.textContent='Bias: '+bias;el2.style.color=biasCol}
 }
 
-// 🔥 REVERTED TO FAVORITE LAYOUT
 function rowHTML(r,atm,maxOI,isCall){
   const s=parseFloat(r.strike), isA=Math.abs(s-atm)<1, oi=isCall?(r.call_oi||0):(r.put_oi||0)
   const chg=isCall?(r.call_oi_chg||0):(r.put_oi_chg||0), chgD=isCall?(r.call_oi_chg_day||0):(r.put_oi_chg_day||0)
@@ -720,60 +705,17 @@ function renderAnalysis(d,atk,atm,ind,intel){
     </div>`
 }
 
-function renderHist(hist,atm){
-  const el=g('histogram')
-  if(!hist||!hist.length){el.innerHTML='<div class="loading">No data</div>';return}
-
-  const maxC = Math.max(...hist.map(h=>h.call_oi||0))||1, maxP = Math.max(...hist.map(h=>h.put_oi||0))||1, maxOI = Math.max(maxC,maxP)
-  const maxChg = Math.max(...[...hist.map(h=>Math.abs(h.call_oi_chg||0)),...hist.map(h=>Math.abs(h.put_oi_chg||0))])||1, W=110
-
-  el.innerHTML=hist.map(h=>{
-    const s=parseFloat(h.strike||0), isA=Math.abs(s-atm)<1, coi=h.call_oi||0, poi=h.put_oi||0, cc=h.call_oi_chg||0, pc=h.put_oi_chg||0
-    const cw=Math.round((coi/maxOI)*W), pw=Math.round((poi/maxOI)*W), ccW=cc!==0?Math.max(3,Math.round((Math.abs(cc)/maxChg)*W)):0, pcW=pc!==0?Math.max(3,Math.round((Math.abs(pc)/maxChg)*W)):0
-    const bigT=maxChg*0.05
-    let ceStatusCol='var(--text2)', peStatusCol='var(--text2)', signal='', signalCol='var(--text2)'
-    if(Math.abs(cc)>bigT) ceStatusCol=cc>0?'var(--bear)':'var(--bull)'
-    if(Math.abs(pc)>bigT) peStatusCol=pc>0?'var(--bull)':'var(--warn)'
-    if(cc>bigT&&pc>bigT){signal='💥 BOTH ADDING';signalCol='var(--info)'}
-    else if(cc<-bigT&&pc<-bigT){signal='🌀 BOTH EXIT';signalCol='var(--text2)'}
-    else if(cc>bigT&&Math.abs(pc)<=bigT){signal='🔴 CE WALL';signalCol='var(--bear)'}
-    else if(cc<-bigT&&Math.abs(pc)<=bigT){signal='✅ CE COLLAPSE';signalCol='var(--bull)'}
-    else if(pc>bigT&&Math.abs(cc)<=bigT){signal='✅ PE FLOOR';signalCol='var(--bull)'}
-    else if(pc<-bigT&&Math.abs(cc)<=bigT){signal='⚠ PE FLOOR WEAK';signalCol='var(--warn)'}
-    else if(cc>bigT&&pc<-bigT){signal='🔄 SHIFT→CE';signalCol='var(--info)'}
-    else if(pc>bigT&&cc<-bigT){signal='🔄 SHIFT→PE';signalCol='var(--info)'}
-
-    return `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.025);${isA?'background:rgba(163,113,247,.08)':''}">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <div style="width:52px;text-align:right;font-size:12px;font-weight:700;color:var(--bear);flex-shrink:0">${(coi/100000).toFixed(1)}L</div>
-        <div style="flex:1;display:flex;justify-content:flex-end;height:14px;background:rgba(255,59,87,.08);border-radius:3px 0 0 3px;overflow:hidden"><div style="width:${cw}px;background:var(--bear);opacity:.8;border-radius:3px 0 0 3px;box-shadow:0 0 5px rgba(255,59,87,0.4)"></div></div>
-        <div style="width:72px;text-align:center;font-size:${isA?14:12}px;font-weight:${isA?700:500};color:${isA?'var(--atm)':'var(--text2)'};flex-shrink:0">${Math.round(s).toLocaleString('en-IN')}${isA?' ◄':''}</div>
-        <div style="flex:1;display:flex;justify-content:flex-start;height:14px;background:rgba(0,255,136,.08);border-radius:0 3px 3px 0;overflow:hidden"><div style="width:${pw}px;background:var(--bull);opacity:.8;border-radius:0 3px 3px 0;box-shadow:0 0 5px rgba(0,255,136,0.4)"></div></div>
-        <div style="width:52px;font-size:12px;font-weight:700;color:var(--bull);flex-shrink:0">${(poi/100000).toFixed(1)}L</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:52px;text-align:right;font-size:11px;font-weight:700;color:${ceStatusCol};flex-shrink:0">${cc!==0?fc(cc):'—'}</div>
-        <div style="flex:1;display:flex;justify-content:flex-end;height:8px;border-radius:2px 0 0 2px;overflow:hidden;background:rgba(255,255,255,.03)">${ccW>0?`<div style="width:${ccW}px;background:${cc>0?'var(--bear)':'var(--info)'};border-radius:2px 0 0 2px"></div>`:''}</div>
-        <div style="width:72px;text-align:center;font-size:10px;font-weight:700;color:${signalCol};flex-shrink:0;font-family:var(--ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${signal||''}</div>
-        <div style="flex:1;display:flex;justify-content:flex-start;height:8px;border-radius:0 2px 2px 0;overflow:hidden;background:rgba(255,255,255,.03)">${pcW>0?`<div style="width:${pcW}px;background:${pc>0?'var(--bull)':'var(--warn)'};border-radius:0 2px 2px 0"></div>`:''}</div>
-        <div style="width:52px;font-size:11px;font-weight:700;color:${peStatusCol};flex-shrink:0">${pc!==0?fc(pc):'—'}</div>
-      </div>
-    </div>`
-  }).join('')
+function hexToRgb(cssVar){
+  if(cssVar.includes('--bull')) return '0,255,136'
+  if(cssVar.includes('--bear')) return '255,59,87'
+  if(cssVar.includes('--warn')) return '255,184,0'
+  return '139,148,158'
 }
-
-function renderGEX(gexData,flip,atm){
-  set('gex-flip-label',flip?`GEX flip: ₹${Math.round(flip.strike).toLocaleString('en-IN')}`:'Flip zone: N/A')
-  const el=g('gex-panel')
-  if(!gexData||!gexData.length){el.innerHTML='<div class="loading">No GEX data</div>';return}
-  const maxGEX=Math.max(...gexData.map(gd=>Math.abs(gd.net_gex)||0))||1,W=100
-  el.innerHTML=gexData.map(gd=>{
-    const s=parseFloat(gd.strike),isA=Math.abs(s-atm)<1,isFlip=flip&&Math.abs(s-parseFloat(flip.strike||0))<1
-    const ng=gd.net_gex||0,pct=Math.round((Math.abs(ng)/maxGEX)*W),col=ng>0?'var(--bear)':'var(--bull)'
-    return `<div class="gex-row"><div class="gex-strike" style="color:${isA?'var(--atm)':isFlip?'var(--warn)':'var(--text2)'};font-weight:${isA||isFlip?700:400}">₹${Math.round(s).toLocaleString('en-IN')}</div><div class="gex-bar-wrap">${ng>0?`<div style="display:flex;justify-content:flex-end;flex:1"><div class="gex-pos" style="width:${pct}px"></div></div><div class="gex-mid"></div><div style="flex:1"></div>`:`<div style="flex:1"></div><div class="gex-mid"></div><div style="flex:1"><div class="gex-neg" style="width:${pct}px"></div></div>`}</div><div class="gex-val" style="color:${col}">${ng>=0?'+':''}${(ng/1000).toFixed(0)}K</div>${isFlip?'<span class="gex-flip-tag"> ⚡FLIP</span>':''}${isA?`<span style="font-size:10px;color:var(--atm);font-weight:bold;margin-left:4px"> ◄ATM</span>`:''}</div>`
-  }).join('')
-}
-
+function g(id){return document.getElementById(id)}
+function fc(n){const a=Math.abs(n);if(a>=100000)return(n>=0?'+':'−')+(a/100000).toFixed(2)+'L';if(a>=1000)return(n>=0?'+':'−')+(a/1000).toFixed(1)+'K';return(n>=0?'+':'−')+Math.round(a)}
+function set(id,t){const e=g(id);if(e)e.textContent=t}
+function styl(id,t,c){const el=g(id);if(el){el.textContent=t;el.style.color=c}}
+function fmt(n){return n?Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}
 function velArrow(strike, isCall, currentChg){
   const prev=prevOIChg[strike]
   if(!prev||cycleCount<2) return '<span class="vel-flat vel-arrow">•</span>'
@@ -794,26 +736,6 @@ function sigColor(sig){
   return 'var(--text2)'
 }
 function sigBg(sig){const c=sigColor(sig);return c==='var(--bull)'?'rgba(0,255,136,.08)':c==='var(--bear)'?'rgba(255,59,87,.08)':c==='var(--warn)'?'rgba(255,184,0,.05)':'rgba(139,148,158,.04)'}
-function renderPCRSparkline(pcr,intel){
-  const h=pcrHistory; if(h.length<2){set('pcr-trend-lbl','Building...');return}
-  const mn=Math.min(...h)-0.05, mx=Math.max(...h)+0.05, range=mx-mn||0.1, W=90,H=24
-  const pts=h.map((v,i)=>`${Math.round((i/(h.length-1))*W)},${Math.round(H-(((v-mn)/range)*(H-4)+2))}`).join(' ')
-  const trend=h[h.length-1]>h[0]?'var(--bull)':h[h.length-1]<h[0]?'var(--bear)':'var(--text2)'
-  const change=h[h.length-1]-h[0]
-  g('pcr-spark').innerHTML=`<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${trend}" stop-opacity="0.3"/><stop offset="100%" stop-color="${trend}" stop-opacity="0"/></linearGradient></defs><polyline points="${pts}" fill="none" stroke="${trend}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 3px ${trend})"/>`
-  styl('pcr-trend-lbl',(change>=0?'▲':'▼')+Math.abs(change).toFixed(2)+' ('+h.length+'cy)',trend)
-}
-function hexToRgb(cssVar){
-  if(cssVar.includes('--bull')) return '0,255,136'
-  if(cssVar.includes('--bear')) return '255,59,87'
-  if(cssVar.includes('--warn')) return '255,184,0'
-  return '139,148,158'
-}
-function g(id){return document.getElementById(id)}
-function fc(n){const a=Math.abs(n);if(a>=100000)return(n>=0?'+':'−')+(a/100000).toFixed(2)+'L';if(a>=1000)return(n>=0?'+':'−')+(a/1000).toFixed(1)+'K';return(n>=0?'+':'−')+Math.round(a)}
-function set(id,t){const e=g(id);if(e)e.textContent=t}
-function styl(id,t,c){const el=g(id);if(el){el.textContent=t;el.style.color=c}}
-function fmt(n){return n?Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}
 
 setInterval(()=>{
   secs--;if(secs<=0){secs=300;doFetch()}
