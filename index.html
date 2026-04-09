@@ -35,6 +35,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .vb-detail{font-size:13px;opacity:.9;flex:1;}
 .vb-time{font-size:11px;opacity:.6;}
 
+.state-bar{padding:12px 18px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+  border-bottom:1px solid var(--border);background:var(--bg2);}
+.state-icon{font-size:24px;}
+.state-label{font-size:10px;color:var(--text2);letter-spacing:2px;margin-bottom:4px;text-transform:uppercase;font-family:var(--ui);font-weight:700;}
+.state-val{font-size:18px;font-weight:700;letter-spacing:1px;}
+.state-divider{width:1px;height:40px;background:var(--border2);}
+
 .strip{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 18px;
   display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;}
 .si{display:flex;align-items:baseline;gap:6px;}
@@ -114,7 +121,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
 .bull{color:var(--bull)!important;}.bear{color:var(--bear)!important;}
 .warn{color:var(--warn)!important;}.info{color:var(--info)!important;}.atmc{color:var(--atm)!important;}
 
-/* UI Restored Classes */
+/* UI Modules */
 .pcr-spark{width:90px;height:24px;margin-top:6px;}
 .flow-tbl td{font-size:12px;padding:6px 10px;vertical-align:top;}
 .flow-tbl th{font-size:11px;padding:8px 10px;}
@@ -182,6 +189,24 @@ tr:hover td{background:rgba(255,255,255,.03);}
   <div class="vb-main" id="vb-main">Connecting to server...</div>
   <div class="vb-detail" id="vb-detail">Waiting for first data cycle</div>
   <div class="vb-time" id="vb-time">—</div>
+</div>
+
+<div class="state-bar" id="state-bar">
+  <div class="state-icon" id="state-icon">⏳</div>
+  <div>
+    <div class="state-label">MARKET STATE</div>
+    <div class="state-val" id="state-val">—</div>
+  </div>
+  <div class="state-divider"></div>
+  <div style="flex:1">
+    <div class="state-label">OI MATRIX (Price+OI)</div>
+    <div style="font-size:15px;font-weight:700;" id="matrix-val">—</div>
+  </div>
+  <div class="state-divider"></div>
+  <div style="flex:2">
+    <div style="font-size:14px;color:var(--text2);font-weight:600;" id="state-note">—</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:4px;" id="matrix-desc">—</div>
+  </div>
 </div>
 
 <div class="alerts-bar">
@@ -527,6 +552,16 @@ function render(d,hist){
   banner.style.borderBottomColor=msCol
   set('vb-icon',icon); set('vb-main',main); g('vb-main').style.color=msCol;
   set('vb-detail',details); set('vb-time',new Date().toLocaleTimeString('en-IN'))
+  
+  g('state-bar').style.borderBottomColor = msCol;
+  set('state-icon', icon);
+  styl('state-val', ms, msCol);
+  set('state-note', details);
+  const mxCond = intel.oi_matrix_condition || '—';
+  const mxSig = intel.oi_matrix_signal || '—';
+  const mxCol2 = mxSig.includes('BULL') ? 'var(--bull)' : mxSig.includes('BEAR') ? 'var(--bear)' : 'var(--warn)';
+  styl('matrix-val', mxCond + ' → ' + mxSig, mxCol2);
+  set('matrix-desc', intel.oi_matrix_desc || '—');
 
   const alerts=intel.alerts||[]
   g('alerts-content').innerHTML=alerts.length
@@ -627,7 +662,6 @@ function render(d,hist){
   })
 }
 
-// 🔥 TIMESTAMPS FINALLY RESTORED IN HTML
 function renderNiftyTechFull(tech){
   const mkRow=(key,val,col,note)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03)"><span style="font-size:11px;color:var(--text2);font-family:var(--ui);font-weight:600">${key}</span><span style="font-size:13px;font-weight:700;color:${col||'var(--text)'}">${val}</span>${note?`<span style="font-size:10px;color:var(--text2);font-family:var(--ui)">${note}</span>`:''}</div>`
   const mkPill=(label,cls)=>`<span class="tech-pill ${cls}">${label}</span>`
@@ -652,7 +686,7 @@ function renderNiftyTechFull(tech){
       ${mkRow('EMA Cross', t.ts_start || '—', 'var(--text)', '')}
       ${mkRow('Pullback', t.ts_pull || '—', 'var(--text)', '')}
       ${mkRow('Continuation', t.ts_cont || '—', 'var(--text)', '')}
-      ${mkRow('ST Signal', t.ts_st || '—', 'var(--text)', '')}
+      ${mkRow('ST(1,1) Signal', t.ts_st || '—', 'var(--text)', '')}
       ${rsi?mkRow('RSI (14)',rsi.toFixed(1),rsiCol,rsiNote):''}
     `
   })
