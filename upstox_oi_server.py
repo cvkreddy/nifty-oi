@@ -1,8 +1,9 @@
 
+
 """
 ====================================================
   NIFTY50 OI Server — Full Intelligence Mode v8 (Restored)
-  Includes: Histogram Route Restored, VIX Matrix, State Save
+  Includes: Max Pain Fix, VIX Matrix, State Persistence
 ====================================================
 """
 
@@ -296,6 +297,16 @@ def fetch_chain(expiry):
 # ══════════════════════════════════════════════════
 #  MATH & PROCESSORS
 # ══════════════════════════════════════════════════
+# 🔥 RESTORED MAX PAIN CALCULATION
+def compute_max_pain(chain):
+    strikes = sorted(chain.keys())
+    if not strikes: return 0
+    min_loss, mp = float("inf"), strikes[0]
+    for s in strikes:
+        loss = sum(v["call_oi"]*(s-k) if k<s else v["put_oi"]*(k-s) if k>s else 0 for k,v in chain.items())
+        if loss < min_loss: min_loss = loss; mp = s
+    return mp
+
 def get_vwap(candles):
     today_date = datetime.now().strftime("%Y-%m-%d")
     cum_vol = cum_pv = 0
@@ -459,6 +470,9 @@ def refresh():
         chain = process_chain(raw)
         if not chain: return
 
+        # 🔥 Max Pain Calculation Restored
+        max_pain = compute_max_pain(chain)
+
         atm_strikes = {s:v for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP}
         total_call  = sum(v["call_oi"] for v in chain.values())
         total_put   = sum(v["put_oi"]  for v in chain.values())
@@ -530,7 +544,7 @@ def refresh():
             "backend_error": None, 
             "spot": spot, "futures": futures, "premium": round(futures-spot,2),
             "atm": atm, "pcr": pcr, "pcr_chg": pcr_chg, "vix": vix,
-            "max_pain": max_pain, "expiry": expiry,
+            "max_pain": max_pain, "expiry": expiry, # 🔥 Used correctly here
             "indicators": get_indicators(candle_cache), "intelligence": intelligence,
             "atm_strikes": atm_strikes, "chain": chain,
             "timestamp": datetime.now().isoformat()
@@ -595,7 +609,6 @@ def oi_json():
     except: pass
     return jsonify(d)
 
-# 🔥 RESTORED ROUTE: This fixes the missing UI elements on your website!
 @app.route("/oi/histogram")
 def histogram():
     d = oi_cache.get("data")
