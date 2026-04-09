@@ -3,7 +3,7 @@
 """
 ====================================================
   NIFTY50 OI Server — The Absolute Master Edition
-  Fixes: get_indicators crash | Adds: RSI & LTP Changes
+  Fixes: Perfect TradingView Timestamps, ST(1,1), Hyper-Sensitive Flow
 ====================================================
 """
 
@@ -30,7 +30,7 @@ NIFTY_KEY    = "NSE_INDEX|Nifty 50"
 
 # 🚨 TELEGRAM CREDENTIALS 🚨
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
-TELEGRAM_CHAT_ID   = "7851805837" 
+TELEGRAM_CHAT_ID   = "7851805837"     
 
 CACHE_TTL    = 150  
 STRIKE_STEP  = 50
@@ -49,9 +49,10 @@ prev_oi         = {}
 prev_pcr        = None
 prev_spot       = None
 
-candle_cache    = []
+candle_cache_1m = []
 candle_cache_3m = []
-candle_cache_15 = []          
+candle_cache_5m = []
+candle_cache_15m = []          
 ltp_history     = {}          
 
 sent_alerts = {}
@@ -327,7 +328,7 @@ def fetch_chain(expiry):
     except: return []
 
 # ══════════════════════════════════════════════════
-#  MATH & PROCESSORS (VERIFIED)
+#  MATH & PROCESSORS 
 # ══════════════════════════════════════════════════
 def compute_max_pain(chain):
     strikes = sorted(chain.keys())
@@ -365,7 +366,7 @@ def calc_ema_array(prices, period):
         emas.append(round(ema, 2))
     return emas
 
-def calc_supertrend(candles, period=7, multiplier=3.0):
+def calc_supertrend(candles, period=1, multiplier=1.0):
     if len(candles) < period + 1: return None, None
     highs, lows, closes = [c["high"] for c in candles], [c["low"] for c in candles], [c["close"] for c in candles]
     trs = [max(highs[i]-lows[i], abs(highs[i]-closes[i-1]), abs(lows[i]-closes[i-1])) for i in range(1, len(candles))]
@@ -433,6 +434,7 @@ def get_indicators(candles):
     adx_val = calc_adx(candles, 14)
     return {"rsi": rsi_val, "adx": adx_val, "candle_count": len(candles)}
 
+# 🔥 COMPLETELY REBUILT TIMESTAMPS ENGINE (DD-MM HH:MM)
 def compute_tf_signals(candles, label, st_period, st_multiplier):
     if not candles or len(candles) < 15: 
         return {"label": label, "candle_count": len(candles) if candles else 0, "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-"}
@@ -455,11 +457,13 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
         e7, e15 = ema7_arr[i], ema15_arr[i]
         if e7 is None or e15 is None: continue
         c_close = closes[i]
+        c_high = candles[i]["high"]
+        c_low = candles[i]["low"]
         
         try:
-            d_str = times[i][:10]
-            t_str = times[i][11:16]
-            c_time = f"{d_str[8:10]}-{d_str[5:7]} {t_str}" 
+            # Safely extract DD-MM HH:MM
+            dt_obj = datetime.strptime(times[i][:19], "%Y-%m-%dT%H:%M:%S")
+            c_time = dt_obj.strftime("%d-%m %H:%M")
         except: 
             c_time = "-"
 
@@ -478,13 +482,13 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
             else: await_pull_s = True
             
         if is_bull:
-            if await_pull_b and (c_close < e7 or c_close < e15):
-                pull_time = c_time; cont_time = "..."; await_pull_b = False
+            if await_pull_b and (c_low <= e7 or c_close < e15):
+                pull_time = c_time; cont_time = "-"; await_pull_b = False
             elif not await_pull_b and c_close > e7:
                 cont_time = c_time; await_pull_b = True
         else:
-            if await_pull_s and (c_close > e7 or c_close > e15):
-                pull_time = c_time; cont_time = "..."; await_pull_s = False
+            if await_pull_s and (c_high >= e7 or c_close > e15):
+                pull_time = c_time; cont_time = "-"; await_pull_s = False
             elif not await_pull_s and c_close < e7:
                 cont_time = c_time; await_pull_s = True
                 
@@ -628,8 +632,8 @@ def classify_strike_oi_flow(v, prev_spot, spot):
     c_c, cl, c_o = v.get("call_oi_chg", 0), v.get("call_ltp_chg", 0), v.get("call_oi", 0)
     p_c, pl, p_o = v.get("put_oi_chg", 0), v.get("put_ltp_chg", 0), v.get("put_oi", 0)
     
-    # 🔥 HIGH SENSITIVITY FIX (25,000 contracts trigger)
-    THRESH = 25000 
+    # 🔥 HYPER-SENSITIVITY FIX (10,000 contracts trigger = 200 lots)
+    THRESH = 10000 
     
     if pup and c_c > THRESH and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
     elif pup and c_c < -THRESH and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
@@ -665,7 +669,7 @@ def classify_strike_oi_flow(v, prev_spot, spot):
 # ══════════════════════════════════════════════════
 
 def refresh():
-    global prev_oi, prev_pcr, prev_spot, candle_cache, candle_cache_15, candle_cache_3m, baseline_vix, ltp_history
+    global prev_oi, prev_pcr, prev_spot, candle_cache_1m, candle_cache_15m, candle_cache_5m, candle_cache_3m, baseline_vix, ltp_history
 
     load_token()
     if not token_store.get("access_token"):
@@ -700,11 +704,12 @@ def refresh():
         
         if baseline_vix is None and vix > 0: baseline_vix = vix
 
-        candles_1m  = fetch_base_1m_candles()
-        if candles_1m:
-            candle_cache_3m = resample_candles(candles_1m, 3)[-60:]
-            candle_cache    = resample_candles(candles_1m, 5)[-60:]
-            candle_cache_15 = resample_candles(candles_1m, 15)[-40:]
+        # 🔥 KEEP FULL HISTORY FOR PERFECT EMA CALCULATION
+        candle_cache_1m  = fetch_base_1m_candles()
+        if candle_cache_1m:
+            candle_cache_3m = resample_candles(candle_cache_1m, 3)
+            candle_cache_5m = resample_candles(candle_cache_1m, 5)
+            candle_cache_15m = resample_candles(candle_cache_1m, 15)
 
         cum_put_add = sum(v["put_oi_chg_day"] for v in chain.values())
         cum_call_add = sum(v["call_oi_chg_day"] for v in chain.values())
@@ -740,10 +745,10 @@ def refresh():
                 return {"ema7": e7, "ema15": e15, "price_above_ema7": price > e7 if e7 and price else None}
             v["ltp_technicals"] = {"call": s_info(ltp_history[s]["call"]), "put": s_info(ltp_history[s]["put"])}
 
-        vwap_val = get_vwap(candle_cache)
+        vwap_val = get_vwap(candle_cache_5m)
         vix_matrix = analyze_vix_price(spot, vwap_val, vix, baseline_vix)
         
-        ind_data = get_indicators(candle_cache)
+        ind_data = get_indicators(candle_cache_5m)
         mkt_state = market_state(pcr, ind_data.get("adx"), oi_signal, alerts, vix)
         
         gex_data = [{"strike":s,"net_gex":v["call_gex"] - v["put_gex"]} for s,v in sorted(chain.items()) if abs(s-atm) <= 10*STRIKE_STEP]
@@ -757,6 +762,7 @@ def refresh():
         avg_skew=round(sum(x["skew"] for x in skew_data)/len(skew_data),2) if skew_data else 0
         iv_skew = {"data":skew_data,"avg_skew":avg_skew,"signal":"BEARISH SKEW — put IV elevated" if avg_skew>3 else "BULLISH SKEW — call IV elevated" if avg_skew<-3 else "NEUTRAL SKEW — balanced"}
 
+        # 🔥 RESTORED TIMESTAMPS AND ST(1,1)
         intelligence = {
             "market_state": mkt_state,
             "oi_matrix_condition": oi_cond, "oi_matrix_signal": oi_signal, "oi_matrix_desc": oi_desc,
@@ -765,8 +771,8 @@ def refresh():
             "gex_profile": gex_data[:11], "gex_flip": gex_flip, "iv_skew": iv_skew,
             "index_technicals": {
                 "3min": compute_tf_signals(candle_cache_3m, "3min", 1, 1.0),
-                "5min": compute_tf_signals(candle_cache, "5min", 1, 1.0),
-                "15min": compute_tf_signals(candle_cache_15, "15min", 1, 1.0)
+                "5min": compute_tf_signals(candle_cache_5m, "5min", 1, 1.0),
+                "15min": compute_tf_signals(candle_cache_15m, "15min", 1, 1.0)
             },
             "cumulative_net_flow_l": round(cum_net_flow / 100000, 2),
             "morning_straddle": morning_straddle,
