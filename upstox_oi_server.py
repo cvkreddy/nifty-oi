@@ -1,9 +1,9 @@
-    
+
 
 """
 ====================================================
   NIFTY50 OI Server — The Absolute Master Edition
-  Fixes: Crash Handlers, RSI Tracking, CE/PE Deltas
+  Fixes: get_indicators crash | Adds: RSI & LTP Changes
 ====================================================
 """
 
