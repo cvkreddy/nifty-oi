@@ -106,7 +106,6 @@ tr:hover td{background:rgba(255,255,255,.03);}
 .vel-arrow{font-size:14px;margin-left:4px;font-weight:900;}
 .vel-up2{color:var(--bear);text-shadow:0 0 5px var(--bear);}.vel-up1{color:rgba(255,59,87,.7)}.vel-dn1{color:rgba(0,255,136,.7)}.vel-dn2{color:var(--bull);text-shadow:0 0 5px var(--bull);}.vel-flat{color:var(--text2)}
 
-/* Restored Migration & Pin Risk Styles */
 .mig-row{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,.03);font-size:12px;}
 .mig-row:last-child{border-bottom:none;}
 .mig-from{width:56px;text-align:right;font-weight:700;}
@@ -119,7 +118,6 @@ tr:hover td{background:rgba(255,255,255,.03);}
 .pin-note{font-size:11px;font-family:var(--ui);flex:1;color:var(--text2);}
 .pin-score{font-size:17px;font-weight:700;}
 
-/* Restored Greeks & Activity Styles */
 .gg{display:grid;grid-template-columns:repeat(4,1fr);}
 .gc{padding:10px 14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);}
 .gc:nth-child(4n){border-right:none;}.gc:nth-last-child(-n+4){border-bottom:none;}
@@ -136,7 +134,6 @@ tr:hover td{background:rgba(255,255,255,.03);}
 .anote{font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5;}
 .aempty{font-size:12px;color:var(--text2);padding:6px 0;line-height:1.6;}
 
-/* Skew Styles */
 .skew-row{display:flex;align-items:center;gap:10px;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,.03);}
 .skew-bar{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,0.5);}
 .skew-fill{height:100%;border-radius:3px;}
@@ -230,7 +227,15 @@ tr:hover td{background:rgba(255,255,255,.03);}
   <div class="si"><span class="sl">SPOT</span><span class="sv" id="m-spot">—</span></div><div class="sdv"></div>
   <div class="si"><span class="sl">FUTURES</span><span class="sv bull-glow" id="m-fut">—</span></div>
   <div class="si"><span class="sl">PREMIUM</span><span class="sv" id="m-prem">—</span></div><div class="sdv"></div>
-  <div class="si"><span class="sl">SMART FLOW (Day)</span><span class="sv" id="m-flow">—</span></div><div class="sdv"></div>
+  <div class="si" style="flex-direction:column;gap:2px;">
+    <div style="display:flex;align-items:baseline;gap:6px;">
+      <span class="sl">SMART FLOW</span><span class="sv" id="m-flow">—</span>
+    </div>
+    <div style="width:100%;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;position:relative;">
+      <div id="m-flow-bar" style="position:absolute;height:100%;width:50%;left:50%;background:var(--text2);transition:all 0.3s;"></div>
+    </div>
+  </div>
+  <div class="sdv"></div>
   <div class="si"><span class="sl">VIX</span><span class="sv warn" id="m-vix">—</span></div><div class="sdv"></div>
   <div class="si"><span class="sl">PCR</span><span class="sv" id="m-pcr">—</span><span class="schg" id="m-pcr-chg"></span></div><div class="sdv"></div>
   <div class="si"><span class="sl">MAX PAIN</span><span class="sv warn" id="m-mp">—</span></div><div class="sdv"></div>
@@ -241,7 +246,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
   <div class="sb-item">
     <span class="sb-lbl">ATM STRADDLE</span>
     <span class="sb-val" id="straddle-cost">—</span>
-    <span class="sb-sub" id="straddle-detail">CE + PE at ATM</span>
+    <span class="sb-sub" id="straddle-decay" style="font-weight:700">—</span>
   </div>
   <div class="sdv"></div>
   <div class="sb-item">
@@ -313,7 +318,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
     <table><thead><tr>
       <th class="th-s">STRIKE</th><th>LTP</th><th>LTP Δ</th>
       <th>OI</th><th>OI Δ(5m)</th><th>Vel</th><th>OI Δ(Day)</th>
-      <th>IV%</th>
+      <th title="Aggression Meter (Vol / OI)">Vol/OI</th>
     </tr></thead>
     <tbody id="call-tbody"><tr><td colspan="8" class="loading">Waiting...</td></tr></tbody></table>
   </div>
@@ -323,7 +328,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
     <table><thead><tr>
       <th class="th-s">STRIKE</th><th>LTP</th><th>LTP Δ</th>
       <th>OI</th><th>OI Δ(5m)</th><th>Vel</th><th>OI Δ(Day)</th>
-      <th>IV%</th>
+      <th title="Aggression Meter (Vol / OI)">Vol/OI</th>
     </tr></thead>
     <tbody id="put-tbody"><tr><td colspan="8" class="loading">Waiting...</td></tr></tbody></table>
   </div>
@@ -530,13 +535,27 @@ function render(d,hist){
   set('m-mp','₹'+Math.round(mp).toLocaleString('en-IN'))
   set('m-atm','₹'+Math.round(atm).toLocaleString('en-IN'))
   
-  // Smart Flow
+  // 🔥 SMART FLOW BAR LOGIC
   const netFlowL = intel.cumulative_net_flow_l || 0;
   const flowEl = g('m-flow');
   flowEl.textContent = (netFlowL>=0?'+':'') + netFlowL.toFixed(1) + 'L';
   flowEl.className = 'sv ' + (netFlowL > 0 ? 'bull-glow' : netFlowL < 0 ? 'bear-glow' : 'warn');
+  
+  const flowPct = Math.min(100, Math.abs(netFlowL) / 50 * 100);
+  const fBar = g('m-flow-bar');
+  if(netFlowL > 0) {
+     fBar.style.background = 'var(--bull)';
+     fBar.style.left = '50%';
+     fBar.style.width = (flowPct/2) + '%';
+     fBar.style.boxShadow = '0 0 5px var(--bull)';
+  } else {
+     fBar.style.background = 'var(--bear)';
+     fBar.style.left = (50 - flowPct/2) + '%';
+     fBar.style.width = (flowPct/2) + '%';
+     fBar.style.boxShadow = '0 0 5px var(--bear)';
+  }
 
-  renderStraddle(d.atm_strikes,atm,spot,d.expiry)
+  renderStraddle(d.atm_strikes,atm,spot,d.expiry,intel)
   renderNiftyTechFull(intel.index_technicals||{})
 
   pcrHistory.push(pcr); if(pcrHistory.length>20) pcrHistory.shift()
@@ -564,7 +583,6 @@ function render(d,hist){
   renderHist(hist,atm)
   renderGEX(intel.gex_profile||[],intel.gex_flip,atm)
   
-  // 🔥 RESTORED RENDER CALLS (FIXED `skew` bug)
   renderMigration(ak,atm)
   renderPinRisk(d,atm)
   renderSkew(intel.iv_skew||{}) 
@@ -615,11 +633,22 @@ function msColor(ms){
   return ms.includes('UP')||ms.includes('BULL')?'var(--bull)':ms.includes('DOWN')||ms.includes('BEAR')?'var(--bear)':ms.includes('BREAK')?'var(--warn)':ms.includes('REVERS')?'var(--purple)':'var(--text2)'
 }
 
-function renderStraddle(atk,atm,spot,expiry){
+function renderStraddle(atk,atm,spot,expiry,intel){
   const atmV=atk[atm]||{}, cLtp=atmV.call_ltp||0, pLtp=atmV.put_ltp||0, straddle=cLtp+pLtp
   if(!straddle){ set('straddle-cost','—'); return }
   set('straddle-cost','₹'+Math.round(straddle).toLocaleString('en-IN'))
   set('straddle-detail',`CE ₹${cLtp.toFixed(0)} + PE ₹${pLtp.toFixed(0)} at ATM`)
+  
+  // 🔥 STRADDLE DECAY UI
+  const decay = intel.straddle_decay || 0;
+  const decEl = g('straddle-decay');
+  if (decay !== 0) {
+      decEl.textContent = (decay > 0 ? '+' : '') + decay.toFixed(1) + '% from open';
+      decEl.style.color = decay < 0 ? 'var(--bear)' : 'var(--bull)';
+  } else {
+      decEl.textContent = "—"
+  }
+
   const low=Math.round(atm-straddle), high=Math.round(atm+straddle)
   set('expected-range','₹'+low.toLocaleString('en-IN')+' — ₹'+high.toLocaleString('en-IN'))
   set('expected-pct','±'+((straddle/atm)*100).toFixed(1)+'% expected move today')
@@ -722,11 +751,12 @@ function renderNiftyTechFull(tech){
 function rowHTML(r,atm,maxOI,isCall){
   const s=parseFloat(r.strike), isA=Math.abs(s-atm)<1, oi=isCall?(r.call_oi||0):(r.put_oi||0)
   const chg=isCall?(r.call_oi_chg||0):(r.put_oi_chg||0), chgD=isCall?(r.call_oi_chg_day||0):(r.put_oi_chg_day||0)
-  const iv=isCall?(r.call_iv||0):(r.put_iv||0), ltp=isCall?(r.call_ltp||0):(r.put_ltp||0), ltpC=isCall?(r.call_ltp_chg||0):(r.put_ltp_chg||0)
+  const voi=isCall?(r.call_vol_oi||0):(r.put_vol_oi||0), ltp=isCall?(r.call_ltp||0):(r.put_ltp||0), ltpC=isCall?(r.call_ltp_chg||0):(r.put_ltp_chg||0)
   const cc=chg>0?'var(--bear)':chg<0?'var(--bull)':'var(--text2)', dc=chgD>0?'var(--bear)':chgD<0?'var(--bull)':'var(--text2)', lc=ltpC>0?'var(--bull)':ltpC<0?'var(--bear)':'var(--text2)'
   const skC=isA?'sk-a':isCall?'sk-c':'sk-p', vel=velArrow(s,isCall,chg)
   const heatBg=isCall ? `rgba(255,59,87,${((maxOI>0?(oi/maxOI):0)*0.18).toFixed(2)})` : `rgba(0,255,136,${((maxOI>0?(oi/maxOI):0)*0.15).toFixed(2)})`
 
+  // 🔥 VOL/OI AGGRESSION METERS
   return `<tr class="${isA?'ar':''}" style="${isA?'':'background:'+heatBg}">
     <td class="td-s"><span class="${skC}">${Math.round(s).toLocaleString('en-IN')}${isA?' ◄':''}</span></td>
     <td style="color:var(--warn)">₹${ltp.toFixed(1)}</td>
@@ -735,7 +765,7 @@ function rowHTML(r,atm,maxOI,isCall){
     <td style="color:${cc};font-weight:${Math.abs(chg)>500000?700:500}">${fc(chg)}</td>
     <td>${vel}</td>
     <td style="color:${dc}">${fc(chgD)}</td>
-    <td style="color:${iv>30?'var(--bear)':'var(--text)'}">${iv.toFixed(1)}%</td>
+    <td style="color:${voi>3?'var(--info)':voi>1.5?'var(--warn)':'var(--text2)'};font-weight:${voi>3?700:400}">${voi.toFixed(1)}</td>
   </tr>`
 }
 
@@ -820,7 +850,6 @@ function renderGEX(gexData,flip,atm){
   }).join('')
 }
 
-// 🔥 RESTORED FUNCTIONS: MIGRATION, PIN RISK, SKEW, GREEKS, ACTIVITY
 function renderMigration(atk,atm){
   set('mig-time',new Date().toLocaleTimeString('en-IN'))
   if(cycleCount<2||Object.keys(prevOIData).length===0){g('mig-body').innerHTML='<div class="loading">Tracking from next cycle...</div>';return}
@@ -878,7 +907,7 @@ function renderPinRisk(d,atm){
   styl('pin-label',risk,riskColor); set('pin-note',note); styl('pin-score',`₹${Math.round(mp).toLocaleString('en-IN')}`,riskColor)
 }
 
-function renderSkew(skewObj){ // 🔥 FIX: Removed trailing comma parameter that caused the crash
+function renderSkew(skewObj){ 
   const el=g('skew-panel'),data=skewObj.data||[],avg=skewObj.avg_skew||0
   styl('skew-signal',skewObj.signal||'—',avg>3?'var(--bear)':avg<-3?'var(--bull)':'var(--text2)')
   if(!data.length){el.innerHTML='<div class="loading">Need ±3 strikes</div>';return}

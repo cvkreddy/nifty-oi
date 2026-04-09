@@ -1,7 +1,7 @@
 """
 ====================================================
-  NIFTY50 OI Server — Full Intelligence Mode v3
-  Includes: VWAP, Smart Flow, Telegram ATM±2, Resampler
+  NIFTY50 OI Server — Full Intelligence Mode v4
+  Includes: Straddle Decay, Vol/OI, Telegram Pro Layout
 ====================================================
 """
 
@@ -52,7 +52,7 @@ sent_alerts = {}
 last_5min_summary = 0 
 
 # ══════════════════════════════════════════════════
-#  TELEGRAM BOT ENGINE
+#  TELEGRAM BOT ENGINE (PRO LAYOUT)
 # ══════════════════════════════════════════════════
 
 def send_telegram_alert(message):
@@ -72,27 +72,33 @@ def generate_5min_summary(data, atm_strikes, atm):
     net_flow_l = intel.get("cumulative_net_flow_l", 0)
     flow_bias = "🟢 BULLISH" if net_flow_l > 0 else "🔴 BEARISH" if net_flow_l < 0 else "⚪ NEUTRAL"
     
+    atm_v = atm_strikes.get(atm, {})
+    straddle = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
+    s_low = int(atm - straddle) if straddle else 0
+    s_high = int(atm + straddle) if straddle else 0
+    
     msg = (
         f"⏱ <b>5-MIN NIFTY SCANNER</b>\n"
         f"🎯 <b>Spot:</b> ₹{spot} | <b>PCR:</b> {pcr}\n"
+        f"⚖️ <b>Straddle:</b> ₹{straddle:.1f} (Range: {s_low} - {s_high})\n"
         f"🌊 <b>Smart Flow:</b> {flow_bias} ({net_flow_l:+.1f}L Net)\n"
-        f"🧭 <b>{intel.get('market_state', 'N/A')}</b>\n"
-        f"━━━━━━━━━━━━━━━━\n"
+        f"🧭 <b>State:</b> {intel.get('market_state', 'N/A')}\n"
+        f"━━━━━━━━━━━━━━━━\n\n"
     )
     
     def get_short_cond(flow):
         c = flow.get("condition", "")
         e = flow.get("emoji", "⚪")
-        if "LONG BUILDUP" in c: return f"{e} Long Build"
-        if "SHORT COVERING" in c: return f"{e} Short Cover"
-        if "SHORT BUILDUP" in c or "WRITING" in c: return f"{e} Writing"
-        if "LONG UNWINDING" in c or "EXIT" in c: return f"{e} Unwinding"
-        if "FAKE" in c or "NO" in c: return f"⚠️ Trap/Flat"
-        if "ADDITION" in c: return f"{e} Heavy Add"
-        return f"⚪ Stable"
+        if "LONG BUILDUP" in c: return f"Long Build {e}"
+        if "SHORT COVERING" in c: return f"Short Cover 📈"
+        if "SHORT BUILDUP" in c or "WRITING" in c: return f"Writing {e}"
+        if "LONG UNWINDING" in c or "EXIT" in c: return f"Unwinding {e}"
+        if "FAKE" in c or "NO" in c: return f"Trap/Flat ⚠️"
+        if "ADDITION" in c: return f"Heavy Add {e}"
+        return f"Stable ⚪"
 
+    # Exact ATM +/- 2 restriction
     for s in sorted(atm_strikes.keys(), reverse=True):
-        # 🔥 FIX: Telegram only shows ATM +/- 2 strikes (5 strikes total)
         if abs(s - atm) > 2 * STRIKE_STEP:
             continue
             
@@ -101,19 +107,26 @@ def generate_5min_summary(data, atm_strikes, atm):
         
         c_ltp = v.get("call_ltp", 0)
         c_ltp_5m = v.get("call_ltp_chg", 0)
+        c_ltp_d = v.get("call_ltp_chg_day", 0)
         c_oi_5m = v.get("call_oi_chg", 0) / 100000
+        c_oi_d = v.get("call_oi_chg_day", 0) / 100000
         c_cond = get_short_cond(v.get("call_flow", {}))
         
         p_ltp = v.get("put_ltp", 0)
         p_ltp_5m = v.get("put_ltp_chg", 0)
+        p_ltp_d = v.get("put_ltp_chg_day", 0)
         p_oi_5m = v.get("put_oi_chg", 0) / 100000
+        p_oi_d = v.get("put_oi_chg_day", 0) / 100000
         p_cond = get_short_cond(v.get("put_flow", {}))
 
         msg += f"🎯 <b>{int(s)}{marker}</b>\n"
-        msg += f"<b>CE:</b> ₹{c_ltp:.1f} ({c_ltp_5m:+.1f})\n"
-        msg += f"↳ {c_cond} ({c_oi_5m:+.2f}L)\n"
-        msg += f"<b>PE:</b> ₹{p_ltp:.1f} ({p_ltp_5m:+.1f})\n"
-        msg += f"↳ {p_cond} ({p_oi_5m:+.2f}L)\n"
+        msg += f"🔴 <b>CE | {c_cond}</b>\n"
+        msg += f"LTP: ₹{c_ltp:.1f}  (5m: {c_ltp_5m:+.1f} | Day: {c_ltp_d:+.1f})\n"
+        msg += f"OI : 5m: {c_oi_5m:+.2f}L | Day: {c_oi_d:+.2f}L\n\n"
+        
+        msg += f"🟢 <b>PE | {p_cond}</b>\n"
+        msg += f"LTP: ₹{p_ltp:.1f}  (5m: {p_ltp_5m:+.1f} | Day: {p_ltp_d:+.1f})\n"
+        msg += f"OI : 5m: {p_oi_5m:+.2f}L | Day: {p_oi_d:+.2f}L\n"
         msg += f"〰️〰️〰️〰️〰️〰️〰️〰️\n"
         
     return msg.strip()
@@ -148,8 +161,7 @@ def save_token(token):
     try:
         with open(TOKEN_FILE, "w") as f:
             json.dump({"access_token": token}, f)
-    except Exception as e:
-        print("[TOKEN SAVE ERROR]", e)
+    except Exception as e: pass
 
 def load_token():
     if os.path.exists(TOKEN_FILE):
@@ -157,8 +169,7 @@ def load_token():
             with open(TOKEN_FILE, "r") as f:
                 data = json.load(f)
                 token_store["access_token"] = data.get("access_token")
-        except Exception as e:
-            print("[TOKEN LOAD ERROR]", e)
+        except Exception as e: pass
 
 load_token()
 
@@ -209,7 +220,7 @@ def fetch_spot():
         d = r.json().get("data", {})
         key = list(d.keys())[0] if d else None
         return float(d[key].get("last_price", 0)) if key else 0
-    except Exception as e: print("[SPOT ERROR]", e); return 0
+    except Exception as e: return 0
 
 def get_futures_symbol():
     from datetime import date
@@ -267,14 +278,11 @@ def fetch_base_1m_candles():
             result = []
             for c in cr:
                 if len(c) >= 5:
-                    # 🔥 FIX: Added volume tracking for VWAP
                     result.append({"time": c[0], "open": float(c[1]), "high": float(c[2]),
                                    "low": float(c[3]), "close": float(c[4]), "vol": float(c[5]) if len(c)>5 else 0})
             result.sort(key=lambda x: x["time"])
             return result
-        else:
-            print(f"[CANDLES 1M ERROR] HTTP {r.status_code}: {r.text}")
-    except Exception as e: print("[CANDLES 1M EXCEPTION]", e)
+    except Exception as e: pass
     return []
 
 def resample_candles(candles_1m, timeframe_mins):
@@ -419,7 +427,6 @@ def calc_supertrend(candles, period=7, multiplier=3.0):
 def compute_tf_signals(candles, label, st_period, st_multiplier):
     if not candles: return {"label": label, "candle_count": 0, "error": "No data"}
     
-    # VWAP Calculation (Only uses Today's data)
     today_date = datetime.now().strftime("%Y-%m-%d")
     cum_vol = 0
     cum_pv = 0
@@ -589,13 +596,13 @@ def price_oi_matrix(spot, prev_spot, chain, atm):
     else: return "NO CHANGE","NEUTRAL","OI unchanged this cycle."
 
 def pcr_zone_analysis(pcr, prev_pcr):
-    if pcr < 0.50:   zone, signal, note="EXTREME FEAR", "REVERSAL UP LIKELY", "PCR below 0.50. Too many calls."
-    elif pcr < 0.70: zone, signal, note="BEARISH ZONE", "BEARISH — CALLS DOMINATE", "Call writers active."
-    elif pcr < 0.85: zone, signal, note="MILD BEARISH", "SLIGHT BEARISH BIAS", "Calls slightly dominant."
-    elif pcr <= 1.15:zone, signal, note="NEUTRAL ZONE", "BALANCED", "PCR balanced."
-    elif pcr <= 1.30:zone, signal, note="MILD BULLISH", "SLIGHT BULLISH BIAS", "Puts slightly dominant."
-    elif pcr <= 1.50:zone, signal, note="BULLISH ZONE", "BULLISH — PUTS DOMINATE", "Put writers active."
-    else:            zone, signal, note="EXTREME GREED", "REVERSAL DOWN LIKELY", "PCR above 1.50. Too many puts."
+    if pcr < 0.50:   zone, signal, note="EXTREME FEAR", "REVERSAL UP LIKELY"
+    elif pcr < 0.70: zone, signal, note="BEARISH ZONE", "BEARISH — CALLS DOMINATE"
+    elif pcr < 0.85: zone, signal, note="MILD BEARISH", "SLIGHT BEARISH BIAS"
+    elif pcr <= 1.15:zone, signal, note="NEUTRAL ZONE", "BALANCED"
+    elif pcr <= 1.30:zone, signal, note="MILD BULLISH", "SLIGHT BULLISH BIAS"
+    elif pcr <= 1.50:zone, signal, note="BULLISH ZONE", "BULLISH — PUTS DOMINATE"
+    else:            zone, signal, note="EXTREME GREED", "REVERSAL DOWN LIKELY"
     return {"zone":zone,"signal":signal,"note":note}
 
 def compute_gex_profile(chain, atm):
@@ -695,10 +702,24 @@ def refresh():
         
         ind   = get_indicators(candle_cache)
 
-        # 🔥 Smart Money Net Flow (Cumulative Intraday)
         cum_put_add = sum(v["put_oi_chg_day"] for v in chain.values())
         cum_call_add = sum(v["call_oi_chg_day"] for v in chain.values())
         cum_net_flow = cum_put_add - cum_call_add
+
+        # 🔥 Track Straddle Decay
+        atm_v = atm_strikes.get(atm, {})
+        current_straddle = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
+        
+        old_data = oi_cache.get("data") or {}
+        old_intel = old_data.get("intelligence", {})
+        morning_straddle = old_intel.get("morning_straddle")
+        
+        if morning_straddle is None and current_straddle > 0:
+            morning_straddle = current_straddle
+            
+        straddle_decay = 0
+        if morning_straddle and morning_straddle > 0:
+            straddle_decay = ((current_straddle - morning_straddle) / morning_straddle) * 100
 
         oi_cond, oi_signal, oi_desc        = price_oi_matrix(spot, prev_spot, chain, atm)
         pcr_analysis                       = pcr_zone_analysis(pcr, prev_pcr)
@@ -723,7 +744,9 @@ def refresh():
             "pcr_zone": pcr_analysis["zone"], "pcr_signal": pcr_analysis["signal"], "pcr_note": pcr_analysis["note"],
             "gex_profile": gex_data[:11], "gex_flip": gex_flip, "iv_skew": iv_skew,
             "concentration": concentration, "alerts": alerts, "index_technicals": index_tech,
-            "cumulative_net_flow_l": round(cum_net_flow / 100000, 2)
+            "cumulative_net_flow_l": round(cum_net_flow / 100000, 2),
+            "morning_straddle": morning_straddle,
+            "straddle_decay": round(straddle_decay, 2)
         }
 
         data = {
