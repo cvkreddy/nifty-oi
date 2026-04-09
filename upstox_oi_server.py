@@ -1,7 +1,7 @@
 
 
-
-"""
+            
+ """
 ====================================================
   NIFTY50 OI Server — The Absolute Master Edition
   Fixes: get_indicators crash | Adds: RSI & LTP Changes
@@ -33,6 +33,7 @@ NIFTY_KEY    = "NSE_INDEX|Nifty 50"
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
 
+
 CACHE_TTL    = 150  
 STRIKE_STEP  = 50
 ATM_RANGE    = 5
@@ -45,7 +46,7 @@ oi_cache        = {"data": None}
 
 baseline_oi     = {}
 baseline_vix    = None
-baseline_rsi    = {}  # 🔥 NEW: Tracks Morning RSI for Day Change
+baseline_rsi    = {} 
 prev_oi         = {}
 prev_pcr        = None
 prev_spot       = None
@@ -140,7 +141,6 @@ def generate_5min_summary(data, atm_strikes, atm):
     t5 = intel.get("index_technicals", {}).get("5min", {})
     t15 = intel.get("index_technicals", {}).get("15min", {})
     
-    # 🔥 NEW: Straddle Detailed Breakdown sent to Telegram
     msg = (
         f"⏱ <b>5-MIN NIFTY SCANNER</b>\n"
         f"🎯 <b>Spot:</b> ₹{spot} | <b>PCR:</b> {pcr}\n"
@@ -329,7 +329,7 @@ def fetch_chain(expiry):
     except: return []
 
 # ══════════════════════════════════════════════════
-#  MATH & PROCESSORS (ALL FIXES APPLIED)
+#  MATH & PROCESSORS (Strictly Defined in Order)
 # ══════════════════════════════════════════════════
 def compute_max_pain(chain):
     strikes = sorted(chain.keys())
@@ -376,7 +376,33 @@ def calc_supertrend(candles, period=7, multiplier=3.0):
     st_val = round((hl2 - multiplier * atr) if direction == "BULLISH" else (hl2 + multiplier * atr), 2)
     return direction, st_val
 
-# 🔥 RESTORED ADX CALCULATION
+# 🔥 RESTORED INDICATOR MATH
+def calc_rsi(closes, p=14):
+    if len(closes) < p+1: return None
+    gains=[max(closes[i]-closes[i-1],0) for i in range(1,len(closes))]
+    losses=[max(closes[i-1]-closes[i],0) for i in range(1,len(closes))]
+    ag=sum(gains[:p])/p; al=sum(losses[:p])/p
+    for i in range(p, len(gains)):
+        ag=(ag*(p-1)+gains[i])/p; al=(al*(p-1)+losses[i])/p
+    return 100.0 if al==0 else round(100-100/(1+ag/al), 2)
+
+def calc_rsi_array(closes, p=14):
+    if len(closes) < p+1: return []
+    gains = [max(closes[i]-closes[i-1], 0) for i in range(1, len(closes))]
+    losses = [max(closes[i-1]-closes[i], 0) for i in range(1, len(closes))]
+    if sum(losses[:p]) == 0: 
+        rsis = [None]*p + [100.0]
+    else:
+        ag = sum(gains[:p])/p
+        al = sum(losses[:p])/p
+        rsis = [None]*p
+        rsis.append(100.0 if al==0 else 100 - (100/(1+ag/al)))
+    for i in range(p, len(gains)):
+        ag = (ag*(p-1) + gains[i])/p
+        al = (al*(p-1) + losses[i])/p
+        rsis.append(100.0 if al==0 else 100 - (100/(1+ag/al)))
+    return rsis
+
 def calc_adx(candles, p=14):
     if not candles or len(candles) < p + 2: return None
     trl, pdml, ndml = [], [], []
@@ -411,31 +437,15 @@ def calc_adx(candles, p=14):
     if not dxl: return None
     return round(sum(x[0] for x in dxl[-p:]) / min(p, len(dxl)), 2)
 
-# 🔥 RESTORED GET_INDICATORS CRASH FIX
 def get_indicators(candles):
     if not candles or len(candles) < 16: 
         return {"rsi": None, "adx": None, "candle_count": len(candles) if candles else 0}
     closes = [c["close"] for c in candles]
-    rsis = calc_rsi_array(closes, 14)
-    curr_rsi = rsis[-1] if rsis else None
+    rsi_val = calc_rsi(closes, 14)
     adx_val = calc_adx(candles, 14)
-    return {"rsi": curr_rsi, "adx": adx_val, "candle_count": len(candles)}
+    return {"rsi": rsi_val, "adx": adx_val, "candle_count": len(candles)}
 
-# 🔥 NEW: Calculates RSI history properly
-def calc_rsi_array(closes, p=14):
-    if len(closes) < p+1: return []
-    gains = [max(closes[i]-closes[i-1], 0) for i in range(1, len(closes))]
-    losses = [max(closes[i-1]-closes[i], 0) for i in range(1, len(closes))]
-    ag = sum(gains[:p])/p
-    al = sum(losses[:p])/p
-    rsis = [None]*p
-    rsis.append(100.0 if al==0 else 100 - (100/(1+ag/al)))
-    for i in range(p, len(gains)):
-        ag = (ag*(p-1) + gains[i])/p
-        al = (al*(p-1) + losses[i])/p
-        rsis.append(100.0 if al==0 else 100 - (100/(1+ag/al)))
-    return rsis
-
+# 🔥 TIMESTAMPS GENERATOR
 def compute_tf_signals(candles, label, st_period, st_multiplier):
     if not candles or len(candles) < 15: 
         return {"label": label, "candle_count": len(candles) if candles else 0, "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-"}
@@ -460,16 +470,14 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
         c_close = closes[i]
         
         try:
-            # times[i] format is roughly "2026-04-09T14:15:00+05:30"
             d_str = times[i][:10]
             t_str = times[i][11:16]
-            c_time = f"{d_str[8:10]}-{d_str[5:7]} {t_str}" # DD-MM HH:MM
+            c_time = f"{d_str[8:10]}-{d_str[5:7]} {t_str}" 
         except: 
             c_time = "-"
 
         curr_bull = e7 > e15
         
-        # Trend Start
         if is_bull is None:
             is_bull = curr_bull
             trend_start = c_time
@@ -482,7 +490,6 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
             if curr_bull: await_pull_b = True
             else: await_pull_s = True
             
-        # Pullback & Cont
         if is_bull:
             if await_pull_b and (c_close < e7 or c_close < e15):
                 pull_time = c_time; cont_time = "..."; await_pull_b = False
@@ -494,7 +501,6 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
             elif not await_pull_s and c_close < e7:
                 cont_time = c_time; await_pull_s = True
                 
-        # Supertrend Time
         s_dir, _ = calc_supertrend(candles[:i+1], st_period, st_multiplier)
         if curr_st is None: 
             curr_st = s_dir
@@ -513,7 +519,6 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
         elif price < ema7 and ema7 > ema15: trend = "MILD BEARISH"
         else: trend = "STRONG BEARISH"
 
-    # 🔥 NEW: Proper RSI array computation for Day and 5m changes
     rsis = calc_rsi_array(closes, 14)
     curr_rsi = round(rsis[-1], 2) if rsis and rsis[-1] is not None else 0
     prev_rsi = round(rsis[-2], 2) if rsis and len(rsis) > 1 and rsis[-2] is not None else curr_rsi
@@ -631,29 +636,34 @@ def process_chain(raw):
         baseline_oi = {str(s): {"call_oi": v["call_oi"], "put_oi": v["put_oi"], "call_ltp": v["call_ltp"], "put_ltp": v["put_ltp"]} for s,v in result.items()}
     return result
 
+# 🔥 RESTORED HIGH SENSITIVITY FLOW MATCHER (Detects LTP moves)
 def classify_strike_oi_flow(v, prev_spot, spot):
-    pup, pdn = spot > prev_spot + 5 if prev_spot else False, spot < prev_spot - 5 if prev_spot else False
     c_c, cl, c_o = v.get("call_oi_chg", 0), v.get("call_ltp_chg", 0), v.get("call_oi", 0)
     p_c, pl, p_o = v.get("put_oi_chg", 0), v.get("put_ltp_chg", 0), v.get("put_oi", 0)
     
-    # 🔥 INCREASED SENSITIVITY: Lowered to 50k for more accurate live flow detection
-    THRESH = 50000 
+    # Trigger heavily on 25k to capture live flow accurately
+    THRESH = 25000 
+    c_pup = cl > 0
+    c_pdn = cl < 0
     
-    if pup and c_c > THRESH and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
-    elif pup and c_c < -THRESH and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
-    elif pdn and c_c > THRESH and cl < 0: cf = ("FRESH CALL WRITING", "BEARISH", "🔴")
-    elif pdn and c_c < -THRESH: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
-    elif c_c > 200000: cf = ("HEAVY CALL ADDITION", "WATCH", "🔴")
-    elif c_c < -200000: cf = ("HEAVY CALL EXIT", "BULLISH", "✅")
-    else: cf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
+    if c_pup and c_c > THRESH: cf = ("LONG BUILDUP", "BULLISH", "🟢")
+    elif c_pup and c_c < -THRESH: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
+    elif c_pdn and c_c > THRESH: cf = ("FRESH CALL WRITING", "BEARISH", "🔴")
+    elif c_pdn and c_c < -THRESH: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
+    elif c_c > THRESH: cf = ("CALL ADDITION", "BEARISH", "🔴")
+    elif c_c < -THRESH: cf = ("CALL EXIT", "BULLISH", "✅")
+    else: cf = ("STABLE", "NEUTRAL", "⚪")
 
-    if pdn and p_c > THRESH and pl > 0: pf = ("LONG BUILDUP", "BEARISH", "🔴")
-    elif pdn and p_c < -THRESH and pl > 0: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
-    elif pup and p_c > THRESH and pl < 0: pf = ("FRESH PUT WRITING", "BULLISH", "✅")
-    elif pup and p_c < -THRESH: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
-    elif p_c > 200000: pf = ("HEAVY PUT ADDITION", "WATCH", "✅")
-    elif p_c < -200000: pf = ("HEAVY PUT EXIT", "BEARISH", "🔴")
-    else: pf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
+    p_pup = pl > 0
+    p_pdn = pl < 0
+    
+    if p_pup and p_c > THRESH: pf = ("LONG BUILDUP", "BEARISH", "🔴")
+    elif p_pup and p_c < -THRESH: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
+    elif p_pdn and p_c > THRESH: pf = ("FRESH PUT WRITING", "BULLISH", "✅")
+    elif p_pdn and p_c < -THRESH: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
+    elif p_c > THRESH: pf = ("PUT ADDITION", "BULLISH", "✅")
+    elif p_c < -THRESH: pf = ("PUT EXIT", "BEARISH", "🔴")
+    else: pf = ("STABLE", "NEUTRAL", "⚪")
 
     total_chg = c_c + p_c
     if c_c > THRESH and p_c < -THRESH: net_note = "🔄 OI SHIFT: Money moving to CALL side."

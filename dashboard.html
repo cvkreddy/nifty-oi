@@ -503,6 +503,7 @@ async function doFetch(){
     const [jr,hr]=await Promise.all([fetch('/oi/json?_='+cb),fetch('/oi/histogram?_='+cb)])
     const raw=await jr.json()
     
+    // 🔥 SAFETY NET: STOP JAVASCRIPT FROM CRASHING IF DATA IS BAD
     if(raw.error) {
       if (raw.error.includes('login') || raw.error.includes('token') || raw.error.includes('stuck')) {
          g('vb-icon').textContent = '🔒';
@@ -516,6 +517,7 @@ async function doFetch(){
     if (raw.backend_error) {
         g('err').style.display = 'block';
         g('err').innerHTML = `⚠ BACKEND DATA FROZEN: ${raw.backend_error} <a href="/login" style="color:#fff; text-decoration:underline; margin-left:10px">Try Re-Login</a>`;
+        return; // <--- This prevents the "Cannot read properties of null" error
     } else {
         g('err').style.display = 'none';
     }
@@ -533,7 +535,7 @@ async function doFetch(){
     
     const bTime = new Date(raw.timestamp).toLocaleTimeString('en-IN');
     const fTime = new Date().toLocaleTimeString('en-IN');
-    g('upd').innerHTML = `<span style="color:${raw.backend_error?'var(--bear)':'var(--bull)'}">DATA: ${bTime}</span> | FETCHED: ${fTime}`;
+    g('upd').innerHTML = `<span style="color:var(--bull)">DATA: ${bTime}</span> | FETCHED: ${fTime}`;
     g('st-left').textContent='Live · Spot ₹'+fmt(raw.spot)+' · PCR '+raw.pcr.toFixed(2)
 
     setTimeout(() => {
@@ -609,7 +611,6 @@ function render(d,hist){
   diffEl.style.background = diff > 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,59,87,0.1)';
   diffEl.style.color = diff > 0 ? 'var(--bull)' : 'var(--bear)';
 
-  // 🔥 RESTORED: STRADDLE BREAKDOWN
   const atmV=d.atm_strikes[atm]||{}
   const ceLtp = atmV.call_ltp || 0;
   const peLtp = atmV.put_ltp || 0;
@@ -684,7 +685,7 @@ function render(d,hist){
   })
 }
 
-// 🔥 UPDATED: RSI Day and 5m changes directly injected into the UI
+// 🔥 RSI Tracker Updates Handled Here
 function renderNiftyTechFull(tech){
   const mkRow=(key,val,col,note)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03)"><span style="font-size:11px;color:var(--text2);font-family:var(--ui);font-weight:600">${key}</span><span style="font-size:13px;font-weight:700;color:${col||'var(--text)'}">${val}</span>${note?`<span style="font-size:10px;color:var(--text2);font-family:var(--ui)">${note}</span>`:''}</div>`
   const mkPill=(label,cls)=>`<span class="tech-pill ${cls}">${label}</span>`
@@ -701,10 +702,8 @@ function renderNiftyTechFull(tech){
     const xover=t.crossover?`<span class="xover-pill ${t.crossover.includes('GOLDEN')?'xover-gold':'xover-death'}">🔔 ${t.crossover}</span>`:''
     
     const rsi=t.rsi, rsiDay=t.rsi_day_chg||0, rsi5m=t.rsi_5m_chg||0;
-    const rsiNote=!rsi?'N/A':rsi>=70?'Overbought ⚠':rsi>=60?'Bullish':'Neutral'+(rsi<=40?' Bearish':'');
     const rsiCol=!rsi?'var(--text2)':rsi>=70?'var(--bear)':rsi<=30?'var(--bull)':rsi>=55?'var(--bull)':'var(--warn)';
     
-    // Formatting the RSI value with Day and 5m diffs directly in the cell
     const rsiValHtml = rsi ? `${rsi.toFixed(1)} <span style="font-size:10px;color:${rsiDay>=0?'var(--bull)':'var(--bear)'};margin-left:6px">(${rsiDay>=0?'+':''}${rsiDay.toFixed(1)} D)</span><span style="font-size:10px;color:${rsi5m>=0?'var(--bull)':'var(--bear)'};margin-left:4px">(${rsi5m>=0?'+':''}${rsi5m.toFixed(1)} 5m)</span>` : '—';
 
     el.innerHTML=`
@@ -920,16 +919,14 @@ function renderGreeks(atm,pcr,vix,atk,ind){
   const a=atk[atm]||{},civ=a.call_iv||0,piv=a.put_iv||0,avgIV=civ&&piv?(civ+piv)/2:civ||piv||vix||20
   const cd=a.call_delta||Math.min(0.65,Math.max(0.35,0.50+(pcr-1)*0.05)),pd=a.put_delta||(-(1-cd))
   const cg=a.call_gamma||0.0004,ct2=a.call_theta||-(atm*(avgIV/100)*cg*15.87),cv=a.call_vega||(atm*cg*100*(avgIV/100))
-  const ri=ind.rsi,ai=ind.adx
+  
   const cells=[
     {l:'DELTA (CALL)',v:'+'+cd.toFixed(3),c:'var(--bull)',s:'₹ move per ₹1 NIFTY'},
     {l:'DELTA (PUT)', v:pd.toFixed(3),c:'var(--bear)',s:'Moves opposite NIFTY'},
     {l:'GAMMA',v:cg.toFixed(5),c:'var(--text)',s:'Delta change rate'},
     {l:'THETA/DAY',v:'₹'+(Math.abs(ct2)*25).toFixed(0)+'/lot',c:'var(--bear)',s:'Time decay daily'},
     {l:'VEGA',v:'₹'+(Math.abs(cv)*25).toFixed(0)+'/lot',c:'var(--warn)',s:'Per 1% IV change'},
-    {l:'IV ATM AVG',v:avgIV.toFixed(1)+'%',c:avgIV>35?'var(--bear)':avgIV>25?'var(--warn)':'var(--bull)',s:'Option richness'},
-    {l:'RSI (14)',v:ri?ri.toFixed(1)+' — '+(ind.rsi_signal||''):'N/A',c:ri>=70?'var(--bear)':ri<=30?'var(--bull)':'var(--warn)',s:'Momentum'},
-    {l:'ADX (14)',v:ai?ai.toFixed(1)+' — '+(ind.adx_signal||''):'N/A',c:ai>=25?'var(--bull)':ai>=20?'var(--warn)':'var(--text2)',s:'Trend strength'},
+    {l:'IV ATM AVG',v:avgIV.toFixed(1)+'%',c:avgIV>35?'var(--bear)':avgIV>25?'var(--warn)':'var(--bull)',s:'Option richness'}
   ]
   g('greeks').innerHTML=cells.map(c=>`<div class="gc"><div class="gl">${c.l}</div><div class="gv" style="color:${c.c}">${c.v}</div><div class="gs">${c.s}</div></div>`).join('')
 }
@@ -961,8 +958,8 @@ function renderAnalysis(d,atk,atm,ind,intel){
   let verdictNotes=[]
   const ri=ind.rsi,ai=ind.adx
   if(ri&&ai){
-    if(ms.includes('BULL')&&ri>55&&ai>=20&&(ind.pdi||0)>(ind.ndi||0)) verdictNotes.push('✅ RSI+ADX+OI all confirm BULLISH — high confidence')
-    else if(ms.includes('BEAR')&&ri<45&&ai>=20&&(ind.ndi||0)>(ind.pdi||0)) verdictNotes.push('✅ RSI+ADX+OI all confirm BEARISH — high confidence')
+    if(ms.includes('BULL')&&ri>55&&ai>=20) verdictNotes.push('✅ RSI+ADX+OI all confirm BULLISH — high confidence')
+    else if(ms.includes('BEAR')&&ri<45&&ai>=20) verdictNotes.push('✅ RSI+ADX+OI all confirm BEARISH — high confidence')
     else if(ms.includes('BULL')&&ri<45) verdictNotes.push('⚠ OI bullish but RSI weak — wait for confirmation')
     else if(ms.includes('BEAR')&&ri>55) verdictNotes.push('⚠ OI bearish but RSI strong — divergence')
     if(ai<20) verdictNotes.push('📊 ADX below 20 — range. Sell resistance, buy support')
