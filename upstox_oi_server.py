@@ -1,9 +1,7 @@
-
-
 """
 ====================================================
-  NIFTY50 OI Server — Full Intelligence Mode v8 (Restored)
-  Includes: Max Pain Fix, VIX Matrix, State Persistence
+  NIFTY50 OI Server — Full Intelligence Mode v9 (Final/Stable)
+  Includes: ALL Processors, VIX Matrix, State Persistence
 ====================================================
 """
 
@@ -295,9 +293,9 @@ def fetch_chain(expiry):
     except: return []
 
 # ══════════════════════════════════════════════════
-#  MATH & PROCESSORS
+#  MATH & PROCESSORS (Fully Restored)
 # ══════════════════════════════════════════════════
-# 🔥 RESTORED MAX PAIN CALCULATION
+
 def compute_max_pain(chain):
     strikes = sorted(chain.keys())
     if not strikes: return 0
@@ -316,6 +314,45 @@ def get_vwap(candles):
             cum_vol += v
             cum_pv += ((c['high'] + c['low'] + c['close']) / 3) * v
     return round(cum_pv / cum_vol, 2) if cum_vol > 0 else None
+
+def calc_rsi(closes, p=14):
+    if len(closes) < p+1: return None
+    gains=[max(closes[i]-closes[i-1],0) for i in range(1,len(closes))]
+    losses=[max(closes[i-1]-closes[i],0) for i in range(1,len(closes))]
+    ag=sum(gains[:p])/p; al=sum(losses[:p])/p
+    for i in range(p, len(gains)):
+        ag=(ag*(p-1)+gains[i])/p; al=(al*(p-1)+losses[i])/p
+    return 100.0 if al==0 else round(100-100/(1+ag/al), 2)
+
+def calc_adx(candles, p=14):
+    if len(candles)<p+2: return None,None,None
+    trl,pdml,ndml=[],[],[]
+    for i in range(1,len(candles)):
+        h,l,pc=candles[i]["high"],candles[i]["low"],candles[i-1]["close"]
+        ph,pl=candles[i-1]["high"],candles[i-1]["low"]
+        trl.append(max(h-l,abs(h-pc),abs(l-pc)))
+        pdml.append(max(h-ph,0) if (h-ph)>(pl-l) else 0)
+        ndml.append(max(pl-l,0) if (pl-l)>(h-ph) else 0)
+    def sm(lst,p):
+        s=sum(lst[:p]); r=[s]
+        for i in range(p,len(lst)): s=s-s/p+lst[i]; r.append(s)
+        return r
+    atr=sm(trl,p); pDM=sm(pdml,p); nDM=sm(ndml,p)
+    dxl=[]
+    for i in range(len(atr)):
+        if atr[i]==0: continue
+        pdi=100*pDM[i]/atr[i]; ndi=100*nDM[i]/atr[i]
+        dx=100*abs(pdi-ndi)/(pdi+ndi) if (pdi+ndi) else 0
+        dxl.append((dx,pdi,ndi))
+    if not dxl: return None,None,None
+    return round(sum(x[0] for x in dxl[-p:])/min(p,len(dxl)),2), round(dxl[-1][1],2), round(dxl[-1][2],2)
+
+def get_indicators(candles):
+    if not candles or len(candles)<16: return {"rsi":None,"adx":None,"candle_count":len(candles) if candles else 0}
+    closes=[c["close"] for c in candles]
+    rsi=calc_rsi(closes,14)
+    adx,pdi,ndi=calc_adx(candles,14)
+    return {"rsi":rsi,"adx":adx,"candle_count":len(candles)}
 
 def calc_ema(prices, period):
     if not prices or len(prices) < period: return None
@@ -347,7 +384,8 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
         elif price < ema7 and ema7 > ema15: trend = "MILD BEARISH"
         else: trend = "STRONG BEARISH"
 
-    def calc_rsi(cls, p=14):
+    # Local RSI for individual timeframes
+    def calc_rsi_local(cls, p=14):
         if len(cls)<p+1: return None
         g=[max(cls[i]-cls[i-1],0) for i in range(1,len(cls))]
         l=[max(cls[i-1]-cls[i],0) for i in range(1,len(cls))]
@@ -355,7 +393,7 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
         for i in range(p, len(g)): ag=(ag*(p-1)+g[i])/p; al=(al*(p-1)+l[i])/p
         return 100.0 if al==0 else round(100-100/(1+ag/al), 2)
 
-    return {"label": label, "candle_count": len(candles), "current_price": round(price, 2) if price else None, "ema7": ema7, "ema15": ema15, "vwap": vwap, "price_above_ema7": price > ema7 if ema7 else None, "price_above_ema15": price > ema15 if ema15 else None, "ema7_above_ema15": ema7 > ema15 if ema7 and ema15 else None, "price_above_vwap": price > vwap if vwap else None, "trend": trend, "supertrend": st_dir, "supertrend_val": st_val, "rsi": calc_rsi(closes, 14) if len(closes)>=15 else None}
+    return {"label": label, "candle_count": len(candles), "current_price": round(price, 2) if price else None, "ema7": ema7, "ema15": ema15, "vwap": vwap, "price_above_ema7": price > ema7 if ema7 else None, "price_above_ema15": price > ema15 if ema15 else None, "ema7_above_ema15": ema7 > ema15 if ema7 and ema15 else None, "price_above_vwap": price > vwap if vwap else None, "trend": trend, "supertrend": st_dir, "supertrend_val": st_val, "rsi": calc_rsi_local(closes, 14) if len(closes)>=15 else None}
 
 def analyze_vix_price(spot, vwap, vix, base_vix):
     if not vwap or not base_vix or base_vix == 0: 
@@ -470,7 +508,6 @@ def refresh():
         chain = process_chain(raw)
         if not chain: return
 
-        # 🔥 Max Pain Calculation Restored
         max_pain = compute_max_pain(chain)
 
         atm_strikes = {s:v for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP}
@@ -544,7 +581,7 @@ def refresh():
             "backend_error": None, 
             "spot": spot, "futures": futures, "premium": round(futures-spot,2),
             "atm": atm, "pcr": pcr, "pcr_chg": pcr_chg, "vix": vix,
-            "max_pain": max_pain, "expiry": expiry, # 🔥 Used correctly here
+            "max_pain": max_pain, "expiry": expiry, 
             "indicators": get_indicators(candle_cache), "intelligence": intelligence,
             "atm_strikes": atm_strikes, "chain": chain,
             "timestamp": datetime.now().isoformat()
