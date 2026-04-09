@@ -240,7 +240,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
   <span id="tot-diff" style="margin-left:8px; padding:3px 8px; border-radius:4px; font-weight:700;">—</span>
 </div>
 
-<div class="straddle-bar">
+<div class="straddle-bar" style="display:flex; gap:15px; flex-wrap:wrap; padding:12px 18px;">
   <div class="sb-item">
     <span class="sb-lbl">ATM STRADDLE</span>
     <span class="sb-val" id="straddle-cost">—</span>
@@ -250,13 +250,13 @@ tr:hover td{background:rgba(255,255,255,.03);}
   <div class="sb-item">
     <span class="sb-lbl">CE (ATM)</span>
     <span class="sb-val" id="straddle-ce-ltp" style="color:var(--bear)">—</span>
-    <span class="sb-sub" id="straddle-ce-chg" style="font-weight:700">—</span>
+    <span class="sb-sub" id="straddle-ce-chg" style="font-weight:700;font-size:10px">—</span>
   </div>
   <div class="sdv"></div>
   <div class="sb-item">
     <span class="sb-lbl">PE (ATM)</span>
     <span class="sb-val" id="straddle-pe-ltp" style="color:var(--bull)">—</span>
-    <span class="sb-sub" id="straddle-pe-chg" style="font-weight:700">—</span>
+    <span class="sb-sub" id="straddle-pe-chg" style="font-weight:700;font-size:10px">—</span>
   </div>
   <div class="sdv"></div>
   <div class="sb-item">
@@ -443,7 +443,7 @@ function saveScreenshot(auto){
     a.href=dataUrl; a.style.display='none'
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
     snapCount++
-    g('snap-status').textContent=`📸 Saved #${snapCount} at ${new Date().toLocaleTimeString('en-IN')}`
+    sText('snap-status', `📸 Saved #${snapCount} at ${new Date().toLocaleTimeString('en-IN')}`)
   }).catch(e=>console.warn(e))
 }
 
@@ -458,10 +458,15 @@ function hexToRgb(cssVar){
   if(cssVar.includes('--warn')) return '255,184,0'
   return '139,148,158'
 }
+
+// 🔥 CRASH-PROOF DOM WRAPPERS
 function g(id){return document.getElementById(id)}
+function sStyle(id, prop, val) { const el = g(id); if (el && el.style) { el.style[prop] = val; } }
+function sText(id, text) { const el = g(id); if (el) { el.textContent = text; } }
+function sHTML(id, html) { const el = g(id); if (el) { el.innerHTML = html; } }
+function styl(id,t,c){const el=g(id);if(el){el.textContent=t;el.style.color=c;}}
+
 function fc(n){const a=Math.abs(n);if(a>=100000)return(n>=0?'+':'−')+(a/100000).toFixed(2)+'L';if(a>=1000)return(n>=0?'+':'−')+(a/1000).toFixed(1)+'K';return(n>=0?'+':'−')+Math.round(a)}
-function set(id,t){const e=g(id);if(e)e.textContent=t}
-function styl(id,t,c){const el=g(id);if(el){el.textContent=t;el.style.color=c}}
 function fmt(n){return n?Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}
 
 function velArrow(strike, isCall, currentChg){
@@ -487,39 +492,41 @@ function sigColor(sig){
 function sigBg(sig){const c=sigColor(sig);return c==='var(--bull)'?'rgba(0,255,136,.08)':c==='var(--bear)'?'rgba(255,59,87,.08)':c==='var(--warn)'?'rgba(255,184,0,.05)':'rgba(139,148,158,.04)'}
 
 function renderPCRSparkline(pcr,intel){
-  const h=pcrHistory; if(h.length<2){set('pcr-trend-lbl','Building...');return}
+  const h=pcrHistory; if(h.length<2){sText('pcr-trend-lbl','Building...');return}
   const mn=Math.min(...h)-0.05, mx=Math.max(...h)+0.05, range=mx-mn||0.1, W=90,H=24
   const pts=h.map((v,i)=>`${Math.round((i/(h.length-1))*W)},${Math.round(H-(((v-mn)/range)*(H-4)+2))}`).join(' ')
   const trend=h[h.length-1]>h[0]?'var(--bull)':h[h.length-1]<h[0]?'var(--bear)':'var(--text2)'
   const change=h[h.length-1]-h[0]
-  g('pcr-spark').innerHTML=`<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${trend}" stop-opacity="0.3"/><stop offset="100%" stop-color="${trend}" stop-opacity="0"/></linearGradient></defs><polyline points="${pts}" fill="none" stroke="${trend}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 3px ${trend})"/>`
+  sHTML('pcr-spark', `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${trend}" stop-opacity="0.3"/><stop offset="100%" stop-color="${trend}" stop-opacity="0"/></linearGradient></defs><polyline points="${pts}" fill="none" stroke="${trend}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 3px ${trend})"/>`)
   styl('pcr-trend-lbl',(change>=0?'▲':'▼')+Math.abs(change).toFixed(2)+' ('+h.length+'cy)',trend)
 }
 
 async function doFetch(){
-  g('dot').style.background='var(--warn)'
+  sStyle('dot', 'background', 'var(--warn)');
   try{
     const cb = new Date().getTime()
     const [jr,hr]=await Promise.all([fetch('/oi/json?_='+cb),fetch('/oi/histogram?_='+cb)])
     const raw=await jr.json()
     
-    // 🔥 SAFETY NET: STOP JAVASCRIPT FROM CRASHING IF DATA IS BAD
+    // SAFE GUARD: Catch server auth/missing token errors
     if(raw.error) {
       if (raw.error.includes('login') || raw.error.includes('token') || raw.error.includes('stuck')) {
-         g('vb-icon').textContent = '🔒';
-         g('vb-main').textContent = 'Authentication Required';
-         g('vb-main').style.color = 'var(--warn)';
-         g('vb-detail').innerHTML = `<a href="/login" style="color:var(--info); text-decoration:underline; font-weight:bold; font-size:14px">Click here to re-authenticate with Upstox</a><br><span style="font-size:11px;color:var(--text2)">${raw.error}</span>`;
+         sText('vb-icon', '🔒');
+         sText('vb-main', 'Authentication Required');
+         sStyle('vb-main', 'color', 'var(--warn)');
+         sHTML('vb-detail', `<a href="/login" style="color:var(--info); text-decoration:underline; font-weight:bold; font-size:14px">Click here to re-authenticate with Upstox</a><br><span style="font-size:11px;color:var(--text2)">${raw.error}</span>`);
       }
       throw new Error(raw.error)
     }
 
+    // SAFE GUARD: Catch python background crashes
     if (raw.backend_error) {
-        g('err').style.display = 'block';
-        g('err').innerHTML = `⚠ BACKEND DATA FROZEN: ${raw.backend_error} <a href="/login" style="color:#fff; text-decoration:underline; margin-left:10px">Try Re-Login</a>`;
-        return; // <--- This prevents the "Cannot read properties of null" error
+        sStyle('err', 'display', 'block');
+        sHTML('err', `⚠ BACKEND DATA FROZEN: ${raw.backend_error} <a href="/login" style="color:#fff; text-decoration:underline; margin-left:10px">Try Re-Login</a>`);
+        sStyle('dot', 'background', 'var(--bear)');
+        return; // ABORT RENDER
     } else {
-        g('err').style.display = 'none';
+        sStyle('err', 'display', 'none');
     }
 
     const norm=obj=>{const r={};Object.keys(obj||{}).forEach(k=>{const nk=parseFloat(k);r[nk]={...obj[k],strike:nk}});return r}
@@ -531,21 +538,21 @@ async function doFetch(){
     let hist=[];try{hist=(await hr.json()).map(h=>({...h,strike:parseFloat(h.strike||0)}))}catch(e){}
     
     render(raw,hist)
-    g('dot').style.background='var(--bull)'
+    sStyle('dot', 'background', 'var(--bull)');
     
     const bTime = new Date(raw.timestamp).toLocaleTimeString('en-IN');
     const fTime = new Date().toLocaleTimeString('en-IN');
-    g('upd').innerHTML = `<span style="color:var(--bull)">DATA: ${bTime}</span> | FETCHED: ${fTime}`;
-    g('st-left').textContent='Live · Spot ₹'+fmt(raw.spot)+' · PCR '+raw.pcr.toFixed(2)
+    sHTML('upd', `<span style="color:var(--bull)">DATA: ${bTime}</span> | FETCHED: ${fTime}`);
+    sText('st-left', 'Live · Spot ₹'+fmt(raw.spot)+' · PCR '+raw.pcr.toFixed(2));
 
     setTimeout(() => {
         saveScreenshot(true);
     }, 2500);
 
   }catch(e){
-    g('err').style.display='block'
-    g('err').textContent='Error: '+e.message
-    g('dot').style.background='var(--bear)'
+    sStyle('err', 'display', 'block');
+    sText('err', 'Error: '+e.message);
+    sStyle('dot', 'background', 'var(--bear)');
   }
 }
 
@@ -553,7 +560,7 @@ function render(d,hist){
   cycleCount++
   const {spot,futures,premium,pcr,pcr_chg,vix,atm}=d
   const intel=d.intelligence||{}, ind=d.indicators||{}
-  g('expiry-badge').textContent='Expiry: '+(d.expiry||'—')
+  sText('expiry-badge', 'Expiry: '+(d.expiry||'—'))
 
   const ms=intel.market_state||'—', msCol=msColor(ms);
   let icon='⏳',main=ms,details='Waiting for confirmation...'
@@ -561,55 +568,74 @@ function render(d,hist){
   else if(ms.includes('DOWN')){icon='📉'; details='Resistance building'}
   else if(ms.includes('BREAK')){icon='⚡'; details='Breakout Imminent'}
   
-  const banner=g('verdict-banner')
-  banner.style.background=`linear-gradient(90deg, rgba(${ms.includes('UP')?'0,255,136':ms.includes('DOWN')?'255,59,87':'255,184,0'},0.1) 0%, transparent 100%)`
-  banner.style.borderBottomColor=msCol
-  set('vb-icon',icon); set('vb-main',main); g('vb-main').style.color=msCol;
-  set('vb-detail',details); set('vb-time',new Date().toLocaleTimeString('en-IN'))
+  sStyle('verdict-banner', 'background', `linear-gradient(90deg, rgba(${ms.includes('UP')?'0,255,136':ms.includes('DOWN')?'255,59,87':'255,184,0'},0.1) 0%, transparent 100%)`)
+  sStyle('verdict-banner', 'borderBottomColor', msCol)
+  sText('vb-icon', icon); sText('vb-main', main); sStyle('vb-main', 'color', msCol);
+  sText('vb-detail', details); sText('vb-time', new Date().toLocaleTimeString('en-IN'));
   
-  g('state-bar').style.borderBottomColor = msCol;
-  set('state-icon', icon);
+  sStyle('state-bar', 'borderBottomColor', msCol);
+  sText('state-icon', icon);
   styl('state-val', ms, msCol);
-  set('state-note', details);
+  sText('state-note', details);
   const mxCond = intel.oi_matrix_condition || '—';
   const mxSig = intel.oi_matrix_signal || '—';
   const mxCol2 = mxSig.includes('BULL') ? 'var(--bull)' : mxSig.includes('BEAR') ? 'var(--bear)' : 'var(--warn)';
   styl('matrix-val', mxCond + ' → ' + mxSig, mxCol2);
-  set('matrix-desc', intel.oi_matrix_desc || '—');
+  sText('matrix-desc', intel.oi_matrix_desc || '—');
 
   const alerts=intel.alerts||[]
-  g('alerts-content').innerHTML=alerts.length
+  sHTML('alerts-content', alerts.length
     ?alerts.map(a=>`<span class="alert-pill alert-high">${a.icon||''} ${a.type}: ${a.message||a.msg||''}</span>`).join('')
-    :'<span class="no-alert">No alerts — OI stable</span>'
+    :'<span class="no-alert">No alerts — OI stable</span>')
 
   const futCol = futures > spot ? 'bull-glow' : 'bear-glow';
-  g('m-spot').textContent='₹'+fmt(spot);
-  g('m-fut').textContent='₹'+fmt(futures); g('m-fut').className='sv ' + futCol;
-  const pe=g('m-prem');pe.textContent=(premium>=0?'+':'')+premium.toFixed(1)+'pts';pe.className='sv '+(premium>=0?'bull-glow':'bear-glow')
-  set('m-vix',vix?vix.toFixed(2):'—')
-  const pcrEl=g('m-pcr');pcrEl.textContent=pcr.toFixed(2);pcrEl.className='sv '+(pcr>=1.2?'bull-glow':pcr<=0.8?'bear-glow':'warn')
+  sText('m-spot', '₹'+fmt(spot));
+  sText('m-fut', '₹'+fmt(futures)); 
+  const mf = g('m-fut'); if(mf) mf.className='sv ' + futCol;
+  
+  const pe=g('m-prem'); 
+  if(pe) {
+      pe.textContent=(premium>=0?'+':'')+premium.toFixed(1)+'pts';
+      pe.className='sv '+(premium>=0?'bull-glow':'bear-glow');
+  }
+  sText('m-vix', vix?vix.toFixed(2):'—')
+  
+  const pcrEl=g('m-pcr');
+  if(pcrEl) {
+      pcrEl.textContent=pcr.toFixed(2);
+      pcrEl.className='sv '+(pcr>=1.2?'bull-glow':pcr<=0.8?'bear-glow':'warn');
+  }
   const pcrChgEl=g('m-pcr-chg')
-  if(pcr_chg!==0){pcrChgEl.textContent=(pcr_chg>0?'▲+':'▼')+pcr_chg.toFixed(3);pcrChgEl.style.color=pcr_chg>0?'var(--bull)':'var(--bear)'}
-  set('m-atm','₹'+Math.round(atm).toLocaleString('en-IN'))
+  if(pcrChgEl && pcr_chg!==0){
+      pcrChgEl.textContent=(pcr_chg>0?'▲+':'▼')+pcr_chg.toFixed(3);
+      pcrChgEl.style.color=pcr_chg>0?'var(--bull)':'var(--bear)';
+  }
+  sText('m-atm', '₹'+Math.round(atm).toLocaleString('en-IN'))
   
   const netFlowL = intel.cumulative_net_flow_l || 0;
   const flowEl = g('m-flow');
-  flowEl.textContent = (netFlowL>=0?'+':'') + netFlowL.toFixed(1) + 'L';
-  flowEl.className = 'sv ' + (netFlowL > 0 ? 'bull-glow' : netFlowL < 0 ? 'bear-glow' : 'warn');
+  if(flowEl) {
+      flowEl.textContent = (netFlowL>=0?'+':'') + netFlowL.toFixed(1) + 'L';
+      flowEl.className = 'sv ' + (netFlowL > 0 ? 'bull-glow' : netFlowL < 0 ? 'bear-glow' : 'warn');
+  }
   const flowPct = Math.min(100, Math.abs(netFlowL) / 50 * 100);
   const fBar = g('m-flow-bar');
-  if(netFlowL > 0) { fBar.style.background = 'var(--bull)'; fBar.style.left = '50%'; fBar.style.width = (flowPct/2) + '%'; fBar.style.boxShadow = '0 0 5px var(--bull)'; } 
-  else { fBar.style.background = 'var(--bear)'; fBar.style.left = (50 - flowPct/2) + '%'; fBar.style.width = (flowPct/2) + '%'; fBar.style.boxShadow = '0 0 5px var(--bear)'; }
+  if(fBar) {
+      if(netFlowL > 0) { fBar.style.background = 'var(--bull)'; fBar.style.left = '50%'; fBar.style.width = (flowPct/2) + '%'; fBar.style.boxShadow = '0 0 5px var(--bull)'; } 
+      else { fBar.style.background = 'var(--bear)'; fBar.style.left = (50 - flowPct/2) + '%'; fBar.style.width = (flowPct/2) + '%'; fBar.style.boxShadow = '0 0 5px var(--bear)'; }
+  }
 
   const tC = d.total_call_oi || 0;
   const tP = d.total_put_oi || 0;
-  g('tot-ce').textContent = (tC / 10000000).toFixed(2);
-  g('tot-pe').textContent = (tP / 10000000).toFixed(2);
+  sText('tot-ce', (tC / 10000000).toFixed(2));
+  sText('tot-pe', (tP / 10000000).toFixed(2));
   const diff = tP - tC;
   const diffEl = g('tot-diff');
-  diffEl.textContent = (diff > 0 ? '🟢 PUTS > CALLS (Bullish)' : '🔴 CALLS > PUTS (Bearish)');
-  diffEl.style.background = diff > 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,59,87,0.1)';
-  diffEl.style.color = diff > 0 ? 'var(--bull)' : 'var(--bear)';
+  if(diffEl) {
+      diffEl.textContent = (diff > 0 ? '🟢 PUTS > CALLS (Bullish)' : '🔴 CALLS > PUTS (Bearish)');
+      diffEl.style.background = diff > 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,59,87,0.1)';
+      diffEl.style.color = diff > 0 ? 'var(--bull)' : 'var(--bear)';
+  }
 
   const atmV=d.atm_strikes[atm]||{}
   const ceLtp = atmV.call_ltp || 0;
@@ -621,27 +647,32 @@ function render(d,hist){
   const straddle = ceLtp + peLtp;
   
   if(straddle){
-      set('straddle-cost','₹'+straddle.toFixed(1))
+      sText('straddle-cost', '₹'+straddle.toFixed(1))
       const decay = intel.straddle_decay || 0;
       const decEl = g('straddle-decay');
-      decEl.textContent = (decay > 0 ? '+' : '') + decay.toFixed(1) + '% Day';
-      decEl.style.color = decay < 0 ? 'var(--bear)' : 'var(--bull)';
+      if(decEl) {
+          decEl.textContent = (decay > 0 ? '+' : '') + decay.toFixed(1) + '% Day';
+          decEl.style.color = decay < 0 ? 'var(--bear)' : 'var(--bull)';
+      }
       
-      g('straddle-ce-ltp').textContent = '₹' + ceLtp.toFixed(1);
-      g('straddle-ce-chg').innerHTML = `<span style="color:${ceDayChg>=0?'var(--bull)':'var(--bear)'}">${ceDayChg>=0?'+':''}${ceDayChg.toFixed(1)} Day</span> | <span style="color:${ce5mChg>=0?'var(--bull)':'var(--bear)'}">${ce5mChg>=0?'+':''}${ce5mChg.toFixed(1)} 5m</span>`;
+      sText('straddle-ce-ltp', '₹' + ceLtp.toFixed(1));
+      sHTML('straddle-ce-chg', `<span style="color:${ceDayChg>=0?'var(--bull)':'var(--bear)'}">${ceDayChg>=0?'+':''}${ceDayChg.toFixed(1)} Day</span> | <span style="color:${ce5mChg>=0?'var(--bull)':'var(--bear)'}">${ce5mChg>=0?'+':''}${ce5mChg.toFixed(1)} 5m</span>`);
       
-      g('straddle-pe-ltp').textContent = '₹' + peLtp.toFixed(1);
-      g('straddle-pe-chg').innerHTML = `<span style="color:${peDayChg>=0?'var(--bull)':'var(--bear)'}">${peDayChg>=0?'+':''}${peDayChg.toFixed(1)} Day</span> | <span style="color:${pe5mChg>=0?'var(--bull)':'var(--bear)'}">${pe5mChg>=0?'+':''}${pe5mChg.toFixed(1)} 5m</span>`;
+      sText('straddle-pe-ltp', '₹' + peLtp.toFixed(1));
+      sHTML('straddle-pe-chg', `<span style="color:${peDayChg>=0?'var(--bull)':'var(--bear)'}">${peDayChg>=0?'+':''}${peDayChg.toFixed(1)} Day</span> | <span style="color:${pe5mChg>=0?'var(--bull)':'var(--bear)'}">${pe5mChg>=0?'+':''}${pe5mChg.toFixed(1)} 5m</span>`);
 
       const low=Math.round(atm-straddle), high=Math.round(atm+straddle)
-      set('expected-range','₹'+low.toLocaleString('en-IN')+' — ₹'+high.toLocaleString('en-IN'))
+      sText('expected-range', '₹'+low.toLocaleString('en-IN')+' — ₹'+high.toLocaleString('en-IN'))
       
       const range=high-low, spotPct=Math.min(100,Math.max(0,((spot-low)/range)*100))
       const fillLeft=((atm-low)/range)*100-((straddle*0.5/range)*100)*0.3
       const fillRight=100-fillLeft-((straddle/range)*100)*0.3
-      g('range-fill').style.left=Math.max(5,fillLeft)+'%'; g('range-fill').style.right=Math.max(5,fillRight)+'%'
-      g('range-dot').style.left=spotPct+'%'
-      set('range-low','₹'+low.toLocaleString('en-IN')); set('range-high','₹'+high.toLocaleString('en-IN'))
+      
+      sStyle('range-fill', 'left', Math.max(5,fillLeft)+'%');
+      sStyle('range-fill', 'right', Math.max(5,fillRight)+'%');
+      sStyle('range-dot', 'left', spotPct+'%');
+      sText('range-low', '₹'+low.toLocaleString('en-IN'));
+      sText('range-high', '₹'+high.toLocaleString('en-IN'));
   }
 
   pcrHistory.push(pcr); if(pcrHistory.length>20) pcrHistory.shift()
@@ -649,15 +680,16 @@ function render(d,hist){
 
   styl('pcr-zone',(intel.pcr_zone||'—'),(intel.pcr_zone||'').includes('BULL')?'var(--bull)':(intel.pcr_zone||'').includes('BEAR')?'var(--bear)':'var(--warn)')
   styl('sig-fut',premium>=0?'MILD BULLISH':'MILD BEARISH',premium>=0?'var(--bull)':'var(--bear)')
-  set('sig-fut-s','Futures '+(premium>=0?'+':'')+premium.toFixed(1)+'pts above spot')
+  sText('sig-fut-s', 'Futures '+(premium>=0?'+':'')+premium.toFixed(1)+'pts above spot')
   styl('sig-mp',(d.max_pain-spot>=0?'+':'')+'₹'+Math.round(d.max_pain-spot).toLocaleString('en-IN')+' from spot','var(--warn)')
-  set('sig-mp-s','Max Pain ₹'+Math.round(d.max_pain).toLocaleString('en-IN')+' — expiry pull zone')
+  sText('sig-mp-s', 'Max Pain ₹'+Math.round(d.max_pain).toLocaleString('en-IN')+' — expiry pull zone')
 
   const vxMat = intel.vix_matrix || {};
   const vxSig = vxMat.signal || 'WAITING';
   const vxCol = vxSig.includes('BULL') ? 'var(--bull)' : vxSig.includes('BEAR') ? 'var(--bear)' : 'var(--text2)';
-  styl('vix-mat-sig', vxSig, vxCol); g('vix-mat-sig').style.textShadow=`0 0 8px rgba(${hexToRgb(vxCol)},0.3)`;
-  set('vix-mat-desc', vxMat.desc || 'Waiting for cycle');
+  styl('vix-mat-sig', vxSig, vxCol); 
+  sStyle('vix-mat-sig', 'textShadow', `0 0 8px rgba(${hexToRgb(vxCol)},0.3)`);
+  sText('vix-mat-desc', vxMat.desc || 'Waiting for cycle');
 
   renderNiftyTechFull(intel.index_technicals||{})
 
@@ -667,8 +699,8 @@ function render(d,hist){
   const callRows=sts.filter(s=>s>=atm).map(s=>ak[s]).sort((a,b)=>b.call_oi-a.call_oi)
   const putRows =sts.filter(s=>s<=atm).map(s=>ak[s]).sort((a,b)=>b.put_oi-a.put_oi)
 
-  g('call-tbody').innerHTML=callRows.length?callRows.map(r=>rowHTML(r,atm,maxCOI,true)).join(''):'<tr><td colspan="8" class="loading">No data</td></tr>'
-  g('put-tbody').innerHTML=putRows.length?putRows.map(r=>rowHTML(r,atm,maxPOI,false)).join(''):'<tr><td colspan="8" class="loading">No data</td></tr>'
+  sHTML('call-tbody', callRows.length?callRows.map(r=>rowHTML(r,atm,maxCOI,true)).join(''):'<tr><td colspan="8" class="loading">No data</td></tr>')
+  sHTML('put-tbody', putRows.length?putRows.map(r=>rowHTML(r,atm,maxPOI,false)).join(''):'<tr><td colspan="8" class="loading">No data</td></tr>')
 
   renderFlowMatrix(ak,atm)
   renderHist(hist,atm)
@@ -685,7 +717,6 @@ function render(d,hist){
   })
 }
 
-// 🔥 RSI Tracker Updates Handled Here
 function renderNiftyTechFull(tech){
   const mkRow=(key,val,col,note)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03)"><span style="font-size:11px;color:var(--text2);font-family:var(--ui);font-weight:600">${key}</span><span style="font-size:13px;font-weight:700;color:${col||'var(--text)'}">${val}</span>${note?`<span style="font-size:10px;color:var(--text2);font-family:var(--ui)">${note}</span>`:''}</div>`
   const mkPill=(label,cls)=>`<span class="tech-pill ${cls}">${label}</span>`
@@ -703,7 +734,6 @@ function renderNiftyTechFull(tech){
     
     const rsi=t.rsi, rsiDay=t.rsi_day_chg||0, rsi5m=t.rsi_5m_chg||0;
     const rsiCol=!rsi?'var(--text2)':rsi>=70?'var(--bear)':rsi<=30?'var(--bull)':rsi>=55?'var(--bull)':'var(--warn)';
-    
     const rsiValHtml = rsi ? `${rsi.toFixed(1)} <span style="font-size:10px;color:${rsiDay>=0?'var(--bull)':'var(--bear)'};margin-left:6px">(${rsiDay>=0?'+':''}${rsiDay.toFixed(1)} D)</span><span style="font-size:10px;color:${rsi5m>=0?'var(--bull)':'var(--bear)'};margin-left:4px">(${rsi5m>=0?'+':''}${rsi5m.toFixed(1)} 5m)</span>` : '—';
 
     el.innerHTML=`
@@ -796,7 +826,7 @@ function renderFlowMatrix(atk,atm){
       <td style="text-align:center;font-size:10px">${peEmaStr}</td>
     </tr>`
   }).join('')
-  g('flow-tbody').innerHTML=rows||'<tr><td colspan="10" class="loading">No data</td></tr>'
+  sHTML('flow-tbody', rows||'<tr><td colspan="10" class="loading">No data</td></tr>')
 }
 
 function renderHist(hist,atm){
@@ -842,7 +872,7 @@ function renderHist(hist,atm){
 }
 
 function renderGEX(gexData,flip,atm){
-  set('gex-flip-label',flip?`GEX flip: ₹${Math.round(flip.strike).toLocaleString('en-IN')}`:'Flip zone: N/A')
+  sText('gex-flip-label', flip?`GEX flip: ₹${Math.round(flip.strike).toLocaleString('en-IN')}`:'Flip zone: N/A')
   const el=g('gex-panel')
   if(!gexData||!gexData.length){el.innerHTML='<div class="loading">No GEX data</div>';return}
   const maxGEX=Math.max(...gexData.map(gd=>Math.abs(gd.net_gex)||0))||1,W=100
@@ -854,7 +884,7 @@ function renderGEX(gexData,flip,atm){
 }
 
 function renderMigration(atk,atm){
-  if(cycleCount<2){g('mig-body').innerHTML='<div class="loading">Tracking from next cycle...</div>';return}
+  if(cycleCount<2){sHTML('mig-body', '<div class="loading">Tracking from next cycle...</div>');return}
   const sts=Object.keys(atk).map(Number).sort((a,b)=>a-b), THRESH=300000, migrations=[]
   const callExits =sts.filter(s=>(atk[s].call_oi_chg||0)<-THRESH).sort((a,b)=>atk[a].call_oi_chg-atk[b].call_oi_chg)
   const callAdds  =sts.filter(s=>(atk[s].call_oi_chg||0)>THRESH).sort((a,b)=>atk[b].call_oi_chg-atk[a].call_oi_chg)
@@ -876,8 +906,8 @@ function renderMigration(atk,atm){
     })
   })
 
-  if(!migrations.length){g('mig-body').innerHTML='<div style="padding:16px;text-align:center;font-size:12px;color:var(--text2);font-family:var(--ui)">No significant OI migration this cycle</div>';return}
-  g('mig-body').innerHTML=migrations.slice(0,6).map(m=>`
+  if(!migrations.length){sHTML('mig-body', '<div style="padding:16px;text-align:center;font-size:12px;color:var(--text2);font-family:var(--ui)">No significant OI migration this cycle</div>');return}
+  sHTML('mig-body', migrations.slice(0,6).map(m=>`
     <div class="mig-row">
       <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${m.side==='CE'?'rgba(255,59,87,.12)':'rgba(0,255,136,.1)'};color:${m.side==='CE'?'var(--bear)':'var(--bull)'};font-weight:700;font-family:var(--ui)">${m.side}</span>
       <span class="mig-from" style="color:${m.col}">${m.from?'₹'+Math.round(m.from).toLocaleString('en-IN'):'—'}</span>
@@ -885,12 +915,12 @@ function renderMigration(atk,atm){
       <span class="mig-to" style="color:${m.col}">${m.to?'₹'+Math.round(m.to).toLocaleString('en-IN'):'—'}</span>
       <span class="mig-chg" style="color:${m.col}">${m.adAmt>0?'+':''}${((m.adAmt||m.exAmt)/100000).toFixed(1)}L</span>
       <span class="mig-note">${m.note}</span>
-    </div>`).join('')
+    </div>`).join(''))
 }
 
 function renderPinRisk(d,atm){
   const {spot,max_pain:mp,expiry}=d
-  if(!mp||!spot){g('pin-inner').style.background='var(--bg3)';return}
+  if(!mp||!spot){sStyle('pin-inner', 'background', 'var(--bg3)');return}
   const dist=Math.abs(mp-spot), isExpiry=expiry&&expiry.slice(0,10)===new Date().toISOString().slice(0,10)
 
   let risk,riskColor,note
@@ -900,9 +930,8 @@ function renderPinRisk(d,atm){
   else{risk='LOW';riskColor='var(--text2)';note=`Max pain ₹${Math.round(mp).toLocaleString('en-IN')} is ${Math.round(dist)}pts away — pin unlikely`}
 
   if(isExpiry) note+=' · ⚠ EXPIRY DAY'
-  const inner=g('pin-inner')
-  inner.style.background=riskColor==='var(--bear)'?'rgba(255,59,87,.08)':riskColor==='var(--warn)'?'rgba(255,184,0,.06)':'var(--bg3)'
-  inner.style.borderColor=riskColor==='var(--text2)'?'var(--border)':riskColor
+  sStyle('pin-inner', 'background', riskColor==='var(--bear)'?'rgba(255,59,87,.08)':riskColor==='var(--warn)'?'rgba(255,184,0,.06)':'var(--bg3)');
+  sStyle('pin-inner', 'borderColor', riskColor==='var(--text2)'?'var(--border)':riskColor);
   styl('pin-label',risk,riskColor); set('pin-note',note); styl('pin-score',`₹${Math.round(mp).toLocaleString('en-IN')}`,riskColor)
 }
 
@@ -1007,7 +1036,7 @@ setInterval(() => {
     targetTime = Date.now() + 300000; 
     doFetch();
   } else {
-    g('timer').textContent = Math.floor(remain / 60) + ':' + String(remain % 60).padStart(2, '0');
+    sText('timer', Math.floor(remain / 60) + ':' + String(remain % 60).padStart(2, '0'));
   }
 }, 1000);
 
@@ -1019,7 +1048,7 @@ document.addEventListener("visibilitychange", () => {
        doFetch();
     } else {
        let remain = Math.floor((targetTime - now) / 1000);
-       g('timer').textContent = Math.floor(remain / 60) + ':' + String(remain % 60).padStart(2, '0');
+       sText('timer', Math.floor(remain / 60) + ':' + String(remain % 60).padStart(2, '0'));
     }
   }
 });
