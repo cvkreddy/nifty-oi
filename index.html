@@ -131,6 +131,21 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .loading{color:var(--text2);padding:16px;text-align:center;font-size:13px;}
 .bull{color:var(--bull)!important;}.bear{color:var(--bear)!important;}
 .warn{color:var(--warn)!important;}.info{color:var(--info)!important;}.atmc{color:var(--atm)!important;}
+
+/* NIFTY TECH RESPONSIVE GRID */
+#nifty-tech-full {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+}
+.tech-col {
+  padding: 10px 12px;
+  border-right: 1px solid var(--border);
+}
+.tech-col:last-child {
+  border-right: none;
+}
 </style>
 </head>
 <body>
@@ -237,6 +252,32 @@ tr:hover td{background:rgba(255,255,255,.02);}
 
 <div class="grid">
 
+  <div class="card full">
+    <div class="ch">
+      <span class="ct info">📊 NIFTY 50 TECHNICALS</span>
+      <span class="cs" id="tech-bias-lbl" style="font-weight:bold;font-size:12px">Bias: —</span>
+    </div>
+    <div id="nifty-tech-full">
+      <div class="tech-col">
+        <div style="font-size:10px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:8px">3 MIN TF</div>
+        <div id="tech-3m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
+      </div>
+      <div class="tech-col">
+        <div style="font-size:10px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:8px">5 MIN TF</div>
+        <div id="tech-5m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
+      </div>
+      <div class="tech-col">
+        <div style="font-size:10px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:8px">15 MIN TF</div>
+        <div id="tech-15m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
+      </div>
+    </div>
+    <div style="padding:8px 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="font-size:10px;color:var(--text2);letter-spacing:1px;font-family:var(--ui);font-weight:700">CONFLUENCE</div>
+      <div id="tech-overall-bias" style="font-size:14px;font-weight:700;font-family:var(--ui)">—</div>
+      <div id="tech-confluence" style="font-size:11px;color:var(--text2);flex:1">—</div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="ch"><span class="ct bear">CALL SIDE — RESISTANCE (ATM ±5)</span></div>
     <table><thead><tr>
@@ -295,32 +336,6 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <div style="width:44px;font-size:10px;color:var(--bull);flex-shrink:0;font-family:var(--ui);font-weight:700">PE OI</div>
     </div>
     <div class="hw" id="histogram"><div class="loading">Waiting...</div></div>
-  </div>
-
-  <div class="card">
-    <div class="ch">
-      <span class="ct info">📊 NIFTY 50 TECHNICALS</span>
-      <span class="cs" id="tech-bias-lbl" style="font-weight:bold;font-size:12px">Bias: —</span>
-    </div>
-    <div id="nifty-tech-full" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--border)">
-      <div style="padding:10px 12px;border-right:1px solid var(--border)">
-        <div style="font-size:10px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:8px">3 MIN TF</div>
-        <div id="tech-3m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
-      </div>
-      <div style="padding:10px 12px;border-right:1px solid var(--border)">
-        <div style="font-size:10px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:8px">5 MIN TF</div>
-        <div id="tech-5m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
-      </div>
-      <div style="padding:10px 12px">
-        <div style="font-size:10px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:8px">15 MIN TF</div>
-        <div id="tech-15m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
-      </div>
-    </div>
-    <div style="padding:8px 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <div style="font-size:10px;color:var(--text2);letter-spacing:1px;font-family:var(--ui);font-weight:700">CONFLUENCE</div>
-      <div id="tech-overall-bias" style="font-size:14px;font-weight:700;font-family:var(--ui)">—</div>
-      <div id="tech-confluence" style="font-size:11px;color:var(--text2);flex:1">—</div>
-    </div>
   </div>
 
   <div class="card">
@@ -422,7 +437,7 @@ async function doFetch(){
 
 function render(d,hist){
   cycleCount++
-  const {spot,futures,premium,pcr,pcr_chg,vix,max_pain:mp,atm}=d
+  const {spot,futures,premium,pcr,pcr_chg,vix,max_pain:mp,atm,trend,trend_reason,trend_strength}=d
   const ind=d.indicators||{},intel=d.intelligence||{}
   g('expiry-badge').textContent='Expiry: '+(d.expiry||'—')
 
@@ -737,7 +752,7 @@ function renderAnalysis(d,atk,atm,ind,intel){
   const cadd=ca.reduce((s,k)=>s+Math.max(0,atk[k].call_oi_chg||0),0), padd=pb.reduce((s,k)=>s+Math.max(0,atk[k].put_oi_chg||0),0)
   const cex=ca.reduce((s,k)=>s+Math.abs(Math.min(0,atk[k].call_oi_chg||0)),0), pex=pb.reduce((s,k)=>s+Math.abs(Math.min(0,atk[k].put_oi_chg||0)),0)
   const topR=ca.slice().sort((a,b)=>atk[b].call_oi-atk[a].call_oi)[0], topS=pb.slice().sort((a,b)=>atk[b].put_oi-atk[a].put_oi)[0]
-  const conc=intel.concentration||{},skew=intel.iv_skew||{},gexFlip=intel.gex_flip, ms=intel.market_state||'—',msCol=msColor(ms)
+  const gexFlip=intel.gex_flip, ms=intel.market_state||'—',msCol=msColor(ms)
   
   let verdictNotes=[]
   const ri=ind.rsi,ai=ind.adx
@@ -748,8 +763,6 @@ function renderAnalysis(d,atk,atm,ind,intel){
     else if(ms.includes('BEAR')&&ri>55) verdictNotes.push('⚠ OI bearish but RSI strong — divergence')
     if(ai<20) verdictNotes.push('📊 ADX below 20 — range. Sell resistance, buy support')
   } 
-  if((skew.avg_skew||0)>3) verdictNotes.push('📉 Put IV elevated — market fears downside')
-  if((skew.avg_skew||0)<-3) verdictNotes.push('📈 Call IV elevated — bullish squeeze expected')
   if((intel.alerts||[]).length) verdictNotes.push('🚨 '+(intel.alerts[0].message||intel.alerts[0].msg||''))
 
   const tr=(key,val,col,note)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-size:11px;color:var(--text2)">${key}</span><span style="font-size:13px;font-weight:700;color:${col||'var(--text)'}">${val}</span>${note?`<span style="font-size:10px;color:var(--text2)">${note}</span>`:''}</div>`
