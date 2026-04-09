@@ -1,9 +1,8 @@
 
-
 """
 ====================================================
-  NIFTY50 OI Server — The Ultimate Pro Edition (Stable)
-  Includes: Reverse-Engineered Baseline, VIX Matrix, Pro Telegram
+  NIFTY50 OI Server — The Master Edition
+  Restores ALL missing detailed metrics (EMAs, Vol)
 ====================================================
 """
 
@@ -58,7 +57,7 @@ last_5min_summary = 0
 debug_status = {"last_error": "No data fetched yet. Waiting for first cycle."}
 
 # ══════════════════════════════════════════════════
-#  STATE RECOVERY ENGINE (PREVENTS DATA LOSS ON RESTART)
+#  STATE RECOVERY ENGINE
 # ══════════════════════════════════════════════════
 def reverse_engineer_baseline():
     global baseline_oi
@@ -130,7 +129,6 @@ def generate_5min_summary(data, atm_strikes, atm):
     s_decay = intel.get("straddle_decay", 0)
     s_low = int(atm - s_curr)
     s_high = int(atm + s_curr)
-    
     vix_mat = intel.get("vix_matrix", {})
     
     msg = (
@@ -171,7 +169,6 @@ def generate_5min_summary(data, atm_strikes, atm):
         msg += f"🔴 <b>CE | {c_cond}</b>\n"
         msg += f"LTP: ₹{c_ltp:.1f} (5m: {c_ltp_5m:+.1f} | Day: {c_ltp_d:+.1f})\n"
         msg += f"OI : 5m: {c_oi_5m:+.2f}L | Day: {c_oi_d:+.2f}L\n\n"
-        
         msg += f"🟢 <b>PE | {p_cond}</b>\n"
         msg += f"LTP: ₹{p_ltp:.1f} (5m: {p_ltp_5m:+.1f} | Day: {p_ltp_d:+.1f})\n"
         msg += f"OI : 5m: {p_oi_5m:+.2f}L | Day: {p_oi_d:+.2f}L\n"
@@ -182,12 +179,9 @@ def generate_5min_summary(data, atm_strikes, atm):
 def process_telegram_alerts(alerts, data, atm_strikes, atm):
     global sent_alerts, last_5min_summary
     current_time = time.time()
-    
-    # Initialize the timer on boot so it waits 5 mins before sending +0.0s
     if last_5min_summary == 0: 
         last_5min_summary = current_time
         return
-
     try:
         for a in alerts:
             msg = f"{a['icon']} <b>{a['type']}</b>\n{a['message']}"
@@ -195,7 +189,6 @@ def process_telegram_alerts(alerts, data, atm_strikes, atm):
                 send_telegram_alert(msg)
                 sent_alerts[msg] = current_time
         sent_alerts = {k: v for k, v in sent_alerts.items() if current_time - v < 3600}
-        
         if current_time - last_5min_summary >= 290: 
             summary = generate_5min_summary(data, atm_strikes, atm)
             send_telegram_alert(summary)
@@ -321,9 +314,8 @@ def fetch_chain(expiry):
     except: return []
 
 # ══════════════════════════════════════════════════
-#  MATH & PROCESSORS (VERIFIED)
+#  MATH & PROCESSORS
 # ══════════════════════════════════════════════════
-
 def compute_max_pain(chain):
     strikes = sorted(chain.keys())
     if not strikes: return 0
@@ -472,13 +464,13 @@ def process_chain(raw):
         result[strike] = {
             "strike": strike,
             "call_oi": call_oi, "call_oi_chg": round(c_oi_5m, 2), "call_oi_chg_day": round(c_oi_d, 2),
-            "call_vol_oi": round(float(ce_md.get("volume",0) or 0)/call_oi,2) if call_oi else 0,
+            "call_vol_oi": round(call_vol/call_oi,2) if call_oi else 0,
             "call_iv": round(float(ce_gk.get("iv",0) or 0)*100,2), 
             "call_ltp": call_ltp, "call_ltp_chg": round(c_ltp_5m, 2), "call_ltp_chg_day": round(c_ltp_d, 2),
             "call_delta": float(ce_gk.get("delta",0) or 0), "call_gamma": float(ce_gk.get("gamma",0) or 0), "call_gex": float(ce_gk.get("gamma",0) or 0) * call_oi * 25,
             
             "put_oi": put_oi, "put_oi_chg": round(p_oi_5m, 2), "put_oi_chg_day": round(p_oi_d, 2),
-            "put_vol_oi": round(float(pe_md.get("volume",0) or 0)/put_oi,2) if put_oi else 0,
+            "put_vol_oi": round(put_vol/put_oi,2) if put_oi else 0,
             "put_iv": round(float(pe_gk.get("iv",0) or 0)*100,2), 
             "put_ltp": put_ltp, "put_ltp_chg": round(p_ltp_5m, 2), "put_ltp_chg_day": round(p_ltp_d, 2),
             "put_delta": float(pe_gk.get("delta",0) or 0), "put_gamma": float(pe_gk.get("gamma",0) or 0), "put_gex": float(pe_gk.get("gamma",0) or 0) * put_oi * 25
@@ -490,29 +482,45 @@ def process_chain(raw):
 
 def classify_strike_oi_flow(v, prev_spot, spot):
     pup, pdn = spot > prev_spot + 5 if prev_spot else False, spot < prev_spot - 5 if prev_spot else False
-    c_c, cl = v.get("call_oi_chg", 0), v.get("call_ltp_chg", 0)
-    p_c, pl = v.get("put_oi_chg", 0), v.get("put_ltp_chg", 0)
+    c_c, cl, c_o = v.get("call_oi_chg", 0), v.get("call_ltp_chg", 0), v.get("call_oi", 0)
+    p_c, pl, p_o = v.get("put_oi_chg", 0), v.get("put_ltp_chg", 0), v.get("put_oi", 0)
     
-    if pup and c_c > 100000 and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
-    elif pup and c_c < -100000 and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
-    elif pdn and c_c > 100000 and cl < 0: cf = ("FRESH CALL WRITING", "BEARISH", "🔴")
-    elif pdn and c_c < -100000: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
-    else: cf = ("STABLE", "NEUTRAL", "⚪")
+    THRESH = 100000
+    if pup and c_c > THRESH and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
+    elif pup and c_c < -THRESH and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
+    elif pdn and c_c > THRESH and cl < 0: cf = ("FRESH CALL WRITING", "BEARISH", "🔴")
+    elif pdn and c_c < -THRESH: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
+    elif c_c > 500000: cf = ("HEAVY CALL ADDITION", "WATCH", "🔴")
+    elif c_c < -500000: cf = ("HEAVY CALL EXIT", "BULLISH", "✅")
+    else: cf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
 
-    if pdn and p_c > 100000 and pl > 0: pf = ("LONG BUILDUP", "BEARISH", "🔴")
-    elif pdn and p_c < -100000 and pl > 0: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
-    elif pup and p_c > 100000 and pl < 0: pf = ("FRESH PUT WRITING", "BULLISH", "✅")
-    elif pup and p_c < -100000: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
-    else: pf = ("STABLE", "NEUTRAL", "⚪")
+    if pdn and p_c > THRESH and pl > 0: pf = ("LONG BUILDUP", "BEARISH", "🔴")
+    elif pdn and p_c < -THRESH and pl > 0: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
+    elif pup and p_c > THRESH and pl < 0: pf = ("FRESH PUT WRITING", "BULLISH", "✅")
+    elif pup and p_c < -THRESH: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
+    elif p_c > 500000: pf = ("HEAVY PUT ADDITION", "WATCH", "✅")
+    elif p_c < -500000: pf = ("HEAVY PUT EXIT", "BEARISH", "🔴")
+    else: pf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
 
-    return {"condition": cf[0], "signal": cf[1], "emoji": cf[2]}, {"condition": pf[0], "signal": pf[1], "emoji": pf[2]}
+    total_chg = c_c + p_c
+    if c_c > THRESH and p_c < -THRESH: net_note = "🔄 OI SHIFT: Money moving to CALL side."
+    elif p_c > THRESH and c_c < -THRESH: net_note = "🔄 OI SHIFT: Money moving to PUT side."
+    elif c_c > THRESH and p_c > THRESH: net_note = "💥 BOTH SIDES ADDING OI: High uncertainty."
+    elif c_c < -THRESH and p_c < -THRESH: net_note = "🌀 BOTH SIDES EXITING: Position squareoff."
+    else: net_note = "— No significant OI flow this cycle."
+
+    return (
+        {"condition": cf[0], "signal": cf[1], "emoji": cf[2], "oi_chg_l": round(c_c/100000,2), "oi_total_l": round(c_o/100000,2)},
+        {"condition": pf[0], "signal": pf[1], "emoji": pf[2], "oi_chg_l": round(p_c/100000,2), "oi_total_l": round(p_o/100000,2)},
+        {"total_oi_chg_l": round(total_chg/100000,2), "total_oi_l": round((c_o+p_o)/100000,2), "net_note": net_note}
+    )
 
 # ══════════════════════════════════════════════════
 #  MAIN REFRESH LOOP
 # ══════════════════════════════════════════════════
 
 def refresh():
-    global prev_oi, prev_pcr, prev_spot, candle_cache, candle_cache_15, candle_cache_3m, baseline_vix
+    global prev_oi, prev_pcr, prev_spot, candle_cache, candle_cache_15, candle_cache_3m, baseline_vix, ltp_history
 
     load_token()
     if not token_store.get("access_token"):
@@ -538,8 +546,11 @@ def refresh():
         max_pain = compute_max_pain(chain)
 
         atm_strikes = {s:v for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP}
+        
+        # 🔥 CRITICAL: TOTAL MARKET OI ADDED
         total_call  = sum(v["call_oi"] for v in chain.values())
         total_put   = sum(v["put_oi"]  for v in chain.values())
+        
         pcr         = round(total_put/total_call,2) if total_call else 0
         pcr_chg     = round(pcr-prev_pcr,3) if prev_pcr is not None else 0
         futures     = fetch_futures(spot)
@@ -571,9 +582,19 @@ def refresh():
             if -150 <= dist < 0 and v["put_oi_chg"] < 0 and abs(v["put_oi_chg"]) > v["put_oi"]*0.05: alerts.append({"type":"BREAKOUT DOWN","icon":"⚡","message":f"Sup OI dropping"})
 
         for s, v in atm_strikes.items():
-            cf, pf = classify_strike_oi_flow(v, prev_spot, spot)
-            v["call_flow"], v["put_flow"] = cf, pf
+            cf, pf, nf = classify_strike_oi_flow(v, prev_spot, spot)
+            v["call_flow"], v["put_flow"], v["net_flow"] = cf, pf, nf
             
+            # 🔥 RESTORED: LTP Technicals for the Matrix
+            if s not in ltp_history: ltp_history[s] = {"call": [], "put": []}
+            if v.get("call_ltp"): ltp_history[s]["call"] = (ltp_history[s]["call"] + [float(v["call_ltp"])])[-25:]
+            if v.get("put_ltp"): ltp_history[s]["put"] = (ltp_history[s]["put"] + [float(v["put_ltp"])])[-25:]
+            
+            def s_info(prices):
+                e7, e15, price = calc_ema(prices, 7), calc_ema(prices, 15), prices[-1] if prices else None
+                return {"ema7": e7, "ema15": e15, "price_above_ema7": price > e7 if e7 and price else None}
+            v["ltp_technicals"] = {"call": s_info(ltp_history[s]["call"]), "put": s_info(ltp_history[s]["put"])}
+
         vwap_val = get_vwap(candle_cache)
         vix_matrix = analyze_vix_price(spot, vwap_val, vix, baseline_vix)
         
@@ -609,6 +630,7 @@ def refresh():
             "spot": spot, "futures": futures, "premium": round(futures-spot,2),
             "atm": atm, "pcr": pcr, "pcr_chg": pcr_chg, "vix": vix,
             "max_pain": max_pain, "expiry": expiry, 
+            "total_call_oi": total_call, "total_put_oi": total_put,  # 🔥 RESTORED TOTALS
             "indicators": get_indicators(candle_cache), "intelligence": intelligence,
             "atm_strikes": atm_strikes, "chain": chain,
             "timestamp": datetime.now().isoformat()

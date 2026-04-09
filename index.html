@@ -44,6 +44,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .bear-glow{color:var(--bear);text-shadow:0 0 8px rgba(255,59,87,0.3);}
 .sdv{width:1px;height:18px;background:var(--border2);}
 
+.tot-bar{padding:8px 18px; background:var(--bg3); border-bottom:1px solid var(--border); font-size:12px; color:var(--text2); display:flex; align-items:center; gap:12px; font-family:var(--ui); font-weight:700; letter-spacing:0.5px;}
+
 .straddle-bar{background:linear-gradient(90deg, rgba(0,184,255,.05) 0%, transparent 100%);border-bottom:1px solid var(--border);
   padding:10px 18px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
 .sb-item{display:flex;align-items:baseline;gap:6px;}
@@ -57,7 +59,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .alerts-bar{padding:8px 18px;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
 .alert-pill{font-size:11px;padding:4px 12px;border-radius:6px;font-weight:700;font-family:var(--ui);letter-spacing:0.5px;}
 .alert-high{background:rgba(255,59,87,.15);color:var(--bear);border:1px solid rgba(255,59,87,.4);box-shadow:0 0 10px rgba(255,59,87,0.1);}
-.alert-med{background:rgba(255,184,0,.15);color:var(--warn);border:1px solid rgba(255,184,0,.3);}
 
 .tech-pill{font-size:10px;padding:3px 8px;border-radius:4px;font-weight:700;font-family:var(--ui);text-transform:uppercase;}
 .tp-bull{background:rgba(0,255,136,.12);color:var(--bull);border:1px solid rgba(0,255,136,.3);text-shadow:0 0 5px rgba(0,255,136,0.3);}
@@ -113,7 +114,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
 .bull{color:var(--bull)!important;}.bear{color:var(--bear)!important;}
 .warn{color:var(--warn)!important;}.info{color:var(--info)!important;}.atmc{color:var(--atm)!important;}
 
-/* UI Restored Classes */
+/* UI Modules */
 .pcr-spark{width:90px;height:24px;margin-top:6px;}
 .flow-tbl td{font-size:12px;padding:6px 10px;vertical-align:top;}
 .flow-tbl th{font-size:11px;padding:8px 10px;}
@@ -206,6 +207,14 @@ tr:hover td{background:rgba(255,255,255,.03);}
   <div class="si"><span class="sl">ATM</span><span class="sv atmc" id="m-atm" style="text-shadow:0 0 8px rgba(188,140,255,0.4)">—</span></div>
 </div>
 
+<div class="tot-bar">
+  <span>TOTAL MARKET OI:</span>
+  <span style="color:var(--bear)">🔴 <span id="tot-ce">—</span> CR Calls</span>
+  <span style="color:var(--text2)">vs</span>
+  <span style="color:var(--bull)">🟢 <span id="tot-pe">—</span> CR Puts</span>
+  <span id="tot-diff" style="margin-left:8px; padding:3px 8px; border-radius:4px; font-weight:700;">—</span>
+</div>
+
 <div class="straddle-bar">
   <div class="sb-item">
     <span class="sb-lbl">ATM STRADDLE</span>
@@ -217,9 +226,49 @@ tr:hover td{background:rgba(255,255,255,.03);}
     <span class="sb-lbl">EXPECTED RANGE</span>
     <span class="sb-val" id="expected-range">—</span>
   </div>
+  <div class="sdv"></div>
+  <div class="sb-item" id="range-bar-wrap" style="align-items:center">
+    <span style="font-size:12px;color:var(--text2);margin-right:6px;font-weight:700" id="range-low">—</span>
+    <div class="range-bar">
+      <div class="range-fill" id="range-fill" style="left:20%;right:20%"></div>
+      <div class="range-dot" id="range-dot" style="left:50%"></div>
+    </div>
+    <span style="font-size:12px;color:var(--text2);margin-left:6px;font-weight:700" id="range-high">—</span>
+  </div>
+  <div class="sdv"></div>
+  <div class="sb-item">
+    <span class="sb-lbl">STRADDLE STATUS</span>
+    <span class="sb-val" id="straddle-status" style="font-size:14px">—</span>
+  </div>
 </div>
 
-<div class="intel-row">
+<div class="card" style="border-radius:0; border-left:none; border-right:none; margin-bottom:14px;">
+  <div class="ch">
+    <span class="ct info">📊 NIFTY 50 TECHNICALS (3m, 5m, 15m)</span>
+    <span class="cs" id="tech-bias-lbl" style="font-weight:700;font-size:13px">Bias: —</span>
+  </div>
+  <div id="nifty-tech-full">
+    <div class="tech-col">
+      <div style="font-size:11px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:10px">3 MIN TF</div>
+      <div id="tech-3m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
+    </div>
+    <div class="tech-col">
+      <div style="font-size:11px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:10px">5 MIN TF</div>
+      <div id="tech-5m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
+    </div>
+    <div class="tech-col">
+      <div style="font-size:11px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:10px">15 MIN TF</div>
+      <div id="tech-15m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
+    </div>
+  </div>
+  <div style="padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:rgba(0,184,255,0.03)">
+    <div style="font-size:11px;color:var(--text2);letter-spacing:1px;font-family:var(--ui);font-weight:700">CONFLUENCE</div>
+    <div id="tech-overall-bias" style="font-size:15px;font-weight:700;font-family:var(--ui);letter-spacing:0.5px">—</div>
+    <div id="tech-confluence" style="font-size:12px;color:var(--text2);flex:1">—</div>
+  </div>
+</div>
+
+<div class="intel-row" style="margin-top:-14px;">
   <div class="ic">
     <div class="ic-lbl">PCR ZONE</div>
     <div class="ic-val" id="pcr-zone">—</div>
@@ -229,40 +278,19 @@ tr:hover td{background:rgba(255,255,255,.03);}
       <span style="font-size:12px;font-weight:700;" id="pcr-trend-lbl">—</span>
     </div>
   </div>
-  <div class="ic" style="grid-column: span 2;">
-    <div class="ic-lbl">VIX & PRICE MATRIX</div>
-    <div class="ic-val" id="vix-mat-sig">—</div>
-    <div class="ic-sub" id="vix-mat-desc" style="font-size:12px; font-weight:600">—</div>
+  <div class="ic">
+    <div class="ic-lbl">FUTURES BIAS</div>
+    <div class="ic-val" id="sig-fut">—</div>
+    <div class="ic-sub" id="sig-fut-s">—</div>
+  </div>
+  <div class="ic">
+    <div class="ic-lbl">MAX PAIN DRIFT</div>
+    <div class="ic-val" id="sig-mp">—</div>
+    <div class="ic-sub" id="sig-mp-s">—</div>
   </div>
 </div>
 
 <div class="grid">
-
-  <div class="card full">
-    <div class="ch">
-      <span class="ct info">📊 NIFTY 50 TECHNICALS (3m, 5m, 15m)</span>
-      <span class="cs" id="tech-bias-lbl" style="font-weight:700;font-size:13px">Bias: —</span>
-    </div>
-    <div id="nifty-tech-full">
-      <div class="tech-col">
-        <div style="font-size:11px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:10px">3 MIN TF</div>
-        <div id="tech-3m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
-      </div>
-      <div class="tech-col">
-        <div style="font-size:11px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:10px">5 MIN TF</div>
-        <div id="tech-5m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
-      </div>
-      <div class="tech-col">
-        <div style="font-size:11px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:10px">15 MIN TF</div>
-        <div id="tech-15m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
-      </div>
-    </div>
-    <div style="padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:rgba(0,184,255,0.03)">
-      <div style="font-size:11px;color:var(--text2);letter-spacing:1px;font-family:var(--ui);font-weight:700">CONFLUENCE</div>
-      <div id="tech-overall-bias" style="font-size:15px;font-weight:700;font-family:var(--ui);letter-spacing:0.5px">—</div>
-      <div id="tech-confluence" style="font-size:12px;color:var(--text2);flex:1">—</div>
-    </div>
-  </div>
 
   <div class="card">
     <div class="ch"><span class="ct bear">CALL SIDE — RESISTANCE (ATM ±5)</span></div>
@@ -293,11 +321,15 @@ tr:hover td{background:rgba(255,255,255,.03);}
           <th class="th-s" style="min-width:80px">STRIKE</th>
           <th style="text-align:left;min-width:180px;color:var(--bear)">🔴 CALL (CE) FLOW</th>
           <th style="text-align:left;min-width:70px;color:var(--bear)">CE Δ OI</th>
+          <th style="text-align:center;color:var(--text2)">CE Vol</th>
           <th style="text-align:center;min-width:160px">NET FLOW</th>
           <th style="text-align:left;min-width:180px;color:var(--bull)">✅ PUT (PE) FLOW</th>
           <th style="text-align:left;min-width:70px;color:var(--bull)">PE Δ OI</th>
+          <th style="text-align:center;color:var(--text2)">PE Vol</th>
+          <th style="text-align:center;color:var(--bear)">CE EMA</th>
+          <th style="text-align:center;color:var(--bull)">PE EMA</th>
         </tr></thead>
-        <tbody id="flow-tbody"><tr><td colspan="6" class="loading">Waiting for 2nd data cycle...</td></tr></tbody>
+        <tbody id="flow-tbody"><tr><td colspan="10" class="loading">Waiting for 2nd data cycle...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -524,6 +556,17 @@ function render(d,hist){
   if(netFlowL > 0) { fBar.style.background = 'var(--bull)'; fBar.style.left = '50%'; fBar.style.width = (flowPct/2) + '%'; fBar.style.boxShadow = '0 0 5px var(--bull)'; } 
   else { fBar.style.background = 'var(--bear)'; fBar.style.left = (50 - flowPct/2) + '%'; fBar.style.width = (flowPct/2) + '%'; fBar.style.boxShadow = '0 0 5px var(--bear)'; }
 
+  // 🔥 RESTORED TOTAL MARKET OI
+  const tC = d.total_call_oi || 0;
+  const tP = d.total_put_oi || 0;
+  g('tot-ce').textContent = (tC / 10000000).toFixed(2);
+  g('tot-pe').textContent = (tP / 10000000).toFixed(2);
+  const diff = tP - tC;
+  const diffEl = g('tot-diff');
+  diffEl.textContent = (diff > 0 ? '🟢 PUTS > CALLS (Bullish)' : '🔴 CALLS > PUTS (Bearish)');
+  diffEl.style.background = diff > 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,59,87,0.1)';
+  diffEl.style.color = diff > 0 ? 'var(--bull)' : 'var(--bear)';
+
   const atmV=d.atm_strikes[atm]||{}, straddle=atmV.call_ltp+atmV.put_ltp
   if(straddle){
       set('straddle-cost','₹'+straddle.toFixed(1))
@@ -533,20 +576,31 @@ function render(d,hist){
       decEl.style.color = decay < 0 ? 'var(--bear)' : 'var(--bull)';
       const low=Math.round(atm-straddle), high=Math.round(atm+straddle)
       set('expected-range','₹'+low.toLocaleString('en-IN')+' — ₹'+high.toLocaleString('en-IN'))
+      
+      const range=high-low, spotPct=Math.min(100,Math.max(0,((spot-low)/range)*100))
+      const fillLeft=((atm-low)/range)*100-((straddle*0.5/range)*100)*0.3
+      const fillRight=100-fillLeft-((straddle/range)*100)*0.3
+      g('range-fill').style.left=Math.max(5,fillLeft)+'%'; g('range-fill').style.right=Math.max(5,fillRight)+'%'
+      g('range-dot').style.left=spotPct+'%'
+      set('range-low','₹'+low.toLocaleString('en-IN')); set('range-high','₹'+high.toLocaleString('en-IN'))
+      if(spot<low) styl('straddle-status','⚠ BELOW RANGE — bearish break','var(--bear)')
+      else if(spot>high) styl('straddle-status','⚠ ABOVE RANGE — bullish break','var(--bull)')
+      else {
+        if(Math.min(spot-low,high-spot)<straddle*0.15) styl('straddle-status','⚡ NEAR RANGE EDGE — breakout watch','var(--warn)')
+        else styl('straddle-status','✅ INSIDE RANGE — balanced','var(--text2)')
+      }
   }
 
   pcrHistory.push(pcr); if(pcrHistory.length>20) pcrHistory.shift()
   renderPCRSparkline(pcr,intel)
 
   styl('pcr-zone',(intel.pcr_zone||'—'),(intel.pcr_zone||'').includes('BULL')?'var(--bull)':(intel.pcr_zone||'').includes('BEAR')?'var(--bear)':'var(--warn)')
-  
-  const vxMat = intel.vix_matrix || {};
-  const vxSig = vxMat.signal || 'WAITING';
-  const vxCol = vxSig.includes('BULL') ? 'var(--bull)' : vxSig.includes('BEAR') ? 'var(--bear)' : 'var(--text2)';
-  styl('vix-mat-sig', vxSig, vxCol); g('vix-mat-sig').style.textShadow=`0 0 8px rgba(${hexToRgb(vxCol)},0.3)`;
-  set('vix-mat-desc', vxMat.desc || 'Waiting for cycle');
+  styl('sig-fut',premium>=0?'MILD BULLISH':'MILD BEARISH',premium>=0?'var(--bull)':'var(--bear)')
+  set('sig-fut-s','Futures '+(premium>=0?'+':'')+premium.toFixed(1)+'pts above spot')
+  styl('sig-mp',(d.max_pain-spot>=0?'+':'')+'₹'+Math.round(d.max_pain-spot).toLocaleString('en-IN')+' from spot','var(--warn)')
+  set('sig-mp-s','Max Pain ₹'+Math.round(d.max_pain).toLocaleString('en-IN')+' — expiry pull zone')
 
-  // 🔥 RESTORED FULL TECHNICALS PANEL DRAWING
+  // 🔥 RESTORED FULL TECHNICALS PANEL
   renderNiftyTechFull(intel.index_technicals||{})
 
   const ak=d.atm_strikes,sts=Object.keys(ak).map(Number).sort((a,b)=>a-b)
@@ -573,7 +627,6 @@ function render(d,hist){
   })
 }
 
-// 🔥 REBUILT TECHNICALS UI RENDERER WITH RSI AND SUPERTREND
 function renderNiftyTechFull(tech){
   const mkRow=(key,val,col,note)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03)"><span style="font-size:11px;color:var(--text2);font-family:var(--ui);font-weight:600">${key}</span><span style="font-size:13px;font-weight:700;color:${col||'var(--text)'}">${val}</span>${note?`<span style="font-size:10px;color:var(--text2);font-family:var(--ui)">${note}</span>`:''}</div>`
   const mkPill=(label,cls)=>`<span class="tech-pill ${cls}">${label}</span>`
@@ -589,7 +642,6 @@ function renderNiftyTechFull(tech){
     const d15col=ema15?(price>ema15?'var(--bull)':'var(--bear)'):'var(--text2)'
     const xover=t.crossover?`<span class="xover-pill ${t.crossover.includes('GOLDEN')?'xover-gold':'xover-death'}">🔔 ${t.crossover}</span>`:''
     
-    // RSI Logging
     const rsi=t.rsi, rsiNote=!rsi?'N/A':rsi>=70?'Overbought ⚠':rsi>=60?'Bullish':'Neutral'+(rsi<=40?' Bearish':''), rsiCol=!rsi?'var(--text2)':rsi>=70?'var(--bear)':rsi<=30?'var(--bull)':rsi>=55?'var(--bull)':'var(--warn)'
 
     el.innerHTML=`
@@ -602,7 +654,6 @@ function renderNiftyTechFull(tech){
     `
   })
 
-  // BIAS CALCULATION ENGINE
   const t3=tech['3min']||{}, t5=tech['5min']||{}, t15=tech['15min']||{}
   let bullPoints=0, bearPoints=0
   
@@ -659,20 +710,30 @@ function rowHTML(r,atm,maxOI,isCall){
   </tr>`
 }
 
+// 🔥 RESTORED 10-COLUMN DETAILED FLOW MATRIX
 function renderFlowMatrix(atk,atm){
   const rows=Object.keys(atk).map(Number).sort((a,b)=>a-b).map(s=>{
     const v=atk[s]||{},isATM=s===atm, cf=v.call_flow||{},pf=v.put_flow||{},nf=v.net_flow||{}
     const netCol=nf.net_note&&nf.net_note.includes('💥')?'var(--info)':nf.net_note&&nf.net_note.includes('🔄')?'var(--info)':'var(--text2)'
+    
+    const tc=v.ltp_technicals||{}, cT=tc.call||{}, pT=tc.put||{}
+    const ceEmaStr = cT.ema7 ? (cT.price_above_ema7 ? '<span class="bull">▲ ABOVE</span>' : '<span class="bear">▼ BELOW</span>') : '<span style="color:var(--text2)">Needs 7 cycles</span>'
+    const peEmaStr = pT.ema7 ? (pT.price_above_ema7 ? '<span class="bull">▲ ABOVE</span>' : '<span class="bear">▼ BELOW</span>') : '<span style="color:var(--text2)">Needs 7 cycles</span>'
+
     return `<tr style="${isATM?'background:rgba(163,113,247,.08)':''}">
-      <td class="td-s"><span class="${isATM?'sk-a':s>atm?'sk-c':'sk-p'}">${Math.round(s).toLocaleString('en-IN')}${isATM?' ◄':''}</span><br><span style="font-size:11px;color:var(--warn)">CE ₹${v.call_ltp?Number(v.call_ltp).toFixed(0):'—'}</span><br><span style="font-size:11px;color:var(--bull)">PE ₹${v.put_ltp?Number(v.put_ltp).toFixed(0):'—'}</span></td>
+      <td class="td-s"><span class="${isATM?'sk-a':s>atm?'sk-c':'sk-p'}">${Math.round(s).toLocaleString('en-IN')}${isATM?' ◄':''}</span><br><span style="font-size:10px;color:var(--warn)">CE ₹${v.call_ltp?Number(v.call_ltp).toFixed(1):'—'}</span><br><span style="font-size:10px;color:var(--bull)">PE ₹${v.put_ltp?Number(v.put_ltp).toFixed(1):'—'}</span></td>
       <td style="text-align:left;background:${sigBg(cf.signal)};border-left:2px solid ${sigColor(cf.signal)}"><div class="flow-cond" style="color:${sigColor(cf.signal)}">${cf.emoji||'⚪'} ${cf.condition||'Waiting...'}</div><span class="flow-sig" style="color:${sigColor(cf.signal)};border:1px solid ${sigColor(cf.signal)};background:${sigBg(cf.signal)}">${cf.signal||'—'}</span></td>
-      <td style="text-align:left"><div style="font-size:14px;font-weight:700;color:${(cf.oi_chg_l||0)>0?'var(--bear)':(cf.oi_chg_l||0)<0?'var(--bull)':'var(--text2)'}">${cf.oi_chg_l!==undefined?(cf.oi_chg_l>=0?'+':'')+cf.oi_chg_l+'L':'—'}</div><div style="font-size:11px;color:var(--text2)">Total:${cf.oi_total_l||0}L</div></td>
-      <td style="text-align:center;padding:8px 10px"><div style="font-size:13px;color:${netCol};font-family:var(--ui);font-weight:700;line-height:1.4">${nf.net_note||'—'}</div></td>
+      <td style="text-align:left"><div style="font-size:13px;font-weight:700;color:${(cf.oi_chg_l||0)>0?'var(--bear)':(cf.oi_chg_l||0)<0?'var(--bull)':'var(--text2)'}">${cf.oi_chg_l!==undefined?(cf.oi_chg_l>=0?'+':'')+cf.oi_chg_l+'L':'—'}</div><div style="font-size:10px;color:var(--text2)">Total:${cf.oi_total_l||0}L</div></td>
+      <td style="text-align:center;color:${v.call_vol_oi>3?'var(--warn)':'var(--text2)'}">${v.call_vol_oi?v.call_vol_oi.toFixed(1):'—'}</td>
+      <td style="text-align:center;padding:6px 10px"><div style="font-size:12px;color:${netCol};font-family:var(--ui);font-weight:700;line-height:1.4">${nf.net_note||'—'}</div></td>
       <td style="text-align:left;background:${sigBg(pf.signal)};border-left:2px solid ${sigColor(pf.signal)}"><div class="flow-cond" style="color:${sigColor(pf.signal)}">${pf.emoji||'⚪'} ${pf.condition||'Waiting...'}</div><span class="flow-sig" style="color:${sigColor(pf.signal)};border:1px solid ${sigColor(pf.signal)};background:${sigBg(pf.signal)}">${pf.signal||'—'}</span></td>
-      <td style="text-align:left"><div style="font-size:14px;font-weight:700;color:${(pf.oi_chg_l||0)>0?'var(--bull)':(pf.oi_chg_l||0)<0?'var(--warn)':'var(--text2)'}">${pf.oi_chg_l!==undefined?(pf.oi_chg_l>=0?'+':'')+pf.oi_chg_l+'L':'—'}</div><div style="font-size:11px;color:var(--text2)">Total:${pf.oi_total_l||0}L</div></td>
+      <td style="text-align:left"><div style="font-size:13px;font-weight:700;color:${(pf.oi_chg_l||0)>0?'var(--bull)':(pf.oi_chg_l||0)<0?'var(--warn)':'var(--text2)'}">${pf.oi_chg_l!==undefined?(pf.oi_chg_l>=0?'+':'')+pf.oi_chg_l+'L':'—'}</div><div style="font-size:10px;color:var(--text2)">Total:${pf.oi_total_l||0}L</div></td>
+      <td style="text-align:center;color:${v.put_vol_oi>3?'var(--warn)':'var(--text2)'}">${v.put_vol_oi?v.put_vol_oi.toFixed(1):'—'}</td>
+      <td style="text-align:center;font-size:10px">${ceEmaStr}</td>
+      <td style="text-align:center;font-size:10px">${peEmaStr}</td>
     </tr>`
   }).join('')
-  g('flow-tbody').innerHTML=rows||'<tr><td colspan="6" class="loading">No data</td></tr>'
+  g('flow-tbody').innerHTML=rows||'<tr><td colspan="10" class="loading">No data</td></tr>'
 }
 
 function renderHist(hist,atm){
