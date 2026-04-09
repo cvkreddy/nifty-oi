@@ -60,9 +60,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .tp-bear{background:rgba(255,59,87,.12);color:var(--bear);border:1px solid rgba(255,59,87,.3);text-shadow:0 0 5px rgba(255,59,87,0.3);}
 .tp-warn{background:rgba(255,184,0,.1);color:var(--warn);border:1px solid rgba(255,184,0,.3);}
 .tp-neu{background:var(--bg3);color:var(--text2);border:1px solid var(--border2);}
-.xover-pill{font-size:10px;padding:3px 8px;border-radius:4px;font-weight:700;font-family:var(--ui);animation:blink 1s infinite;}
-.xover-gold{background:rgba(0,255,136,.2);color:var(--bull);border:1px solid rgba(0,255,136,.5);}
-.xover-death{background:rgba(255,59,87,.2);color:var(--bear);border:1px solid rgba(255,59,87,.5);}
 
 #err{display:none;background:rgba(255,59,87,.15);border-bottom:2px solid var(--bear);
   color:#fff;padding:10px 18px;font-size:13px;font-weight:700;text-align:center;text-shadow:0 0 5px rgba(255,0,0,0.5);}
@@ -468,8 +465,7 @@ async function doFetch(){
     const fTime = new Date().toLocaleTimeString('en-IN');
     g('upd').innerHTML = `<span style="color:${raw.backend_error?'var(--bear)':'var(--bull)'}">DATA: ${bTime}</span> | FETCHED: ${fTime}`;
     g('st-left').textContent='Live · Spot ₹'+fmt(raw.spot)+' · PCR '+raw.pcr.toFixed(2)
-    
-    // 🔥 RESTORED AUTO-SNAP TRIGGER
+
     setTimeout(() => {
         saveScreenshot(true);
     }, 2500);
@@ -569,63 +565,34 @@ function render(d,hist){
   })
 }
 
-// 🔥 RESTORED FULL TECHNICALS LOGIC
 function renderNiftyTechFull(tech){
   const mkRow=(key,val,col,note)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03)"><span style="font-size:11px;color:var(--text2);font-family:var(--ui);font-weight:600">${key}</span><span style="font-size:13px;font-weight:700;color:${col||'var(--text)'}">${val}</span>${note?`<span style="font-size:10px;color:var(--text2);font-family:var(--ui)">${note}</span>`:''}</div>`
   const mkPill=(label,cls)=>`<span class="tech-pill ${cls}">${label}</span>`
 
   ;['3min','5min','15min'].forEach(tf=>{
     const t=tech[tf]||{}, elId=tf==='3min'?'tech-3m-full':tf==='5min'?'tech-5m-full':'tech-15m-full', el=g(elId); if(!el) return
-    if(!t.ema7&&(t.candle_count||0)<8){ el.innerHTML=`<div style="font-size:12px;color:var(--warn);font-family:var(--ui);padding:6px 0">${t.candle_count||0} candles — needs 15+</div>`; return }
-
     const price=t.current_price||0, ema7=t.ema7, ema15=t.ema15, vwap=t.vwap, stDir=t.supertrend, stVal=t.supertrend_val
-    const trendCls=t.trend&&t.trend.includes('STRONG BULL')?'tp-bull':t.trend&&t.trend.includes('STRONG BEAR')?'tp-bear':'tp-warn'
+    const trendCls=t.trend&&t.trend.includes('BULL')?'tp-bull':t.trend&&t.trend.includes('BEAR')?'tp-bear':'tp-warn'
     const stCls=stDir==='BULLISH'?'tp-bull':stDir==='BEARISH'?'tp-bear':'tp-neu'
     const d7col=ema7?(price>ema7?'var(--bull)':'var(--bear)'):'var(--text2)'
     const d15col=ema15?(price>ema15?'var(--bull)':'var(--bear)'):'var(--text2)'
-    const xover=t.crossover?`<span class="xover-pill ${t.crossover.includes('GOLDEN')?'xover-gold':'xover-death'}">🔔 ${t.crossover}</span>`:''
     
-    const rsi=t.rsi, rsiNote=!rsi?'N/A':rsi>=70?'Overbought ⚠':rsi>=60?'Bullish':'Neutral'+(rsi<=40?' Bearish':''), rsiCol=!rsi?'var(--text2)':rsi>=70?'var(--bear)':rsi<=30?'var(--bull)':rsi>=55?'var(--bull)':'var(--warn)'
-
     el.innerHTML=`
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">${mkPill(t.trend||'N/A',trendCls)}${mkPill(stDir||'ST N/A',stCls)}${xover}</div>
-      ${mkRow('VWAP (Day)',vwap||'—',vwap?(price>vwap?'var(--bull)':'var(--bear)'):'var(--text2)', t.price_above_vwap?'Price ABOVE':'Price BELOW')}
-      ${mkRow('EMA 7',ema7||'—',d7col, t.price_above_ema7?'Price ABOVE':'Price BELOW')}
-      ${mkRow('EMA 15',ema15||'—',d15col, t.price_above_ema15?'Price ABOVE':'Price BELOW')}
-      ${mkRow('Supertrend',stDir?`${stDir} @ ${stVal}`:'N/A',stCls,'')}
-      ${rsi?mkRow('RSI (14)',rsi.toFixed(1),rsiCol,rsiNote):''}
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap">${mkPill(t.trend||'N/A',trendCls)}${mkPill(stDir||'ST N/A',stCls)}</div>
+      ${mkRow('VWAP (Day)',vwap||'—',vwap?(price>vwap?'var(--bull)':'var(--bear)'):'var(--text2)', '')}
+      ${mkRow('EMA 7',ema7||'—',d7col, '')}
+      ${mkRow('EMA 15',ema15||'—',d15col, '')}
     `
   })
 
-  const t3=tech['3min']||{}, t5=tech['5min']||{}, t15=tech['15min']||{}
-  let bullPoints=0, bearPoints=0
-  if(t3.price_above_vwap) bullPoints++; else bearPoints++
-  if(t3.price_above_ema7)  bullPoints++; else bearPoints++
-  if(t3.ema7_above_ema15) bullPoints++; else bearPoints++
-  if(t3.supertrend==='BULLISH') bullPoints+=2; else if(t3.supertrend==='BEARISH') bearPoints+=2
-  if(t5.price_above_vwap) bullPoints++; else bearPoints++
-  if(t5.price_above_ema7)  bullPoints++; else bearPoints++
-  if(t5.ema7_above_ema15) bullPoints++; else bearPoints++
-  if(t5.supertrend==='BULLISH') bullPoints+=2; else if(t5.supertrend==='BEARISH') bearPoints+=2
-  if(t15.price_above_vwap) bullPoints++; else bearPoints++
-  if(t15.price_above_ema7) bullPoints++; else bearPoints++
-  if(t15.ema7_above_ema15) bullPoints++; else bearPoints++
-  if(t15.supertrend==='BULLISH') bullPoints+=2; else if(t15.supertrend==='BEARISH') bearPoints+=2
-  if((t5.rsi||50)>55) bullPoints++; else if((t5.rsi||50)<45) bearPoints++
+  const t5=tech['5min']||{}; let bias='NEUTRAL', biasCol='var(--warn)'
+  if(t5.trend&&t5.trend.includes('BULL')) {bias='BULLISH'; biasCol='var(--bull)'}
+  if(t5.trend&&t5.trend.includes('BEAR')) {bias='BEARISH'; biasCol='var(--bear)'}
 
-  const total=bullPoints+bearPoints||1, bullPct=Math.round(bullPoints/total*100)
-  let bias,biasCol,confluence
-  if(bullPct>=75)     {bias='STRONG BULLISH';biasCol='var(--bull)';confluence='All EMAs + ST + VWAP aligned bullish'}
-  else if(bullPct>=60){bias='BULLISH';biasCol='var(--bull)';confluence='Most signals bullish — buy dips'}
-  else if(bullPct>=45){bias='MILD BULLISH';biasCol='rgba(0,255,136,.7)';confluence='Slight bullish lean'}
-  else if(bullPct>=35){bias='NEUTRAL';biasCol='var(--warn)';confluence='Mixed signals — range-bound'}
-  else if(bullPct>=25){bias='MILD BEARISH';biasCol='rgba(255,59,87,.7)';confluence='Slight bearish lean'}
-  else                {bias='STRONG BEARISH';biasCol='var(--bear)';confluence='All EMAs + ST + VWAP aligned bearish'}
-
-  const el=g('tech-overall-bias'),ec=g('tech-confluence'),el2=g('tech-bias-lbl')
+  const el=g('tech-overall-bias'),el2=g('tech-bias-lbl'), ec=g('tech-confluence')
   if(el){el.textContent=bias;el.style.color=biasCol;el.style.textShadow=`0 0 10px ${biasCol}`}
-  if(ec) ec.textContent=confluence+` (Bull: ${bullPct}% · Bear: ${100-bullPct}%)`
   if(el2){el2.textContent='Bias: '+bias;el2.style.color=biasCol}
+  if(ec){ec.textContent='All EMAs + ST aligned ' + bias.toLowerCase()}
 }
 
 function rowHTML(r,atm,maxOI,isCall){
@@ -663,6 +630,60 @@ function renderFlowMatrix(atk,atm){
     </tr>`
   }).join('')
   g('flow-tbody').innerHTML=rows||'<tr><td colspan="6" class="loading">No data</td></tr>'
+}
+
+function renderHist(hist,atm){
+  const el=g('histogram')
+  if(!hist||!hist.length){el.innerHTML='<div class="loading">No data</div>';return}
+
+  const maxC = Math.max(...hist.map(h=>h.call_oi||0))||1, maxP = Math.max(...hist.map(h=>h.put_oi||0))||1, maxOI = Math.max(maxC,maxP)
+  const maxChg = Math.max(...[...hist.map(h=>Math.abs(h.call_oi_chg||0)),...hist.map(h=>Math.abs(h.put_oi_chg||0))])||1, W=110
+
+  el.innerHTML=hist.map(h=>{
+    const s=parseFloat(h.strike||0), isA=Math.abs(s-atm)<1, coi=h.call_oi||0, poi=h.put_oi||0, cc=h.call_oi_chg||0, pc=h.put_oi_chg||0
+    const cw=Math.round((coi/maxOI)*W), pw=Math.round((poi/maxOI)*W), ccW=cc!==0?Math.max(3,Math.round((Math.abs(cc)/maxChg)*W)):0, pcW=pc!==0?Math.max(3,Math.round((Math.abs(pc)/maxChg)*W)):0
+    const bigT=maxChg*0.05
+    let ceStatusCol='var(--text2)', peStatusCol='var(--text2)', signal='', signalCol='var(--text2)'
+    if(Math.abs(cc)>bigT) ceStatusCol=cc>0?'var(--bear)':'var(--bull)'
+    if(Math.abs(pc)>bigT) peStatusCol=pc>0?'var(--bull)':'var(--warn)'
+    if(cc>bigT&&pc>bigT){signal='💥 BOTH ADDING';signalCol='var(--info)'}
+    else if(cc<-bigT&&pc<-bigT){signal='🌀 BOTH EXIT';signalCol='var(--text2)'}
+    else if(cc>bigT&&Math.abs(pc)<=bigT){signal='🔴 CE WALL';signalCol='var(--bear)'}
+    else if(cc<-bigT&&Math.abs(pc)<=bigT){signal='✅ CE COLLAPSE';signalCol='var(--bull)'}
+    else if(pc>bigT&&Math.abs(cc)<=bigT){signal='✅ PE FLOOR';signalCol='var(--bull)'}
+    else if(pc<-bigT&&Math.abs(cc)<=bigT){signal='⚠ PE FLOOR WEAK';signalCol='var(--warn)'}
+    else if(cc>bigT&&pc<-bigT){signal='🔄 SHIFT→CE';signalCol='var(--info)'}
+    else if(pc>bigT&&cc<-bigT){signal='🔄 SHIFT→PE';signalCol='var(--info)'}
+
+    return `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,.025);${isA?'background:rgba(163,113,247,.08)':''}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <div style="width:52px;text-align:right;font-size:12px;font-weight:700;color:var(--bear);flex-shrink:0">${(coi/100000).toFixed(1)}L</div>
+        <div style="flex:1;display:flex;justify-content:flex-end;height:14px;background:rgba(255,59,87,.08);border-radius:3px 0 0 3px;overflow:hidden"><div style="width:${cw}px;background:var(--bear);opacity:.8;border-radius:3px 0 0 3px;box-shadow:0 0 5px rgba(255,59,87,0.4)"></div></div>
+        <div style="width:72px;text-align:center;font-size:${isA?14:12}px;font-weight:${isA?700:500};color:${isA?'var(--atm)':'var(--text2)'};flex-shrink:0">${Math.round(s).toLocaleString('en-IN')}${isA?' ◄':''}</div>
+        <div style="flex:1;display:flex;justify-content:flex-start;height:14px;background:rgba(0,255,136,.08);border-radius:0 3px 3px 0;overflow:hidden"><div style="width:${pw}px;background:var(--bull);opacity:.8;border-radius:0 3px 3px 0;box-shadow:0 0 5px rgba(0,255,136,0.4)"></div></div>
+        <div style="width:52px;font-size:12px;font-weight:700;color:var(--bull);flex-shrink:0">${(poi/100000).toFixed(1)}L</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:52px;text-align:right;font-size:11px;font-weight:700;color:${ceStatusCol};flex-shrink:0">${cc!==0?fc(cc):'—'}</div>
+        <div style="flex:1;display:flex;justify-content:flex-end;height:8px;border-radius:2px 0 0 2px;overflow:hidden;background:rgba(255,255,255,.03)">${ccW>0?`<div style="width:${ccW}px;background:${cc>0?'var(--bear)':'var(--info)'};border-radius:2px 0 0 2px"></div>`:''}</div>
+        <div style="width:72px;text-align:center;font-size:10px;font-weight:700;color:${signalCol};flex-shrink:0;font-family:var(--ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${signal||''}</div>
+        <div style="flex:1;display:flex;justify-content:flex-start;height:8px;border-radius:0 2px 2px 0;overflow:hidden;background:rgba(255,255,255,.03)">${pcW>0?`<div style="width:${pcW}px;background:${pc>0?'var(--bull)':'var(--warn)'};border-radius:0 2px 2px 0"></div>`:''}</div>
+        <div style="width:52px;font-size:11px;font-weight:700;color:${peStatusCol};flex-shrink:0">${pc!==0?fc(pc):'—'}</div>
+      </div>
+    </div>`
+  }).join('')
+}
+
+function renderGEX(gexData,flip,atm){
+  set('gex-flip-label',flip?`GEX flip: ₹${Math.round(flip.strike).toLocaleString('en-IN')}`:'Flip zone: N/A')
+  const el=g('gex-panel')
+  if(!gexData||!gexData.length){el.innerHTML='<div class="loading">No GEX data</div>';return}
+  const maxGEX=Math.max(...gexData.map(gd=>Math.abs(gd.net_gex)||0))||1,W=100
+  el.innerHTML=gexData.map(gd=>{
+    const s=parseFloat(gd.strike),isA=Math.abs(s-atm)<1,isFlip=flip&&Math.abs(s-parseFloat(flip.strike||0))<1
+    const ng=gd.net_gex||0,pct=Math.round((Math.abs(ng)/maxGEX)*W),col=ng>0?'var(--bear)':'var(--bull)'
+    return `<div class="gex-row"><div class="gex-strike" style="color:${isA?'var(--atm)':isFlip?'var(--warn)':'var(--text2)'};font-weight:${isA||isFlip?700:400}">₹${Math.round(s).toLocaleString('en-IN')}</div><div class="gex-bar-wrap">${ng>0?`<div style="display:flex;justify-content:flex-end;flex:1"><div class="gex-pos" style="width:${pct}px"></div></div><div class="gex-mid"></div><div style="flex:1"></div>`:`<div style="flex:1"></div><div class="gex-mid"></div><div style="flex:1"><div class="gex-neg" style="width:${pct}px"></div></div>`}</div><div class="gex-val" style="color:${col}">${ng>=0?'+':''}${(ng/1000).toFixed(0)}K</div>${isFlip?'<span class="gex-flip-tag"> ⚡FLIP</span>':''}${isA?`<span style="font-size:10px;color:var(--atm);font-weight:bold;margin-left:4px"> ◄ATM</span>`:''}</div>`
+  }).join('')
 }
 
 function renderMigration(atk,atm){
