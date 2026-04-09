@@ -1,10 +1,8 @@
 
-
-            
- """
+"""
 ====================================================
   NIFTY50 OI Server — The Absolute Master Edition
-  Fixes: get_indicators crash | Adds: RSI & LTP Changes
+  Fixes: All Math logic, Timestamps, RSI Memory
 ====================================================
 """
 
@@ -32,7 +30,7 @@ NIFTY_KEY    = "NSE_INDEX|Nifty 50"
 # 🚨 TELEGRAM CREDENTIALS 🚨
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
-
+    
 
 CACHE_TTL    = 150  
 STRIKE_STEP  = 50
@@ -329,7 +327,7 @@ def fetch_chain(expiry):
     except: return []
 
 # ══════════════════════════════════════════════════
-#  MATH & PROCESSORS (Strictly Defined in Order)
+#  MATH & PROCESSORS
 # ══════════════════════════════════════════════════
 def compute_max_pain(chain):
     strikes = sorted(chain.keys())
@@ -376,7 +374,6 @@ def calc_supertrend(candles, period=7, multiplier=3.0):
     st_val = round((hl2 - multiplier * atr) if direction == "BULLISH" else (hl2 + multiplier * atr), 2)
     return direction, st_val
 
-# 🔥 RESTORED INDICATOR MATH
 def calc_rsi(closes, p=14):
     if len(closes) < p+1: return None
     gains=[max(closes[i]-closes[i-1],0) for i in range(1,len(closes))]
@@ -445,7 +442,6 @@ def get_indicators(candles):
     adx_val = calc_adx(candles, 14)
     return {"rsi": rsi_val, "adx": adx_val, "candle_count": len(candles)}
 
-# 🔥 TIMESTAMPS GENERATOR
 def compute_tf_signals(candles, label, st_period, st_multiplier):
     if not candles or len(candles) < 15: 
         return {"label": label, "candle_count": len(candles) if candles else 0, "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-"}
@@ -472,7 +468,7 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
         try:
             d_str = times[i][:10]
             t_str = times[i][11:16]
-            c_time = f"{d_str[8:10]}-{d_str[5:7]} {t_str}" 
+            c_time = f"{d_str[8:10]} {t_str}" 
         except: 
             c_time = "-"
 
@@ -636,12 +632,9 @@ def process_chain(raw):
         baseline_oi = {str(s): {"call_oi": v["call_oi"], "put_oi": v["put_oi"], "call_ltp": v["call_ltp"], "put_ltp": v["put_ltp"]} for s,v in result.items()}
     return result
 
-# 🔥 RESTORED HIGH SENSITIVITY FLOW MATCHER (Detects LTP moves)
 def classify_strike_oi_flow(v, prev_spot, spot):
     c_c, cl, c_o = v.get("call_oi_chg", 0), v.get("call_ltp_chg", 0), v.get("call_oi", 0)
     p_c, pl, p_o = v.get("put_oi_chg", 0), v.get("put_ltp_chg", 0), v.get("put_oi", 0)
-    
-    # Trigger heavily on 25k to capture live flow accurately
     THRESH = 25000 
     c_pup = cl > 0
     c_pdn = cl < 0
