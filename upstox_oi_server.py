@@ -1,7 +1,9 @@
+
+
 """
 ====================================================
-  NIFTY50 OI Server — Full Intelligence Mode v5 (Diagnostic)
-  Includes: Crash Tracker, VWAP, Smart Flow, Telegram ATM±2
+  NIFTY50 OI Server — Full Intelligence Mode v6 (Stable)
+  Includes: Crash Fix, VWAP, Smart Flow, Telegram ATM±2
 ====================================================
 """
 
@@ -51,11 +53,10 @@ ltp_history     = {}
 sent_alerts = {}
 last_5min_summary = 0 
 
-# 🔥 NEW: Live Diagnostic Tracker
 debug_status = {"last_error": "No data fetched yet. Waiting for first cycle."}
 
 # ══════════════════════════════════════════════════
-#  TELEGRAM BOT ENGINE (PRO LAYOUT)
+#  TELEGRAM BOT ENGINE
 # ══════════════════════════════════════════════════
 
 def send_telegram_alert(message):
@@ -65,8 +66,7 @@ def send_telegram_alert(message):
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
     try:
         requests.post(url, json=payload, timeout=5)
-    except Exception as e:
-        pass
+    except: pass
 
 def generate_5min_summary(data, atm_strikes, atm):
     spot = data.get("spot", 0)
@@ -101,8 +101,7 @@ def generate_5min_summary(data, atm_strikes, atm):
         return f"Stable ⚪"
 
     for s in sorted(atm_strikes.keys(), reverse=True):
-        if abs(s - atm) > 2 * STRIKE_STEP:
-            continue
+        if abs(s - atm) > 2 * STRIKE_STEP: continue
             
         v = atm_strikes[s]
         marker = " ◄ ATM" if s == atm else ""
@@ -149,8 +148,7 @@ def process_telegram_alerts(alerts, data, atm_strikes, atm):
             summary = generate_5min_summary(data, atm_strikes, atm)
             send_telegram_alert(summary)
             last_5min_summary = current_time
-    except Exception as e:
-        pass
+    except: pass
 
 # ══════════════════════════════════════════════════
 #  AUTH
@@ -161,7 +159,7 @@ def save_token(token):
     try:
         with open(TOKEN_FILE, "w") as f:
             json.dump({"access_token": token}, f)
-    except Exception as e: pass
+    except: pass
 
 def load_token():
     if os.path.exists(TOKEN_FILE):
@@ -169,7 +167,7 @@ def load_token():
             with open(TOKEN_FILE, "r") as f:
                 data = json.load(f)
                 token_store["access_token"] = data.get("access_token")
-        except Exception as e: pass
+        except: pass
 
 load_token()
 
@@ -198,8 +196,6 @@ def callback():
         headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"}
     )
     data = resp.json()
-    
-    # 🔥 DIAGNOSTIC: Catch silent Upstox rejections
     if "access_token" not in data:
         debug_status["last_error"] = f"Upstox Auth Rejected: {data}"
         return f"<h2>Upstox Login Failed</h2><p>Upstox rejected the code. Error: {data}</p><br><a href='/login'>Click here to try again</a>"
@@ -209,6 +205,11 @@ def callback():
     refresh()
     return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px">
     <h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p></body></html>"""
+
+@app.route("/get_token")
+def get_token():
+    if not token_store["access_token"]: return jsonify({"error": "No token"})
+    return jsonify({"token": token_store["access_token"]})
 
 # ══════════════════════════════════════════════════
 #  FETCHERS
@@ -390,6 +391,7 @@ def compute_tf_signals(candles, label, st_period, st_multiplier):
             if pe7 <= pe15 and ema7 > ema15: crossover = "GOLDEN CROSS"
             elif pe7 >= pe15 and ema7 < ema15: crossover = "DEATH CROSS"
 
+    # 🔥 FIX: Correctly unpack exactly 2 variables from calc_supertrend
     st_dir, st_val = calc_supertrend(candles, period=st_period, multiplier=st_multiplier)
     
     trend = "N/A"
@@ -482,7 +484,6 @@ def refresh():
         expiry = get_expiry()
         raw    = fetch_chain(expiry)
         
-        # 🔥 DIAGNOSTIC: Catch empty API responses
         if not raw:
             err_msg = f"Upstox returned no chain data. Token expired or IP limit reached."
             debug_status["last_error"] = err_msg
@@ -587,7 +588,6 @@ def refresh():
         process_telegram_alerts(alerts, data, atm_strikes, atm)
         
     except Exception as e:
-        # 🔥 DIAGNOSTIC: Catch ANY Python error and output it to the UI
         error_trace = traceback.format_exc()
         print("[REFRESH CRASH]\n", error_trace)
         debug_status["last_error"] = f"CRASH in refresh(): {str(e)}"
@@ -619,7 +619,6 @@ def oi_json():
                 oi_cache["data"] = d
         except: pass
         
-    # 🔥 DIAGNOSTIC: Send the exact reason WHY there is no data to the UI
     if not d: 
         diag_msg = debug_status.get('last_error', 'Unknown Error')
         return jsonify({"error": f"Data Empty. [Diagnostic: {diag_msg}] — Click login to try again."})
