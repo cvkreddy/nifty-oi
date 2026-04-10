@@ -4,71 +4,74 @@ import requests
 from playwright.sync_api import sync_playwright
 from apscheduler.schedulers.background import BackgroundScheduler
 
-# Get the port Render assigned, or default to 10000
-PORT = os.environ.get("PORT", 10000)
-URL = f"http://127.0.0.1:{PORT}"
+# 🚨 PUT YOUR SCREENSHOT BOT DETAILS HERE 🚨
+SNAP_BOT_TOKEN = "8605909436:AAHDDLQnVEEzs2pj1fxOxNRllcpHSCwYUos"
+SNAP_CHAT_ID   = "1592988014"
 
-# Telegram Settings - We will securely inject these from Render later
-TELEGRAM_TOKEN = os.environ.get("8605909436:AAHDDLQnVEEzs2pj1fxOxNRllcpHSCwYUos", "")
-TELEGRAM_CHAT_ID = os.environ.get("1592988014", "")
+# Hit the public internet URL so Render networking doesn't block it
+URL = "https://nifty-oi.onrender.com"
 
 def send_to_telegram(image_path, index_name):
-    """Fires the screenshot directly to your Telegram App"""
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        return # Skip if Telegram isn't configured
+    if SNAP_BOT_TOKEN == "YOUR_SECOND_BOT_TOKEN_HERE":
+        print("⚠️ Screenshot Bot Token not set. Saving locally only.")
+        return
         
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto"
+    url = f"https://api.telegram.org/bot{SNAP_BOT_TOKEN}/sendPhoto"
     try:
         with open(image_path, "rb") as image_file:
             files = {"photo": image_file}
-            data = {"chat_id": TELEGRAM_CHAT_ID, "caption": f"📊 {index_name} Update"}
+            data = {"chat_id": SNAP_CHAT_ID, "caption": f"📸 {index_name} Full Dashboard Snapshot"}
             response = requests.post(url, data=data, files=files)
             
             if response.status_code == 200:
-                print(f"✈️ Successfully sent {index_name} to Telegram!")
+                print(f"✈️ Successfully sent {index_name} screenshot to Telegram!")
             else:
                 print(f"❌ Telegram Error: {response.text}")
     except Exception as e:
-        print(f"❌ Failed to send to Telegram: {e}")
+        print(f"❌ Failed to send screenshot: {e}")
 
 def take_screenshots():
     print("📸 [AutoSnap] Waking up headless browser...")
     os.makedirs("static/screenshots", exist_ok=True)
     
+    # Force Playwright to ensure the browser exists on the Render server
+    os.system("playwright install chromium")
+    
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            # Use args to bypass Render memory limits
+            browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-dev-shm-usage'])
             page = browser.new_page(viewport={"width": 1920, "height": 1080})
             
             print(f"📸 [AutoSnap] Loading {URL}...")
             page.goto(URL, wait_until="networkidle")
             
-            # Wait for data to load, plus 2 seconds for heatmaps to paint
-            page.wait_for_function("document.getElementById('state-val').innerText !== '—'", timeout=30000)
-            time.sleep(2) 
+            # Wait for the dashboard to successfully pull data
+            page.wait_for_function("document.getElementById('state-val').innerText !== '—'", timeout=45000)
+            time.sleep(3) # Give heatmaps 3 seconds to fully paint
             
             timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
             
-            # --- 1. SENSEX --- (Snapping this first as it's the active tab on your screenshot)
-            page.click("#tab-SENSEX")
-            time.sleep(1.5)
-            sensex_path = f"static/screenshots/SENSEX_{timestamp}.png"
-            page.screenshot(path=sensex_path, full_page=True)
-            send_to_telegram(sensex_path, f"SENSEX ({time.strftime('%I:%M %p')})")
-            
-            # --- 2. NIFTY ---
+            # 1. NIFTY
             page.click("#tab-NIFTY")
-            time.sleep(1.5)
+            time.sleep(2)
             nifty_path = f"static/screenshots/NIFTY_{timestamp}.png"
             page.screenshot(path=nifty_path, full_page=True)
-            send_to_telegram(nifty_path, f"NIFTY 50 ({time.strftime('%I:%M %p')})")
+            send_to_telegram(nifty_path, "NIFTY 50")
             
-            # --- 3. BANKNIFTY ---
+            # 2. BANKNIFTY
             page.click("#tab-BANKNIFTY")
-            time.sleep(1.5)
+            time.sleep(2)
             bank_path = f"static/screenshots/BANKNIFTY_{timestamp}.png"
             page.screenshot(path=bank_path, full_page=True)
-            send_to_telegram(bank_path, f"BANK NIFTY ({time.strftime('%I:%M %p')})")
+            send_to_telegram(bank_path, "BANK NIFTY")
+            
+            # 3. SENSEX
+            page.click("#tab-SENSEX")
+            time.sleep(2)
+            sensex_path = f"static/screenshots/SENSEX_{timestamp}.png"
+            page.screenshot(path=sensex_path, full_page=True)
+            send_to_telegram(sensex_path, "SENSEX")
             
             browser.close()
             print("📸 [AutoSnap] Cycle complete. Sleeping for 5 minutes.")
