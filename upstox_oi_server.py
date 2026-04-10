@@ -145,9 +145,8 @@ def generate_5min_summary(idx, data, atm_strikes, atm):
         f"🟢 <b>ATM PE:</b> ₹{atm_v.get('put_ltp', 0):.1f} ({atm_v.get('put_ltp_chg_day', 0):+.1f} D | {atm_v.get('put_ltp_chg', 0):+.1f} 5m)\n"
         f"🌊 <b>Smart Flow:</b> {flow_bias} ({net_flow_l:+.1f}L Net)\n"
         f"📊 <b>VIX Matrix: {vix_mat.get('signal', 'WAITING')}</b>\n"
-        f"↳ <i>{vix_mat.get('desc', 'Need more data for baseline')}</i>\n"
-        f"⏱ <b>TIMING (5m):</b> Cross: {t5.get('ts_start','-')} | Pull: {t5.get('ts_pull','-')} | ST: {t5.get('ts_st','-')}\n"
-        f"⏱ <b>TIMING (15m):</b> Cross: {t15.get('ts_start','-')} | Pull: {t15.get('ts_pull','-')} | ST: {t15.get('ts_st','-')}\n"
+        f"↳ <i>{vix_mat.get('desc', 'Need more data')}</i>\n"
+        f"⏱ <b>TIMING (5m):</b> Cross: {t5.get('ts_start','-')} | ST: {t5.get('ts_st','-')}\n"
         f"━━━━━━━━━━━━━━━━\n\n"
     )
     
@@ -196,9 +195,14 @@ def generate_5min_summary(idx, data, atm_strikes, atm):
 def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
     current_time = time.time()
     store = STORE[idx]
+    
+    # 🔥 FIX: Send immediate summary upon server boot so user knows bot works!
     if store["last_summary"] == 0: 
         store["last_summary"] = current_time
+        summary = generate_5min_summary(idx, data, atm_strikes, atm)
+        send_telegram_alert(f"🚀 <b>SERVER INITIALIZED ({idx})</b>\n\n{summary}")
         return
+        
     try:
         for a in alerts:
             msg = f"{a['icon']} <b>[{idx}] {a['type']}</b>\n{a['message']}"
@@ -206,6 +210,7 @@ def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
                 send_telegram_alert(msg)
                 store["sent_alerts"][msg] = current_time
         store["sent_alerts"] = {k: v for k, v in store["sent_alerts"].items() if current_time - v < 3600}
+        
         if current_time - store["last_summary"] >= 290: 
             summary = generate_5min_summary(idx, data, atm_strikes, atm)
             send_telegram_alert(summary)
@@ -255,11 +260,15 @@ def fetch_spot(idx):
     except: return 0
 
 def fetch_futures(spot, idx):
+    from datetime import date
     now = date.today(); months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
     prefix = "NIFTY" if idx == "NIFTY" else "BANKNIFTY" if idx == "BANKNIFTY" else "SENSEX"
     for delta in [0, 1]:
         m = (now.month - 1 + delta) % 12; y = str(now.year)[2:] if now.month + delta <= 12 else str(now.year + 1)[2:]
-        sym = f"BSE_FO|{prefix}{y}{months[m]}FUT" if idx == "SENSEX" else f"NSE_FO|{prefix}{y}{months[m]}FUT"
+        if idx == "SENSEX":
+            sym = f"BSE_FO|{prefix}{y}{months[m]}FUT" 
+        else:
+            sym = f"NSE_FO|{prefix}{y}{months[m]}FUT"
         try:
             r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": sym}, headers=hdrs(), timeout=5)
             if r.status_code == 200 and r.json().get("data"):
@@ -281,9 +290,7 @@ def fetch_vix():
 def fetch_base_1m_candles(idx):
     try:
         safe_key = urllib.parse.quote(INDICES[idx]["key"])
-        to_date = date.today().strftime("%Y-%m-%d")
-        from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
-        
+        to_date = date.today().strftime("%Y-%m-%d"); from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
         url_hist = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_date}/{from_date}"
         r_hist = requests.get(url_hist, headers=hdrs(), timeout=10)
         
@@ -344,6 +351,9 @@ def fetch_chain(idx, expiry):
         return r.json().get("data", []) if r.status_code == 200 else []
     except: return []
 
+# ══════════════════════════════════════════════════
+#  MATH & PROCESSORS 
+# ══════════════════════════════════════════════════
 def compute_max_pain(chain):
     strikes = sorted(chain.keys())
     if not strikes: return 0
@@ -375,8 +385,7 @@ def calc_macd(closes):
     if len(closes) < 26: return None
     ema12 = calc_ema(closes, 12)
     ema26 = calc_ema(closes, 26)
-    if ema12 is not None and ema26 is not None:
-        return round(ema12 - ema26, 2)
+    if ema12 is not None and ema26 is not None: return round(ema12 - ema26, 2)
     return None
 
 def calc_ema_array(prices, period):
@@ -481,8 +490,7 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
             d_str = times[i][:10]
             t_str = times[i][11:16]
             c_time = f"{d_str[8:10]}-{d_str[5:7]} {t_str}" 
-        except: 
-            c_time = "-"
+        except: c_time = "-"
 
         curr_bull = e7 > e15
         
@@ -631,11 +639,12 @@ def process_chain(idx, raw):
         c_ltp_d = call_ltp - c_prev_close if c_prev_close else (call_ltp - base["call_ltp"] if "call_ltp" in base else 0)
         p_ltp_d = put_ltp - p_prev_close if p_prev_close else (put_ltp - base["put_ltp"] if "put_ltp" in base else 0)
 
+        # 🔥 FIX: Explicitly loading call_vol and put_vol into the output dictionary for Javascript!
         result[strike] = {
             "strike": strike,
             "call_oi": call_oi, "call_oi_chg": round(c_oi_5m, 2), "call_oi_chg_day": round(c_oi_d, 2),
             "call_vol": call_vol, "put_vol": put_vol,
-            "call_vol_oi": round(float(ce_md.get("volume",0) or 0)/call_oi,2) if call_oi else 0,
+            "call_vol_oi": round(call_vol/call_oi, 2) if call_oi else 0,
             "call_iv": round(float(ce_gk.get("iv",0) or 0)*100,2), 
             "call_ltp": call_ltp, "call_ltp_chg": round(c_ltp_5m, 2), "call_ltp_chg_day": round(c_ltp_d, 2),
             "call_delta": float(ce_gk.get("delta",0) or 0), "call_gamma": float(ce_gk.get("gamma",0) or 0), 
@@ -643,7 +652,7 @@ def process_chain(idx, raw):
             "call_gex": float(ce_gk.get("gamma",0) or 0) * call_oi * 25,
             
             "put_oi": put_oi, "put_oi_chg": round(p_oi_5m, 2), "put_oi_chg_day": round(p_oi_d, 2),
-            "put_vol_oi": round(float(pe_md.get("volume",0) or 0)/put_oi,2) if put_oi else 0,
+            "put_vol_oi": round(put_vol/put_oi, 2) if put_oi else 0,
             "put_iv": round(float(pe_gk.get("iv",0) or 0)*100,2), 
             "put_ltp": put_ltp, "put_ltp_chg": round(p_ltp_5m, 2), "put_ltp_chg_day": round(p_ltp_d, 2),
             "put_delta": float(pe_gk.get("delta",0) or 0), "put_gamma": float(pe_gk.get("gamma",0) or 0), 
@@ -656,23 +665,34 @@ def process_chain(idx, raw):
     return result
 
 def classify_strike_oi_flow(v, prev_spot, spot):
+    pup, pdn = spot > prev_spot + 5 if prev_spot else False, spot < prev_spot - 5 if prev_spot else False
     c_c, cl, c_o = v.get("call_oi_chg", 0), v.get("call_ltp_chg", 0), v.get("call_oi", 0)
     p_c, pl, p_o = v.get("put_oi_chg", 0), v.get("put_ltp_chg", 0), v.get("put_oi", 0)
     
-    if c_c > 2000 and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
-    elif c_c < -2000 and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
-    elif c_c > 2000 and cl <= 0: cf = ("SHORT BUILDUP", "BEARISH", "🔴")
-    elif c_c < -2000 and cl <= 0: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
+    THRESH = 25000 
+    
+    if pup and c_c > THRESH and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
+    elif pup and c_c < -THRESH and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
+    elif pdn and c_c > THRESH and cl < 0: cf = ("FRESH CALL WRITING", "BEARISH", "🔴")
+    elif pdn and c_c < -THRESH: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
+    elif c_c > 200000: cf = ("HEAVY CALL ADDITION", "WATCH", "🔴")
+    elif c_c < -200000: cf = ("HEAVY CALL EXIT", "BULLISH", "✅")
     else: cf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
 
-    if p_c > 2000 and pl > 0: pf = ("LONG BUILDUP", "BEARISH", "🔴")
-    elif p_c < -2000 and pl > 0: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
-    elif p_c > 2000 and pl <= 0: pf = ("SHORT BUILDUP", "BULLISH", "✅")
-    elif p_c < -2000 and pl <= 0: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
+    if pdn and p_c > THRESH and pl > 0: pf = ("LONG BUILDUP", "BEARISH", "🔴")
+    elif pdn and p_c < -THRESH and pl > 0: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
+    elif pup and p_c > THRESH and pl < 0: pf = ("FRESH PUT WRITING", "BULLISH", "✅")
+    elif pup and p_c < -THRESH: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
+    elif p_c > 200000: pf = ("HEAVY PUT ADDITION", "WATCH", "✅")
+    elif p_c < -200000: pf = ("HEAVY PUT EXIT", "BEARISH", "🔴")
     else: pf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
 
     total_chg = c_c + p_c
-    net_note = "— No significant OI flow this cycle."
+    if c_c > THRESH and p_c < -THRESH: net_note = "🔄 OI SHIFT: Money moving to CALL side."
+    elif p_c > THRESH and c_c < -THRESH: net_note = "🔄 OI SHIFT: Money moving to PUT side."
+    elif c_c > THRESH and p_c > THRESH: net_note = "💥 BOTH SIDES ADDING OI: High uncertainty."
+    elif c_c < -THRESH and p_c < -THRESH: net_note = "🌀 BOTH SIDES EXITING: Position squareoff."
+    else: net_note = "— No significant OI flow this cycle."
 
     return (
         {"condition": cf[0], "signal": cf[1], "emoji": cf[2], "oi_chg_l": round(c_c/100000,2), "oi_total_l": round(c_o/100000,2)},
@@ -783,7 +803,6 @@ def refresh(idx):
         cum_call_add = sum(v["call_oi_chg_day"] for v in chain.values())
         cum_net_flow = cum_put_add - cum_call_add
 
-        # Robust ATM lookup
         atm_float = float(atm)
         atm_v = {}
         for k, v in atm_strikes.items():
@@ -830,7 +849,6 @@ def refresh(idx):
             "15m": compute_tf_signals(idx, candle_cache_store[idx]["15m"], "15min", 1, 1.0)
         }
 
-        # SPOT Indices have 0 volume, VWAP returns None. Fallback to 15m EMA for VIX Matrix.
         vwap_val = get_vwap(candle_cache_store[idx]["5m"])
         baseline_trend_val = vwap_val if vwap_val else ind_data["tech"]["15m"].get("ema15")
         vix_matrix = analyze_vix_price(spot, baseline_trend_val, vix, store["baseline_vix"])
