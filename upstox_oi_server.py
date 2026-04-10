@@ -15,7 +15,6 @@ import requests
 app = Flask(__name__)
 CORS(app)
 
-# Start the background screenshot engine
 start_auto_snapper()
 
 @app.after_request
@@ -33,7 +32,8 @@ REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
 
-CACHE_TTL    = 60  
+# 🔥 CRITICAL FIX: Safe 3-minute rate limit so Upstox never freezes data again
+CACHE_TTL    = 180  
 ATM_RANGE    = 5
 TOKEN_FILE   = "token_data.json"
 DATA_FILE    = "data_cache.json"  
@@ -57,9 +57,6 @@ STORE = {idx: {
 oi_cache = {idx: {"data": None} for idx in INDICES}
 candle_cache_store = {idx: {"1m": [], "3m": [], "15m": []} for idx in INDICES}
 
-# ══════════════════════════════════════════════════
-#  STATE RECOVERY ENGINE
-# ══════════════════════════════════════════════════
 def reverse_engineer_baseline(idx):
     if len(STORE[idx]["baseline_oi"]) > 0: return
     try:
@@ -113,9 +110,6 @@ def save_server_state():
 
 load_server_state()
 
-# ══════════════════════════════════════════════════
-#  TELEGRAM BOT ENGINE
-# ══════════════════════════════════════════════════
 def send_telegram_alert(message):
     if not TELEGRAM_BOT_TOKEN: return
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
