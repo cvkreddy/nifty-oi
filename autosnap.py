@@ -31,7 +31,6 @@ def take_screenshots():
     print("📸 [AutoSnap] Waking up headless browser...")
     os.makedirs("static/screenshots", exist_ok=True)
     
-    # Only install playwright once to save CPU power!
     if not _browser_installed:
         os.system("playwright install chromium")
         _browser_installed = True
@@ -42,11 +41,12 @@ def take_screenshots():
             page = browser.new_page(viewport={"width": 1920, "height": 1080})
             
             print(f"📸 [AutoSnap] Loading {URL}...")
-            page.goto(URL, wait_until="networkidle")
+            # Relaxed the networkidle requirement so it doesn't timeout if an API call hangs
+            page.goto(URL, timeout=90000)
             
-            # 🔥 Revert to fast 45s wait so it doesn't freeze the server
-            page.wait_for_function("document.getElementById('state-val').innerText !== '—'", timeout=45000)
-            time.sleep(3.5) # Give heatmaps time to fully paint
+            # Wait for data to load
+            page.wait_for_function("document.getElementById('state-val').innerText !== '—'", timeout=60000)
+            time.sleep(4) 
             
             timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
             

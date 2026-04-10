@@ -31,6 +31,7 @@ REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
 
+# Keep the safe 180s to stop shadow-banning
 CACHE_TTL    = 180  
 ATM_RANGE    = 5
 TOKEN_FILE   = "token_data.json"
@@ -46,7 +47,6 @@ INDICES = {
     "SENSEX": {"key": "BSE_INDEX|SENSEX", "step": 100}
 }
 
-# 🔥 FIX: Properly initialized memory dictionary to stop KeyErrors!
 STORE = {idx: {
     "baseline_oi": {}, "baseline_vix": None, "baseline_rsi": {},
     "history": [], 
@@ -98,13 +98,13 @@ def save_server_state():
         st = {"date": date.today().isoformat()}
         for idx in INDICES:
             st[idx] = {
-                "baseline_oi": STORE[idx]["baseline_oi"],
-                "baseline_vix": STORE[idx]["baseline_vix"],
-                "baseline_rsi": STORE[idx]["baseline_rsi"],
-                "prev_oi": STORE[idx]["prev_oi"],
-                "prev_spot": STORE[idx]["prev_spot"],
-                "prev_pcr": STORE[idx]["prev_pcr"],
-                "history": STORE[idx]["history"] # Safely saves Rolling Buffer!
+                "baseline_oi": STORE[idx].get("baseline_oi", {}),
+                "baseline_vix": STORE[idx].get("baseline_vix"),
+                "baseline_rsi": STORE[idx].get("baseline_rsi", {}),
+                "prev_oi": STORE[idx].get("prev_oi", {}),
+                "prev_spot": STORE[idx].get("prev_spot"),
+                "prev_pcr": STORE[idx].get("prev_pcr"),
+                "history": STORE[idx].get("history", [])
             }
         with open(STATE_FILE, "w") as f: json.dump(st, f)
     except Exception as e: 
