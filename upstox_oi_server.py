@@ -1,3 +1,4 @@
+
 """
 ====================================================
   MULTI-ASSET OI SERVER — Triple Engine Architecture
@@ -28,16 +29,10 @@ API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
-# 🔥 INSTANT BYPASS: Paste your long Upstox Access Token (starting with "ey...") below!
-MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWQ4YzEyMDc2N2VlYTE5OWNiNTU2YjYiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc1ODEyODk2LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzU4NTg0MDB9.VdCeOv6B1D88Ado86VFhjDomvbCeRtLeyf6jlLRN7ns"
-
-
-
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
 
-# Sped up to 2 minutes for faster live updates!
-CACHE_TTL    = 120  
+CACHE_TTL    = 180  
 ATM_RANGE    = 5
 TOKEN_FILE   = "token_data.json"
 DATA_FILE    = "data_cache.json"  
@@ -124,7 +119,7 @@ def send_telegram_alert(message):
     try: requests.post(url, json=payload, timeout=5)
     except: pass
 
-def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
+def generate_5min_summary(idx, data, atm_strikes, atm):
     spot = data.get("spot", 0)
     pcr = data.get("pcr", 0)
     intel = data.get("intelligence", {})
@@ -145,14 +140,12 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
     t15 = intel.get("index_technicals", {}).get("15m", {})
     vix_mat = intel.get("vix_matrix", {})
     
-    boot_note = "<i>(Building baseline...)</i>" if is_boot else ""
-    
     msg = (
         f"⏱ <b>5-MIN {idx} SCANNER</b>\n"
         f"🎯 <b>Spot:</b> ₹{spot} | <b>PCR:</b> {pcr}\n"
         f"⚖️ <b>Straddle:</b> ₹{s_curr:.1f} ({s_decay:+.1f}% Day)\n"
-        f"🔴 <b>ATM CE:</b> ₹{atm_v.get('call_ltp', 0):.1f} ({atm_v.get('call_ltp_chg', 0):+.1f} 5m) {boot_note}\n"
-        f"🟢 <b>ATM PE:</b> ₹{atm_v.get('put_ltp', 0):.1f} ({atm_v.get('put_ltp_chg', 0):+.1f} 5m) {boot_note}\n"
+        f"🔴 <b>ATM CE:</b> ₹{atm_v.get('call_ltp', 0):.1f} ({atm_v.get('call_ltp_chg_day', 0):+.1f} D | {atm_v.get('call_ltp_chg', 0):+.1f} 5m)\n"
+        f"🟢 <b>ATM PE:</b> ₹{atm_v.get('put_ltp', 0):.1f} ({atm_v.get('put_ltp_chg_day', 0):+.1f} D | {atm_v.get('put_ltp_chg', 0):+.1f} 5m)\n"
         f"🌊 <b>Smart Flow:</b> {flow_bias} ({net_flow_l:+.1f}L Net)\n"
         f"📊 <b>VIX Matrix: {vix_mat.get('signal', 'WAITING')}</b>\n"
         f"↳ <i>{vix_mat.get('desc', 'Need more data')}</i>\n"
@@ -200,12 +193,18 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
     return msg.strip()
 
 def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
+    # 🔥 MUTE TEXT BOT OUTSIDE TRADING HOURS (IST)
+    ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    current_mins = ist_now.hour * 60 + ist_now.minute
+    if ist_now.weekday() >= 5 or not (540 <= current_mins <= 935):
+        return  # Silently skip sending anything to Telegram if market is closed
+        
     current_time = time.time()
     store = STORE[idx]
     
     if store["last_summary"] == 0: 
         store["last_summary"] = current_time
-        summary = generate_5min_summary(idx, data, atm_strikes, atm, is_boot=True)
+        summary = generate_5min_summary(idx, data, atm_strikes, atm)
         send_telegram_alert(f"🚀 <b>SERVER LIVE ({idx})</b>\n\n{summary}")
         return
         
@@ -485,7 +484,7 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
             t_str = times[i][11:16]
             c_time = f"{d_str[8:10]}-{d_str[5:7]} {t_str}" 
         except: c_time = "-"
-
+3
         curr_bull = e7 > e15
         if is_bull is None:
             is_bull = curr_bull
@@ -675,13 +674,13 @@ def classify_strike_oi_flow(v, prev_spot, spot):
     elif c_c < -THRESH and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
     elif c_c > THRESH and cl <= 0: cf = ("SHORT BUILDUP", "BEARISH", "🔴")
     elif c_c < -THRESH and cl <= 0: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
-    else: cf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
+    else: cf = ("STABLE", "NEUTRAL", "⚪")
 
     if p_c > THRESH and pl > 0: pf = ("LONG BUILDUP", "BEARISH", "🔴")
     elif p_c < -THRESH and pl > 0: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
     elif p_c > THRESH and pl <= 0: pf = ("SHORT BUILDUP", "BULLISH", "✅")
     elif p_c < -THRESH and pl <= 0: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
-    else: pf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
+    else: pf = ("STABLE", "NEUTRAL", "⚪")
 
     total_chg = c_c + p_c
     if c_c > 25000 and p_c < -25000: net_note = "🔄 OI SHIFT: Money moving to CALL side."
@@ -880,6 +879,7 @@ def refresh(idx):
         max_pain_desc = f"{abs(mp_drift):.1f} pts from MP"
 
         intelligence = {
+            "cycle_count": len(store["history"]),
             "market_state": mkt_state,
             "oi_matrix_condition": oi_cond, "oi_matrix_signal": oi_signal, "oi_matrix_desc": oi_desc,
             "pcr_zone": "BULLISH" if pcr > 1.2 else "BEARISH" if pcr < 0.8 else "NEUTRAL",
@@ -1023,4 +1023,7 @@ def force_telegram_summary():
     return f"Summary sent to Telegram for {idx} successfully!", 200
 
 if __name__ == "__main__":
+    MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWQ4YzEyMDc2N2VlYTE5OWNiNTU2YjYiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc1ODEyODk2LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzU4NTg0MDB9.VdCeOv6B1D88Ado86VFhjDomvbCeRtLeyf6jlLRN7ns"
+
+
     app.run(host="0.0.0.0", port=5000, debug=False)

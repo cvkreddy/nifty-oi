@@ -1,6 +1,7 @@
 import os
 import time
 import requests
+from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -11,6 +12,20 @@ SNAP_CHAT_ID   = "1592988014"
 URL = "https://nifty-oi.onrender.com"
 
 _browser_installed = False
+
+def is_market_hours():
+    """Checks if the current time is exactly between 09:00 AM and 03:35 PM IST on Weekdays."""
+    ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    
+    # Skip Weekends (5 = Saturday, 6 = Sunday)
+    if ist_now.weekday() >= 5: 
+        return False
+        
+    current_mins = ist_now.hour * 60 + ist_now.minute
+    market_start = 9 * 60        # 09:00 AM (540 mins)
+    market_end   = 15 * 60 + 35  # 03:35 PM (935 mins)
+    
+    return market_start <= current_mins <= market_end
 
 def send_to_telegram(image_path, index_name):
     url = f"https://api.telegram.org/bot{SNAP_BOT_TOKEN}/sendPhoto"
@@ -27,6 +42,11 @@ def send_to_telegram(image_path, index_name):
         print(f"❌ Failed to send screenshot: {e}")
 
 def take_screenshots():
+    # 🔥 MUTE BOT OUTSIDE TRADING HOURS
+    if not is_market_hours():
+        print("💤 Market is closed. Skipping screenshot cycle.")
+        return
+
     global _browser_installed
     print("📸 [AutoSnap] Waking up headless browser...")
     os.makedirs("static/screenshots", exist_ok=True)
@@ -41,7 +61,6 @@ def take_screenshots():
             page = browser.new_page(viewport={"width": 1920, "height": 1080})
             
             print(f"📸 [AutoSnap] Loading {URL}...")
-            # Relaxed the networkidle requirement so it doesn't timeout if an API call hangs
             page.goto(URL, timeout=90000)
             
             # Wait for data to load
