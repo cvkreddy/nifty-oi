@@ -15,6 +15,7 @@ import requests
 app = Flask(__name__)
 CORS(app)
 
+# Start the background screenshot engine
 start_auto_snapper()
 
 @app.after_request
@@ -32,7 +33,7 @@ REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
 
-CACHE_TTL    = 60  # Fast 60s refresh for live pricing
+CACHE_TTL    = 60  
 ATM_RANGE    = 5
 TOKEN_FILE   = "token_data.json"
 DATA_FILE    = "data_cache.json"  
@@ -47,16 +48,18 @@ INDICES = {
     "SENSEX": {"key": "BSE_INDEX|SENSEX", "step": 100}
 }
 
-# The new Rolling History Buffer architecture
 STORE = {idx: {
     "baseline_oi": {}, "baseline_vix": None, "baseline_rsi": {},
-    "history": [], # Stores 15 mins of exact snapshots
+    "history": [], 
     "ltp_history": {}, "sent_alerts": {}, "last_summary": 0
 } for idx in INDICES}
 
 oi_cache = {idx: {"data": None} for idx in INDICES}
 candle_cache_store = {idx: {"1m": [], "3m": [], "15m": []} for idx in INDICES}
 
+# ══════════════════════════════════════════════════
+#  STATE RECOVERY ENGINE
+# ══════════════════════════════════════════════════
 def reverse_engineer_baseline(idx):
     if len(STORE[idx]["baseline_oi"]) > 0: return
     try:
@@ -92,7 +95,6 @@ def load_server_state():
         except: pass
     for idx in INDICES: reverse_engineer_baseline(idx)
 
-# 🔥 THIS IS THE FUNCTION THAT WAS MISSING! 🔥
 def save_server_state():
     try:
         st = {"date": date.today().isoformat()}
@@ -106,10 +108,14 @@ def save_server_state():
                 "prev_pcr": STORE[idx]["prev_pcr"]
             }
         with open(STATE_FILE, "w") as f: json.dump(st, f)
-    except: pass
+    except Exception as e: 
+        print("State save failed safely:", e)
 
 load_server_state()
 
+# ══════════════════════════════════════════════════
+#  TELEGRAM BOT ENGINE
+# ══════════════════════════════════════════════════
 def send_telegram_alert(message):
     if not TELEGRAM_BOT_TOKEN: return
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -590,12 +596,11 @@ def process_chain(idx, raw, spot):
     history = store.setdefault("history", [])
     now = time.time()
     
-    # 🎯 ROLLING 5-MINUTE FIX: Find the snapshot closest to 5 minutes ago!
     target_ts = now - 300
     prev_record = None
     if history:
         prev_record = min(history, key=lambda x: abs(x["ts"] - target_ts))
-        if now - history[0]["ts"] < 240:  # If server just started, use the oldest available
+        if now - history[0]["ts"] < 240: 
             prev_record = history[0]
 
     prev_chain = prev_record["chain"] if prev_record else {}
@@ -616,7 +621,6 @@ def process_chain(idx, raw, spot):
         prev_v = prev_chain.get(str(strike), {})
         base_v = base_chain.get(str(strike), {})
 
-        # 🔥 Accurate 5-minute velocity calculations!
         c_oi_5m = call_oi - prev_v.get("call_oi", call_oi)
         p_oi_5m = put_oi - prev_v.get("put_oi", put_oi)
         
@@ -912,10 +916,9 @@ def refresh(idx):
 
         oi_cache[idx]["data"] = data
         
-        # 🔥 Store snapshot into rolling history buffer
         chain_snapshot = {str(s): {"call_oi": v["call_oi"], "put_oi": v["put_oi"], "call_ltp": v["call_ltp"], "put_ltp": v["put_ltp"]} for s,v in chain.items()}
         store["history"].append({"ts": time.time(), "chain": chain_snapshot, "spot": spot, "pcr": pcr})
-        store["history"] = [x for x in store["history"] if time.time() - x["ts"] <= 900] # Keep 15 mins max
+        store["history"] = [x for x in store["history"] if time.time() - x["ts"] <= 900]
         
         try:
             full_cache = {}
@@ -925,7 +928,12 @@ def refresh(idx):
             with open(DATA_FILE, "w") as f: json.dump(full_cache, f)
         except: pass
         
-        save_server_state()
+        # Safe save state
+        try:
+            save_server_state()
+        except Exception as e:
+            print("Save state failed:", e)
+
         debug_status["last_error"] = f"[{idx}] Data fetched successfully."
         process_telegram_alerts(idx, alerts, data, atm_strikes, atm)
         
