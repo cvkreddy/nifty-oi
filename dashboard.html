@@ -931,8 +931,14 @@ function renderFlow(atmStrikes, atm) {
     strikes.forEach(k => {
         let v = atmStrikes[k];
         let nf = (v.put_oi_chg || 0) - (v.call_oi_chg || 0);
-        let ceSig = v.call_oi_chg > 0 ? (v.call_ltp_chg > 0 ? 'LONG BUILDUP' : 'SHORT BUILDUP') : (v.call_ltp_chg > 0 ? 'SHORT COVERING' : 'LONG UNWINDING');
-        let peSig = v.put_oi_chg > 0 ? (v.put_ltp_chg > 0 ? 'LONG BUILDUP' : 'SHORT BUILDUP') : (v.put_ltp_chg > 0 ? 'SHORT COVERING' : 'LONG UNWINDING');
+        
+        let ceSig = 'STABLE';
+        if (v.call_oi_chg > 2000) ceSig = v.call_ltp_chg > 0 ? 'LONG BUILDUP' : 'SHORT BUILDUP';
+        else if (v.call_oi_chg < -2000) ceSig = v.call_ltp_chg > 0 ? 'SHORT COVERING' : 'LONG UNWINDING';
+
+        let peSig = 'STABLE';
+        if (v.put_oi_chg > 2000) peSig = v.put_ltp_chg > 0 ? 'LONG BUILDUP' : 'SHORT BUILDUP';
+        else if (v.put_oi_chg < -2000) peSig = v.put_ltp_chg > 0 ? 'SHORT COVERING' : 'LONG UNWINDING';
         
         fHtml += `<tr class="${k === atm ? 'ar' : ''}">
             <td class="td-s" style="color:${k === atm ? 'var(--atm)' : ''}">${k}</td>

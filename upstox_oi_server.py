@@ -123,7 +123,6 @@ def generate_5min_summary(idx, data, atm_strikes, atm):
     net_flow_l = intel.get("cumulative_net_flow_l", 0)
     flow_bias = "🟢 BULLISH" if net_flow_l > 0 else "🔴 BEARISH" if net_flow_l < 0 else "⚪ NEUTRAL"
     
-    # FIX: Robust ATM lookup regardless of float/string dict format
     atm_float = float(atm)
     atm_v = {}
     for k, v in atm_strikes.items():
@@ -167,7 +166,6 @@ def generate_5min_summary(idx, data, atm_strikes, atm):
     for s in sorted(strikes_to_show, reverse=True):
         if abs(s - atm) > 2 * INDICES[idx]["step"]: continue
         
-        # Robust lookup
         v = {}
         for k_str, val in atm_strikes.items():
             if abs(float(k_str) - s) < 0.1:
@@ -346,9 +344,6 @@ def fetch_chain(idx, expiry):
         return r.json().get("data", []) if r.status_code == 200 else []
     except: return []
 
-# ══════════════════════════════════════════════════
-#  MATH & PROCESSORS
-# ══════════════════════════════════════════════════
 def compute_max_pain(chain):
     strikes = sorted(chain.keys())
     if not strikes: return 0
@@ -360,7 +355,6 @@ def compute_max_pain(chain):
 
 def get_vwap(candles):
     if not candles: return None
-    # Use the date from the last candle fetched to avoid timezone mismatches
     last_date = candles[-1]["time"][:10]
     cum_vol = cum_pv = 0
     for c in candles:
@@ -487,7 +481,8 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
             d_str = times[i][:10]
             t_str = times[i][11:16]
             c_time = f"{d_str[8:10]}-{d_str[5:7]} {t_str}" 
-        except: c_time = "-"
+        except: 
+            c_time = "-"
 
         curr_bull = e7 > e15
         
@@ -614,6 +609,7 @@ def process_chain(idx, raw):
         ce_gk, pe_gk = ce.get("option_greeks",{}), pe.get("option_greeks",{})
         
         call_oi, put_oi = float(ce_md.get("oi",0) or 0), float(pe_md.get("oi",0) or 0)
+        call_vol, put_vol = float(ce_md.get("volume",0) or 0), float(pe_md.get("volume",0) or 0)
         
         prev = store["prev_oi"].get(str(strike), {}) if store["prev_oi"] else {}
         base = store["baseline_oi"].get(str(strike), {}) if store["baseline_oi"] else {}
@@ -638,6 +634,7 @@ def process_chain(idx, raw):
         result[strike] = {
             "strike": strike,
             "call_oi": call_oi, "call_oi_chg": round(c_oi_5m, 2), "call_oi_chg_day": round(c_oi_d, 2),
+            "call_vol": call_vol, "put_vol": put_vol,
             "call_vol_oi": round(float(ce_md.get("volume",0) or 0)/call_oi,2) if call_oi else 0,
             "call_iv": round(float(ce_gk.get("iv",0) or 0)*100,2), 
             "call_ltp": call_ltp, "call_ltp_chg": round(c_ltp_5m, 2), "call_ltp_chg_day": round(c_ltp_d, 2),
@@ -659,34 +656,23 @@ def process_chain(idx, raw):
     return result
 
 def classify_strike_oi_flow(v, prev_spot, spot):
-    pup, pdn = spot > prev_spot + 5 if prev_spot else False, spot < prev_spot - 5 if prev_spot else False
     c_c, cl, c_o = v.get("call_oi_chg", 0), v.get("call_ltp_chg", 0), v.get("call_oi", 0)
     p_c, pl, p_o = v.get("put_oi_chg", 0), v.get("put_ltp_chg", 0), v.get("put_oi", 0)
     
-    THRESH = 25000 
-    
-    if pup and c_c > THRESH and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
-    elif pup and c_c < -THRESH and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
-    elif pdn and c_c > THRESH and cl < 0: cf = ("FRESH CALL WRITING", "BEARISH", "🔴")
-    elif pdn and c_c < -THRESH: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
-    elif c_c > 200000: cf = ("HEAVY CALL ADDITION", "WATCH", "🔴")
-    elif c_c < -200000: cf = ("HEAVY CALL EXIT", "BULLISH", "✅")
+    if c_c > 2000 and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
+    elif c_c < -2000 and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
+    elif c_c > 2000 and cl <= 0: cf = ("SHORT BUILDUP", "BEARISH", "🔴")
+    elif c_c < -2000 and cl <= 0: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
     else: cf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
 
-    if pdn and p_c > THRESH and pl > 0: pf = ("LONG BUILDUP", "BEARISH", "🔴")
-    elif pdn and p_c < -THRESH and pl > 0: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
-    elif pup and p_c > THRESH and pl < 0: pf = ("FRESH PUT WRITING", "BULLISH", "✅")
-    elif pup and p_c < -THRESH: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
-    elif p_c > 200000: pf = ("HEAVY PUT ADDITION", "WATCH", "✅")
-    elif p_c < -200000: pf = ("HEAVY PUT EXIT", "BEARISH", "🔴")
+    if p_c > 2000 and pl > 0: pf = ("LONG BUILDUP", "BEARISH", "🔴")
+    elif p_c < -2000 and pl > 0: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
+    elif p_c > 2000 and pl <= 0: pf = ("SHORT BUILDUP", "BULLISH", "✅")
+    elif p_c < -2000 and pl <= 0: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
     else: pf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
 
     total_chg = c_c + p_c
-    if c_c > THRESH and p_c < -THRESH: net_note = "🔄 OI SHIFT: Money moving to CALL side."
-    elif p_c > THRESH and c_c < -THRESH: net_note = "🔄 OI SHIFT: Money moving to PUT side."
-    elif c_c > THRESH and p_c > THRESH: net_note = "💥 BOTH SIDES ADDING OI: High uncertainty."
-    elif c_c < -THRESH and p_c < -THRESH: net_note = "🌀 BOTH SIDES EXITING: Position squareoff."
-    else: net_note = "— No significant OI flow this cycle."
+    net_note = "— No significant OI flow this cycle."
 
     return (
         {"condition": cf[0], "signal": cf[1], "emoji": cf[2], "oi_chg_l": round(c_c/100000,2), "oi_total_l": round(c_o/100000,2)},
