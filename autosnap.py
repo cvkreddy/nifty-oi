@@ -4,25 +4,19 @@ import requests
 from playwright.sync_api import sync_playwright
 from apscheduler.schedulers.background import BackgroundScheduler
 
-# 🚨 PUT YOUR SCREENSHOT BOT DETAILS HERE 🚨
+# 🚨 SCREENSHOT BOT CREDENTIALS 🚨
 SNAP_BOT_TOKEN = "8605909436:AAHDDLQnVEEzs2pj1fxOxNRllcpHSCwYUos"
 SNAP_CHAT_ID   = "1592988014"
 
-# Hit the public internet URL so Render networking doesn't block it
 URL = "https://nifty-oi.onrender.com"
 
 def send_to_telegram(image_path, index_name):
-    if SNAP_BOT_TOKEN == "YOUR_SECOND_BOT_TOKEN_HERE":
-        print("⚠️ Screenshot Bot Token not set. Saving locally only.")
-        return
-        
     url = f"https://api.telegram.org/bot{SNAP_BOT_TOKEN}/sendPhoto"
     try:
         with open(image_path, "rb") as image_file:
             files = {"photo": image_file}
             data = {"chat_id": SNAP_CHAT_ID, "caption": f"📸 {index_name} Full Dashboard Snapshot"}
             response = requests.post(url, data=data, files=files)
-            
             if response.status_code == 200:
                 print(f"✈️ Successfully sent {index_name} screenshot to Telegram!")
             else:
@@ -33,27 +27,19 @@ def send_to_telegram(image_path, index_name):
 def take_screenshots():
     print("📸 [AutoSnap] Waking up headless browser...")
     os.makedirs("static/screenshots", exist_ok=True)
-    
-    # Force Playwright to ensure the browser exists on the Render server
     os.system("playwright install chromium")
     
     try:
         with sync_playwright() as p:
-            # Use args to bypass Render memory limits
             browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-dev-shm-usage'])
             page = browser.new_page(viewport={"width": 1920, "height": 1080})
             
-                      
             print(f"📸 [AutoSnap] Loading {URL}...")
             page.goto(URL, wait_until="networkidle")
             
-            # 🔥 CRITICAL FIX: Force the bot to wait until the "INITIALIZING" state disappears
-            page.wait_for_function("!document.body.innerText.includes('Waiting for second data cycle')", timeout=90000)
-            time.sleep(3) # Give heatmaps 3 seconds to fully paint
-
-            # Wait for the dashboard to successfully pull data
+            # Wait for data to load, skip the cycle count check completely
             page.wait_for_function("document.getElementById('state-val').innerText !== '—'", timeout=45000)
-            time.sleep(3) # Give heatmaps 3 seconds to fully paint
+            time.sleep(3.5) # Give heatmaps time to fully paint
             
             timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
             

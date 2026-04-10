@@ -15,7 +15,6 @@ import requests
 app = Flask(__name__)
 CORS(app)
 
-# Start the background screenshot engine
 start_auto_snapper()
 
 @app.after_request
@@ -29,15 +28,14 @@ API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
-# 🚨 TELEGRAM CREDENTIALS 🚨
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4")
-TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID", "7851805837")
+# 🚨 TEXT SUMMARY BOT CREDENTIALS 🚨
+TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
+TELEGRAM_CHAT_ID   = "7851805837"     
 
-CACHE_TTL    = 150  
+CACHE_TTL    = 60  # Fast 60s refresh for live pricing
 ATM_RANGE    = 5
 TOKEN_FILE   = "token_data.json"
 DATA_FILE    = "data_cache.json"  
-STATE_FILE   = "server_state.json" 
 
 token_store  = {"access_token": None}
 debug_status = {"last_error": "Initializing Triple Engine..."}
@@ -48,69 +46,18 @@ INDICES = {
     "SENSEX": {"key": "BSE_INDEX|SENSEX", "step": 100}
 }
 
+# The new Rolling History Buffer architecture
 STORE = {idx: {
     "baseline_oi": {}, "baseline_vix": None, "baseline_rsi": {},
-    "prev_oi": {}, "prev_pcr": None, "prev_spot": None,
+    "history": [], # Stores 15 mins of exact snapshots
     "ltp_history": {}, "sent_alerts": {}, "last_summary": 0
 } for idx in INDICES}
 
 oi_cache = {idx: {"data": None} for idx in INDICES}
 candle_cache_store = {idx: {"1m": [], "3m": [], "15m": []} for idx in INDICES}
 
-def reverse_engineer_baseline(idx):
-    if len(STORE[idx]["baseline_oi"]) > 0: return
-    try:
-        if os.path.exists(DATA_FILE):
-            with open(DATA_FILE, "r") as f:
-                d_all = json.load(f)
-                d = d_all.get(idx, {})
-                if d.get("timestamp") and d["timestamp"].startswith(date.today().isoformat()):
-                    chain = d.get("chain", {})
-                    if chain:
-                        for s, v in chain.items():
-                            b_coi = v["call_oi"] - v.get("call_oi_chg_day", 0)
-                            b_poi = v["put_oi"] - v.get("put_oi_chg_day", 0)
-                            b_cltp = v["call_ltp"] - v.get("call_ltp_chg_day", 0)
-                            b_pltp = v["put_ltp"] - v.get("put_ltp_chg_day", 0)
-                            STORE[idx]["baseline_oi"][str(s)] = {"call_oi": b_coi, "put_oi": b_poi, "call_ltp": b_cltp, "put_ltp": b_pltp}
-    except: pass
-
-def load_server_state():
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r") as f:
-                st = json.load(f)
-                if st.get("date") == date.today().isoformat():
-                    for idx in INDICES:
-                        saved_idx = st.get(idx, {})
-                        STORE[idx]["baseline_oi"] = saved_idx.get("baseline_oi", {})
-                        STORE[idx]["baseline_vix"] = saved_idx.get("baseline_vix")
-                        STORE[idx]["baseline_rsi"] = saved_idx.get("baseline_rsi", {})
-                        STORE[idx]["prev_oi"] = saved_idx.get("prev_oi", {})
-                        STORE[idx]["prev_spot"] = saved_idx.get("prev_spot")
-                        STORE[idx]["prev_pcr"] = saved_idx.get("prev_pcr")
-        except: pass
-    for idx in INDICES: reverse_engineer_baseline(idx)
-
-def save_server_state():
-    try:
-        st = {"date": date.today().isoformat()}
-        for idx in INDICES:
-            st[idx] = {
-                "baseline_oi": STORE[idx]["baseline_oi"],
-                "baseline_vix": STORE[idx]["baseline_vix"],
-                "baseline_rsi": STORE[idx]["baseline_rsi"],
-                "prev_oi": STORE[idx]["prev_oi"],
-                "prev_spot": STORE[idx]["prev_spot"],
-                "prev_pcr": STORE[idx]["prev_pcr"]
-            }
-        with open(STATE_FILE, "w") as f: json.dump(st, f)
-    except: pass
-
-load_server_state()
-
 def send_telegram_alert(message):
-    if not TELEGRAM_BOT_TOKEN or TELEGRAM_BOT_TOKEN == "YOUR_BOT_TOKEN_HERE": return
+    if not TELEGRAM_BOT_TOKEN: return
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
     try: requests.post(url, json=payload, timeout=5)
@@ -164,15 +111,12 @@ def generate_5min_summary(idx, data, atm_strikes, atm):
     strikes_to_show = [float(k) for k in atm_strikes.keys()]
     for s in sorted(strikes_to_show, reverse=True):
         if abs(s - atm) > 2 * INDICES[idx]["step"]: continue
-        
         v = {}
         for k_str, val in atm_strikes.items():
             if abs(float(k_str) - s) < 0.1:
                 v = val
                 break
-
         marker = " ◄ ATM" if abs(s - atm) < 0.1 else ""
-        
         c_ltp, c_ltp_5m, c_ltp_d = v.get("call_ltp", 0), v.get("call_ltp_chg", 0), v.get("call_ltp_chg_day", 0)
         c_oi_5m, c_oi_d = v.get("call_oi_chg", 0)/100000, v.get("call_oi_chg_day", 0)/100000
         c_cond = get_short_cond(v.get("call_flow", {}))
@@ -196,11 +140,10 @@ def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
     current_time = time.time()
     store = STORE[idx]
     
-    # 🔥 FIX: Send immediate summary upon server boot so user knows bot works!
     if store["last_summary"] == 0: 
         store["last_summary"] = current_time
         summary = generate_5min_summary(idx, data, atm_strikes, atm)
-        send_telegram_alert(f"🚀 <b>SERVER INITIALIZED ({idx})</b>\n\n{summary}")
+        send_telegram_alert(f"🚀 <b>SERVER LIVE ({idx})</b>\n\n{summary}")
         return
         
     try:
@@ -260,15 +203,11 @@ def fetch_spot(idx):
     except: return 0
 
 def fetch_futures(spot, idx):
-    from datetime import date
     now = date.today(); months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
     prefix = "NIFTY" if idx == "NIFTY" else "BANKNIFTY" if idx == "BANKNIFTY" else "SENSEX"
     for delta in [0, 1]:
         m = (now.month - 1 + delta) % 12; y = str(now.year)[2:] if now.month + delta <= 12 else str(now.year + 1)[2:]
-        if idx == "SENSEX":
-            sym = f"BSE_FO|{prefix}{y}{months[m]}FUT" 
-        else:
-            sym = f"NSE_FO|{prefix}{y}{months[m]}FUT"
+        sym = f"BSE_FO|{prefix}{y}{months[m]}FUT" if idx == "SENSEX" else f"NSE_FO|{prefix}{y}{months[m]}FUT"
         try:
             r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": sym}, headers=hdrs(), timeout=5)
             if r.status_code == 200 and r.json().get("data"):
@@ -293,25 +232,18 @@ def fetch_base_1m_candles(idx):
         to_date = date.today().strftime("%Y-%m-%d"); from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
         url_hist = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_date}/{from_date}"
         r_hist = requests.get(url_hist, headers=hdrs(), timeout=10)
-        
         url_intra = f"https://api.upstox.com/v2/historical-candle/intraday/{safe_key}/1minute"
         r_intra = requests.get(url_intra, headers=hdrs(), timeout=10)
-        
         candles = []
         if r_hist.status_code == 200: candles += r_hist.json().get("data", {}).get("candles", [])
         if r_intra.status_code == 200: candles += r_intra.json().get("data", {}).get("candles", [])
-            
         unique = {}
         for c in candles:
-            if len(c) >= 5:
-                unique[c[0]] = {"time": c[0], "open": float(c[1]), "high": float(c[2]), "low": float(c[3]), "close": float(c[4]), "vol": float(c[5]) if len(c)>5 else 0}
-                
+            if len(c) >= 5: unique[c[0]] = {"time": c[0], "open": float(c[1]), "high": float(c[2]), "low": float(c[3]), "close": float(c[4]), "vol": float(c[5]) if len(c)>5 else 0}
         res = list(unique.values())
         res.sort(key=lambda x: x["time"])
         return res
-    except Exception as e:
-        print("Candle error:", e)
-    return []
+    except Exception as e: return []
 
 def resample_candles(candles_1m, tf):
     if not candles_1m: return []
@@ -468,7 +400,6 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
     if not candles or len(candles) < 15: 
         return {"label": label, "candle_count": len(candles) if candles else 0, "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-"}
     
-    store = STORE[idx]
     vwap = get_vwap(candles)
     closes = [c["close"] for c in candles]
     times = [c["time"] for c in candles]
@@ -493,7 +424,6 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
         except: c_time = "-"
 
         curr_bull = e7 > e15
-        
         if is_bull is None:
             is_bull = curr_bull
             trend_start = c_time
@@ -540,9 +470,9 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
     curr_rsi = round(rsis[-1], 2) if rsis and rsis[-1] is not None else 0
     prev_rsi = round(rsis[-2], 2) if rsis and len(rsis) > 1 and rsis[-2] is not None else curr_rsi
     
-    base_r = store["baseline_rsi"].get(label)
+    base_r = STORE[idx]["baseline_rsi"].get(label)
     if not base_r and curr_rsi > 0:
-        store["baseline_rsi"][label] = curr_rsi
+        STORE[idx]["baseline_rsi"][label] = curr_rsi
         base_r = curr_rsi
         
     rsi_5m_chg = round(curr_rsi - prev_rsi, 2) if curr_rsi else 0
@@ -561,9 +491,8 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
     }
 
 def price_oi_matrix(spot, prev_spot, chain, atm, idx):
-    store = STORE[idx]
     step = INDICES[idx]["step"]
-    if prev_spot is None or len(store["prev_oi"])==0: return "INITIALIZING","—","Waiting for second data cycle"
+    if prev_spot is None: return "INITIALIZING","—","Waiting for second data cycle"
     price_up, price_dn = spot > prev_spot, spot < prev_spot
     total_oi_chg = sum(v["call_oi_chg"]+v["put_oi_chg"] for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*step)
     if price_up and total_oi_chg > 0: return "FRESH LONG BUILD","BULLISH","New buyers entering — strong upward momentum. Hold longs."
@@ -596,7 +525,6 @@ def market_state(pcr, adx, oi_matrix_signal, alerts, vix):
 def analyze_vix_price(spot, baseline_trend_val, vix, base_vix):
     if not baseline_trend_val or not base_vix or base_vix == 0: 
         return {"signal": "WAITING", "desc": "Need more data for baseline comparison"}
-    
     price_up = spot > baseline_trend_val
     vix_up = vix > base_vix
     
@@ -606,11 +534,25 @@ def analyze_vix_price(spot, baseline_trend_val, vix, base_vix):
     elif not price_up and not vix_up: return {"signal": "WEAK BEARISH", "desc": "Price ↓ + VIX ↓ | Normal correction = Support might hold."}
     return {"signal": "NEUTRAL", "desc": "Market flat"}
 
-def process_chain(idx, raw):
+def process_chain(idx, raw, spot):
     store = STORE[idx]
-    result={}
+    history = store.setdefault("history", [])
+    now = time.time()
+    
+    # 🎯 ROLLING 5-MINUTE FIX: Find the snapshot closest to 5 minutes ago!
+    target_ts = now - 300
+    prev_record = None
+    if history:
+        prev_record = min(history, key=lambda x: abs(x["ts"] - target_ts))
+        if now - history[0]["ts"] < 240:  # If server just started, use the oldest available
+            prev_record = history[0]
+
+    prev_chain = prev_record["chain"] if prev_record else {}
+    base_chain = store["baseline_oi"]
+
+    result = {}
     for item in raw:
-        strike=float(item.get("strike_price",0))
+        strike = float(item.get("strike_price",0))
         if not strike: continue
         ce, pe = item.get("call_options",{}), item.get("put_options",{})
         ce_md, pe_md = ce.get("market_data",{}), pe.get("market_data",{})
@@ -618,28 +560,26 @@ def process_chain(idx, raw):
         
         call_oi, put_oi = float(ce_md.get("oi",0) or 0), float(pe_md.get("oi",0) or 0)
         call_vol, put_vol = float(ce_md.get("volume",0) or 0), float(pe_md.get("volume",0) or 0)
+        call_ltp, put_ltp = float(ce_md.get("ltp",0) or ce_md.get("last_price",0) or 0), float(pe_md.get("ltp",0) or pe_md.get("last_price",0) or 0)
         
-        prev = store["prev_oi"].get(str(strike), {}) if store["prev_oi"] else {}
-        base = store["baseline_oi"].get(str(strike), {}) if store["baseline_oi"] else {}
+        prev_v = prev_chain.get(str(strike), {})
+        base_v = base_chain.get(str(strike), {})
 
-        c_oi_5m = call_oi - prev["call_oi"] if "call_oi" in prev else 0
-        p_oi_5m = put_oi - prev["put_oi"] if "put_oi" in prev else 0
+        # 🔥 Accurate 5-minute velocity calculations!
+        c_oi_5m = call_oi - prev_v.get("call_oi", call_oi)
+        p_oi_5m = put_oi - prev_v.get("put_oi", put_oi)
         
-        c_oi_d = call_oi - base["call_oi"] if "call_oi" in base else 0
-        p_oi_d = put_oi - base["put_oi"] if "put_oi" in base else 0
+        c_oi_d = call_oi - base_v.get("call_oi", call_oi)
+        p_oi_d = put_oi - base_v.get("put_oi", put_oi)
         
-        call_ltp = float(ce_md.get("ltp",0) or ce_md.get("last_price",0) or 0)
-        put_ltp = float(pe_md.get("ltp",0) or pe_md.get("last_price",0) or 0)
-        
-        c_ltp_5m = call_ltp - prev["call_ltp"] if "call_ltp" in prev else 0
-        p_ltp_5m = put_ltp - prev["put_ltp"] if "put_ltp" in prev else 0
+        c_ltp_5m = call_ltp - prev_v.get("call_ltp", call_ltp)
+        p_ltp_5m = put_ltp - prev_v.get("put_ltp", put_ltp)
 
         c_prev_close = ce_md.get("previous_close") or ce_md.get("close_price")
         p_prev_close = pe_md.get("previous_close") or pe_md.get("close_price")
-        c_ltp_d = call_ltp - c_prev_close if c_prev_close else (call_ltp - base["call_ltp"] if "call_ltp" in base else 0)
-        p_ltp_d = put_ltp - p_prev_close if p_prev_close else (put_ltp - base["put_ltp"] if "put_ltp" in base else 0)
+        c_ltp_d = call_ltp - c_prev_close if c_prev_close else (call_ltp - base_v.get("call_ltp", call_ltp))
+        p_ltp_d = put_ltp - p_prev_close if p_prev_close else (put_ltp - base_v.get("put_ltp", put_ltp))
 
-        # 🔥 FIX: Explicitly loading call_vol and put_vol into the output dictionary for Javascript!
         result[strike] = {
             "strike": strike,
             "call_oi": call_oi, "call_oi_chg": round(c_oi_5m, 2), "call_oi_chg_day": round(c_oi_d, 2),
@@ -665,33 +605,28 @@ def process_chain(idx, raw):
     return result
 
 def classify_strike_oi_flow(v, prev_spot, spot):
-    pup, pdn = spot > prev_spot + 5 if prev_spot else False, spot < prev_spot - 5 if prev_spot else False
     c_c, cl, c_o = v.get("call_oi_chg", 0), v.get("call_ltp_chg", 0), v.get("call_oi", 0)
     p_c, pl, p_o = v.get("put_oi_chg", 0), v.get("put_ltp_chg", 0), v.get("put_oi", 0)
     
-    THRESH = 25000 
+    THRESH = 2000 
     
-    if pup and c_c > THRESH and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
-    elif pup and c_c < -THRESH and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
-    elif pdn and c_c > THRESH and cl < 0: cf = ("FRESH CALL WRITING", "BEARISH", "🔴")
-    elif pdn and c_c < -THRESH: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
-    elif c_c > 200000: cf = ("HEAVY CALL ADDITION", "WATCH", "🔴")
-    elif c_c < -200000: cf = ("HEAVY CALL EXIT", "BULLISH", "✅")
+    if c_c > THRESH and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
+    elif c_c < -THRESH and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
+    elif c_c > THRESH and cl <= 0: cf = ("SHORT BUILDUP", "BEARISH", "🔴")
+    elif c_c < -THRESH and cl <= 0: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
     else: cf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
 
-    if pdn and p_c > THRESH and pl > 0: pf = ("LONG BUILDUP", "BEARISH", "🔴")
-    elif pdn and p_c < -THRESH and pl > 0: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
-    elif pup and p_c > THRESH and pl < 0: pf = ("FRESH PUT WRITING", "BULLISH", "✅")
-    elif pup and p_c < -THRESH: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
-    elif p_c > 200000: pf = ("HEAVY PUT ADDITION", "WATCH", "✅")
-    elif p_c < -200000: pf = ("HEAVY PUT EXIT", "BEARISH", "🔴")
+    if p_c > THRESH and pl > 0: pf = ("LONG BUILDUP", "BEARISH", "🔴")
+    elif p_c < -THRESH and pl > 0: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
+    elif p_c > THRESH and pl <= 0: pf = ("SHORT BUILDUP", "BULLISH", "✅")
+    elif p_c < -THRESH and pl <= 0: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
     else: pf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
 
     total_chg = c_c + p_c
-    if c_c > THRESH and p_c < -THRESH: net_note = "🔄 OI SHIFT: Money moving to CALL side."
-    elif p_c > THRESH and c_c < -THRESH: net_note = "🔄 OI SHIFT: Money moving to PUT side."
-    elif c_c > THRESH and p_c > THRESH: net_note = "💥 BOTH SIDES ADDING OI: High uncertainty."
-    elif c_c < -THRESH and p_c < -THRESH: net_note = "🌀 BOTH SIDES EXITING: Position squareoff."
+    if c_c > 25000 and p_c < -25000: net_note = "🔄 OI SHIFT: Money moving to CALL side."
+    elif p_c > 25000 and c_c < -25000: net_note = "🔄 OI SHIFT: Money moving to PUT side."
+    elif c_c > 25000 and p_c > 25000: net_note = "💥 BOTH SIDES ADDING OI: High uncertainty."
+    elif c_c < -25000 and p_c < -25000: net_note = "🌀 BOTH SIDES EXITING: Position squareoff."
     else: net_note = "— No significant OI flow this cycle."
 
     return (
@@ -778,7 +713,7 @@ def refresh(idx):
             return
 
         atm   = round(round(spot/step)*step, 2)
-        chain = process_chain(idx, raw)
+        chain = process_chain(idx, raw, spot)
         if not chain: return
 
         max_pain = compute_max_pain(chain)
@@ -787,9 +722,11 @@ def refresh(idx):
         total_call  = sum(v["call_oi"] for v in chain.values())
         total_put   = sum(v["put_oi"]  for v in chain.values())
         pcr         = round(total_put/total_call,2) if total_call else 0
-        pcr_chg     = round(pcr-store["prev_pcr"],3) if store["prev_pcr"] is not None else 0
-        futures     = fetch_futures(spot, idx)
-        vix         = fetch_vix()
+        
+        prev_pcr = store["history"][-1]["pcr"] if store["history"] else pcr
+        pcr_chg  = round(pcr - prev_pcr, 3)
+        futures  = fetch_futures(spot, idx)
+        vix      = fetch_vix()
         
         if store["baseline_vix"] is None and vix > 0: store["baseline_vix"] = vix
 
@@ -822,11 +759,12 @@ def refresh(idx):
             if 0 < dist <= (step*3) and v["call_oi_chg"] < 0 and abs(v["call_oi_chg"]) > v["call_oi"]*0.05: alerts.append({"type":"BREAKOUT UP","icon":"⚡","message":f"Res OI dropping"})
             if -(step*3) <= dist < 0 and v["put_oi_chg"] < 0 and abs(v["put_oi_chg"]) > v["put_oi"]*0.05: alerts.append({"type":"BREAKOUT DOWN","icon":"⚡","message":f"Sup OI dropping"})
 
-        oi_cond, oi_signal, oi_desc = price_oi_matrix(spot, store["prev_spot"], chain, atm, idx)
+        prev_spot = store["history"][-1]["spot"] if store["history"] else spot
+        oi_cond, oi_signal, oi_desc = price_oi_matrix(spot, prev_spot, chain, atm, idx)
 
         for s_str, v in atm_strikes.items():
             s = float(s_str)
-            cf, pf, nf = classify_strike_oi_flow(v, store["prev_spot"], spot)
+            cf, pf, nf = classify_strike_oi_flow(v, prev_spot, spot)
             v["call_flow"], v["put_flow"], v["net_flow"] = cf, pf, nf
             
             if s not in store["ltp_history"]: store["ltp_history"][s] = {"call": [], "put": []}
@@ -842,7 +780,6 @@ def refresh(idx):
             v["put_ema"] = v["ltp_technicals"]["put"].get("ema7", 0) or 0
 
         ind_data = get_indicators(candle_cache_store[idx]["5m"])
-        
         ind_data["tech"] = {
             "3m": compute_tf_signals(idx, candle_cache_store[idx]["3m"], "3min", 1, 1.0),
             "5m": compute_tf_signals(idx, candle_cache_store[idx]["5m"], "5min", 1, 1.0),
@@ -924,6 +861,11 @@ def refresh(idx):
 
         oi_cache[idx]["data"] = data
         
+        # 🔥 Store snapshot into rolling history buffer
+        chain_snapshot = {str(s): {"call_oi": v["call_oi"], "put_oi": v["put_oi"], "call_ltp": v["call_ltp"], "put_ltp": v["put_ltp"]} for s,v in chain.items()}
+        store["history"].append({"ts": time.time(), "chain": chain_snapshot, "spot": spot, "pcr": pcr})
+        store["history"] = [x for x in store["history"] if time.time() - x["ts"] <= 900] # Keep 15 mins max
+        
         try:
             full_cache = {}
             if os.path.exists(DATA_FILE):
@@ -931,10 +873,6 @@ def refresh(idx):
             full_cache[idx] = data
             with open(DATA_FILE, "w") as f: json.dump(full_cache, f)
         except: pass
-
-        store["prev_oi"]   = {str(s):{"call_oi":v["call_oi"],"put_oi":v["put_oi"],"call_ltp":v["call_ltp"],"put_ltp":v["put_ltp"]} for s,v in chain.items()}
-        store["prev_pcr"]  = pcr
-        store["prev_spot"] = spot
         
         save_server_state()
         debug_status["last_error"] = f"[{idx}] Data fetched successfully."
@@ -966,62 +904,31 @@ def dashboard(): return send_file("dashboard.html")
 
 @app.route('/gallery')
 def gallery():
-    """Generates a beautiful dark-mode gallery of all saved screenshots"""
     os.makedirs("static/screenshots", exist_ok=True)
-    
     files = glob.glob("static/screenshots/*.png")
     files.sort(key=os.path.getmtime, reverse=True)
-    
-    html = """
-    <html><head><title>OI Snap Gallery</title>
-    <style>
-        body { background: #07090c; color: #c9d1d9; font-family: sans-serif; text-align: center; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; padding: 20px; }
-        .card { background: #0f1319; border: 1px solid #212836; border-radius: 10px; padding: 10px; }
-        img { width: 100%; border-radius: 5px; cursor: pointer; transition: 0.2s; }
-        img:hover { transform: scale(1.02); box-shadow: 0 0 15px rgba(0, 184, 255, 0.4); }
-        a { color: #00b8ff; text-decoration: none; font-weight: bold; }
-    </style></head><body>
-    <h1>📸 Automated Screenshot Gallery</h1>
-    <p><a href="/">← Back to Live Dashboard</a></p>
-    <div class="grid">
-    """
-    
-    if not files:
-        html += "<h3>No screenshots taken yet. Waiting for the first 5-minute cycle...</h3>"
-        
+    html = """<html><head><title>OI Snap Gallery</title><style>body { background: #07090c; color: #c9d1d9; font-family: sans-serif; text-align: center; }.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; padding: 20px; }.card { background: #0f1319; border: 1px solid #212836; border-radius: 10px; padding: 10px; }img { width: 100%; border-radius: 5px; cursor: pointer; transition: 0.2s; }img:hover { transform: scale(1.02); box-shadow: 0 0 15px rgba(0, 184, 255, 0.4); }a { color: #00b8ff; text-decoration: none; font-weight: bold; }</style></head><body><h1>📸 Automated Screenshot Gallery</h1><p><a href="/">← Back to Live Dashboard</a></p><div class="grid">"""
+    if not files: html += "<h3>No screenshots taken yet. Waiting for the first 5-minute cycle...</h3>"
     for f in files:
         filename = os.path.basename(f)
-        html += f'''
-        <div class="card">
-            <h4 style="margin-top:5px; color:#8b949e">{filename}</h4>
-            <a href="/static/screenshots/{filename}" target="_blank">
-                <img src="/static/screenshots/{filename}" loading="lazy">
-            </a>
-        </div>'''
-        
+        html += f'''<div class="card"><h4 style="margin-top:5px; color:#8b949e">{filename}</h4><a href="/static/screenshots/{filename}" target="_blank"><img src="/static/screenshots/{filename}" loading="lazy"></a></div>'''
     html += "</div></body></html>"
     return html
 
 @app.route('/static/screenshots/<filename>')
-def serve_screenshot(filename):
-    """Serves the actual image files to the browser"""
-    return send_from_directory('static/screenshots', filename)
+def serve_screenshot(filename): return send_from_directory('static/screenshots', filename)
 
 @app.route("/oi/json")
 def oi_json():
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
-    
     d = oi_cache[idx].get("data")
     if not d and os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r") as f:
-                d_all = json.load(f)
-                d = d_all.get(idx)
+                d = json.load(f).get(idx)
                 if d: oi_cache[idx]["data"] = d
         except: pass
-        
     if not d: 
         diag_msg = debug_status.get('last_error', 'Unknown Error')
         return jsonify({"error": f"Data Empty for {idx}. [Diagnostic: {diag_msg}] — Click login."})
@@ -1031,15 +938,11 @@ def oi_json():
 def histogram():
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
-    
     d = oi_cache[idx].get("data")
     if not d and os.path.exists(DATA_FILE):
         try:
-            with open(DATA_FILE, "r") as f:
-                d_all = json.load(f)
-                d = d_all.get(idx)
+            with open(DATA_FILE, "r") as f: d = json.load(f).get(idx)
         except: pass
-    
     if not d or not d.get("chain"): return jsonify([])
     chain = d["chain"]
     atm = d["atm"]

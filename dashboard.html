@@ -39,7 +39,7 @@
   <div class="tab" id="tab-SENSEX" onclick="switchTab('SENSEX')">SENSEX</div></div><div id="err">⚠ Error fetching data</div><div class="verdict-banner" id="verdict-banner">
   <div class="vb-icon" id="vb-icon">⏳</div>
   <div class="vb-main" id="vb-main">Connecting to server...</div>
-  <div class="vb-detail" id="vb-detail">Waiting for first data cycle</div>
+  <div class="vb-detail" id="vb-detail">Fetching intelligence...</div>
   <div class="vb-time" id="vb-time">—</div></div><div class="state-bar" id="state-bar">
   <div class="state-icon" id="state-icon">⏳</div>
   <div>
@@ -209,7 +209,7 @@
             <th style="text-align:center;color:var(--bull)">PE EMA</th>
           </tr>
         </thead>
-        <tbody id="flow-tbody"><tr><td colspan="10" class="loading">Waiting for 2nd data cycle...</td></tr></tbody>
+        <tbody id="flow-tbody"><tr><td colspan="10" class="loading">Loading live flow...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -219,7 +219,7 @@
       <span class="ct info">🔄 OI MIGRATION TRACKER</span>
       <span class="cs" id="mig-time">OI exiting one strike → entering another</span>
     </div>
-    <div id="mig-body"><div class="loading">Waiting for 2nd cycle...</div></div>
+    <div id="mig-body"><div class="loading">Tracking migrations...</div></div>
     <div class="pin-box" id="pin-box">
       <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;margin-bottom:6px;font-family:var(--ui);font-weight:700">⏰ EXPIRY PIN RISK</div>
       <div class="pin-inner" id="pin-inner">
@@ -272,7 +272,6 @@
 </div>
 
 <script>
-/* 🔥 GLOBAL STATE & ISOLATED MEMORY */
 let currentIdx = 'NIFTY';
 let targetTime = Date.now() + 300000;
 let snapCount = 0;
@@ -283,22 +282,21 @@ let memory = {
     'SENSEX': { pcrHistory: [], prevOIChg: {}, cycleCount: 0 }
 };
 
-/* 🔥 CRASH-PROOF DOM WRAPPERS */
 function g(id) { return document.getElementById(id); }
 function sStyle(id, prop, val) { const el = g(id); if (el && el.style) { el.style[prop] = val; } }
 function sText(id, text) { const el = g(id); if (el) { el.textContent = text; } }
 function sHTML(id, html) { const el = g(id); if (el) { el.innerHTML = html; } }
 function styl(id, t, c) { const el = g(id); if (el) { el.textContent = t; el.style.color = c; } }
 
-/* NUMBER FORMATTERS (No + sign for absolute OI) */
 function fc(n) {
     if (n === undefined || n === null) return '0';
     const a = Math.abs(n);
-    const sign = n >= 0 ? '+' : '−';
+    const sign = n > 0 ? '+' : n < 0 ? '−' : '';
     if (a >= 100000) return sign + (a / 100000).toFixed(2) + 'L';
     if (a >= 1000) return sign + (a / 1000).toFixed(1) + 'K';
     return sign + Math.round(a);
 }
+
 function fcAbs(n) {
     if (n === undefined || n === null) return '0';
     const a = Math.abs(n);
@@ -306,6 +304,7 @@ function fcAbs(n) {
     if (a >= 1000) return (a / 1000).toFixed(1) + 'K';
     return Math.round(a).toString();
 }
+
 function fmt(n) {
     return n ? Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
 }
@@ -348,16 +347,6 @@ function saveScreenshot(auto) {
     takeScreenshotPromise(auto);
 }
 
-/* 🔥 PAGE VISIBILITY HOOK */
-document.addEventListener("visibilitychange", () => {
-    if (document.hidden) {
-        document.title = "⏸️ PAUSED - Keep Window Open!";
-    } else {
-        document.title = "Pro OI Terminal — Multi-Asset";
-    }
-});
-
-/* 🔥 THE NEW AUTO-SNAP ALL FEATURE */
 async function runAutoSnapCycle() {
     if (isSnapping) return;
     isSnapping = true;
@@ -412,7 +401,7 @@ function msColor(ms) {
 function velArrow(strike, isCall, currentChg) {
     const mem = memory[currentIdx];
     const prev = mem.prevOIChg[strike];
-    if (!prev || mem.cycleCount < 2) return '<span class="vel-flat vel-arrow">•</span>';
+    if (!prev) return '<span class="vel-flat vel-arrow">•</span>';
     const prevChg = isCall ? prev.call_chg : prev.put_chg;
     if (Math.abs(currentChg) < 50000) return '<span class="vel-flat vel-arrow">–</span>';
     const ratio = prevChg !== 0 ? currentChg / Math.abs(prevChg) : currentChg > 0 ? 2 : -2;
@@ -538,7 +527,7 @@ function render(d, hist) {
 
     const ms = intel.market_state || '—';
     const msCol = msColor(ms);
-    let icon = '⏳', main = ms, details = 'Waiting for confirmation...';
+    let icon = '⏳', main = ms, details = 'Tracking market logic...';
     if (ms.includes('UP')) { icon = '📈'; details = 'Support building'; }
     else if (ms.includes('DOWN')) { icon = '📉'; details = 'Resistance building'; }
     else if (ms.includes('BREAK')) { icon = '⚡'; details = 'Breakout Imminent'; }
@@ -588,7 +577,7 @@ function render(d, hist) {
     
     const pcrChgEl = g('m-pcr-chg');
     if (pcrChgEl && pcr_chg !== 0) {
-        pcrChgEl.textContent = (pcr_chg > 0 ? '▲+' : '▼') + pcr_chg.toFixed(3);
+        pcrChgEl.textContent = (pcr_chg > 0 ? '▲+' : '▼') + Math.abs(pcr_chg).toFixed(3);
         pcrChgEl.style.color = pcr_chg > 0 ? 'var(--bull)' : 'var(--bear)';
     }
     sText('m-atm', '₹' + Math.round(atm).toLocaleString('en-IN'));
@@ -607,7 +596,6 @@ function render(d, hist) {
         else { fBar.style.background = 'var(--bear)'; fBar.style.left = (50 - flowPct / 2) + '%'; fBar.style.width = (flowPct / 2) + '%'; fBar.style.boxShadow = '0 0 5px var(--bear)'; }
     }
 
-    /* TUG OF WAR INJECTION */
     const tC = d.total_call_oi || 0;
     const tP = d.total_put_oi || 0;
     const totalOI = tC + tP;
@@ -625,7 +613,6 @@ function render(d, hist) {
         <span style="color:var(--bull);font-weight:700">🟢 ${(tP/10000000).toFixed(2)}CR</span>
     `);
 
-    // Match float ATM precisely
     const atm_float = parseFloat(atm);
     let atmV = {};
     for (let k in d.atm_strikes) {
@@ -697,7 +684,6 @@ function render(d, hist) {
     if (intel.activity) renderActivity(intel.activity);
     if (intel.analysis) renderAnalysis(intel.analysis);
 
-    mem.prevOIChg = {};
     Object.keys(d.chain).forEach(k => {
         mem.prevOIChg[k] = { call_chg: d.chain[k].call_oi_chg, put_chg: d.chain[k].put_oi_chg };
     });
@@ -718,7 +704,6 @@ function renderTech(tech) {
             <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">MACD</span><span>${d.macd || '—'}</span></div>
             <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:6px;"></div>
             <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">Cross</span><span style="font-size:11px">${d.ts_start || '—'}</span></div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">Pullback</span><span style="font-size:11px">${d.ts_pull || '—'}</span></div>
             <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">SuperTrend</span><span style="font-size:11px">${d.ts_st || '—'}</span></div>`;
             sHTML(`tech-${tf}-full`, html);
         }
@@ -734,7 +719,6 @@ function renderChain(chain, atm, spot) {
     let end = Math.min(strikes.length, atmIdx + 6);
     let visible = strikes.slice(start, end);
 
-    /* Calculate maximums for heatmaps */
     let maxC5m = 0, maxP5m = 0, maxCDay = 0, maxPDay = 0;
     visible.forEach(k => {
         let v = chain[k];
@@ -928,7 +912,7 @@ function renderSkew(skew) {
 }
 
 function renderActivity(acts) {
-    if (!acts || !acts.length) { sHTML('activity', '<div class="loading" style="grid-column:1/-1">No activity</div>'); return; }
+    if (!acts || !acts.length) { sHTML('activity', '<div class="loading" style="grid-column:1/-1">No significant activity</div>'); return; }
     let html = acts.map(a => `
         <div class="ac">
             <div class="at2" style="color:${msColor(a.trend)}">${a.strike} ${a.type}</div>
@@ -951,7 +935,6 @@ function renderAnalysis(anls) {
     sHTML('analysis-grid', html || '<div class="loading" style="grid-column:1/-1">Waiting for enough data...</div>');
 }
 
-/* 🔥 INITIALIZATION & TIMERS */
 setInterval(() => {
     if (isSnapping) return;
     const now = Date.now();
