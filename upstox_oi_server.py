@@ -30,8 +30,8 @@ API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
 # 🚨 TELEGRAM CREDENTIALS 🚨
-TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
-TELEGRAM_CHAT_ID   = "7851805837"     
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4")
+TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID", "7851805837")
 
 CACHE_TTL    = 150  
 ATM_RANGE    = 5
@@ -42,14 +42,12 @@ STATE_FILE   = "server_state.json"
 token_store  = {"access_token": None}
 debug_status = {"last_error": "Initializing Triple Engine..."}
 
-# 🔥 TRIPLE ENGINE CONFIGURATION
 INDICES = {
     "NIFTY": {"key": "NSE_INDEX|Nifty 50", "step": 50},
     "BANKNIFTY": {"key": "NSE_INDEX|Nifty Bank", "step": 100},
     "SENSEX": {"key": "BSE_INDEX|SENSEX", "step": 100}
 }
 
-# Isolated Memory Banks per Index
 STORE = {idx: {
     "baseline_oi": {}, "baseline_vix": None, "baseline_rsi": {},
     "prev_oi": {}, "prev_pcr": None, "prev_spot": None,
@@ -59,9 +57,6 @@ STORE = {idx: {
 oi_cache = {idx: {"data": None} for idx in INDICES}
 candle_cache_store = {idx: {"1m": [], "3m": [], "15m": []} for idx in INDICES}
 
-# ══════════════════════════════════════════════════
-#  STATE RECOVERY ENGINE
-# ══════════════════════════════════════════════════
 def reverse_engineer_baseline(idx):
     if len(STORE[idx]["baseline_oi"]) > 0: return
     try:
@@ -114,9 +109,6 @@ def save_server_state():
 
 load_server_state()
 
-# ══════════════════════════════════════════════════
-#  TELEGRAM BOT ENGINE
-# ══════════════════════════════════════════════════
 def send_telegram_alert(message):
     if not TELEGRAM_BOT_TOKEN or TELEGRAM_BOT_TOKEN == "YOUR_BOT_TOKEN_HERE": return
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -131,7 +123,14 @@ def generate_5min_summary(idx, data, atm_strikes, atm):
     net_flow_l = intel.get("cumulative_net_flow_l", 0)
     flow_bias = "🟢 BULLISH" if net_flow_l > 0 else "🔴 BEARISH" if net_flow_l < 0 else "⚪ NEUTRAL"
     
-    atm_v = atm_strikes.get(str(atm), {})
+    # FIX: Robust ATM lookup regardless of float/string dict format
+    atm_float = float(atm)
+    atm_v = {}
+    for k, v in atm_strikes.items():
+        if abs(float(k) - atm_float) < 0.1:
+            atm_v = v
+            break
+
     s_curr = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
     s_decay = intel.get("straddle_decay", 0)
     
@@ -146,8 +145,8 @@ def generate_5min_summary(idx, data, atm_strikes, atm):
         f"🔴 <b>ATM CE:</b> ₹{atm_v.get('call_ltp', 0):.1f} ({atm_v.get('call_ltp_chg_day', 0):+.1f} D | {atm_v.get('call_ltp_chg', 0):+.1f} 5m)\n"
         f"🟢 <b>ATM PE:</b> ₹{atm_v.get('put_ltp', 0):.1f} ({atm_v.get('put_ltp_chg_day', 0):+.1f} D | {atm_v.get('put_ltp_chg', 0):+.1f} 5m)\n"
         f"🌊 <b>Smart Flow:</b> {flow_bias} ({net_flow_l:+.1f}L Net)\n"
-        f"📊 <b>VIX Matrix: {vix_mat.get('signal', 'N/A')}</b>\n"
-        f"↳ <i>{vix_mat.get('desc', 'N/A')}</i>\n"
+        f"📊 <b>VIX Matrix: {vix_mat.get('signal', 'WAITING')}</b>\n"
+        f"↳ <i>{vix_mat.get('desc', 'Need more data for baseline')}</i>\n"
         f"⏱ <b>TIMING (5m):</b> Cross: {t5.get('ts_start','-')} | Pull: {t5.get('ts_pull','-')} | ST: {t5.get('ts_st','-')}\n"
         f"⏱ <b>TIMING (15m):</b> Cross: {t15.get('ts_start','-')} | Pull: {t15.get('ts_pull','-')} | ST: {t15.get('ts_st','-')}\n"
         f"━━━━━━━━━━━━━━━━\n\n"
@@ -167,8 +166,15 @@ def generate_5min_summary(idx, data, atm_strikes, atm):
     strikes_to_show = [float(k) for k in atm_strikes.keys()]
     for s in sorted(strikes_to_show, reverse=True):
         if abs(s - atm) > 2 * INDICES[idx]["step"]: continue
-        v = atm_strikes[str(s)]
-        marker = " ◄ ATM" if s == atm else ""
+        
+        # Robust lookup
+        v = {}
+        for k_str, val in atm_strikes.items():
+            if abs(float(k_str) - s) < 0.1:
+                v = val
+                break
+
+        marker = " ◄ ATM" if abs(s - atm) < 0.1 else ""
         
         c_ltp, c_ltp_5m, c_ltp_d = v.get("call_ltp", 0), v.get("call_ltp_chg", 0), v.get("call_ltp_chg_day", 0)
         c_oi_5m, c_oi_d = v.get("call_oi_chg", 0)/100000, v.get("call_oi_chg_day", 0)/100000
@@ -208,9 +214,6 @@ def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
             store["last_summary"] = current_time
     except: pass
 
-# ══════════════════════════════════════════════════
-#  AUTH & API FETCHERS
-# ══════════════════════════════════════════════════
 def save_token(token):
     token_store["access_token"] = token
     try:
@@ -254,15 +257,11 @@ def fetch_spot(idx):
     except: return 0
 
 def fetch_futures(spot, idx):
-    from datetime import date
     now = date.today(); months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
     prefix = "NIFTY" if idx == "NIFTY" else "BANKNIFTY" if idx == "BANKNIFTY" else "SENSEX"
     for delta in [0, 1]:
         m = (now.month - 1 + delta) % 12; y = str(now.year)[2:] if now.month + delta <= 12 else str(now.year + 1)[2:]
-        if idx == "SENSEX":
-            sym = f"BSE_FO|{prefix}{y}{months[m]}FUT" 
-        else:
-            sym = f"NSE_FO|{prefix}{y}{months[m]}FUT"
+        sym = f"BSE_FO|{prefix}{y}{months[m]}FUT" if idx == "SENSEX" else f"NSE_FO|{prefix}{y}{months[m]}FUT"
         try:
             r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": sym}, headers=hdrs(), timeout=5)
             if r.status_code == 200 and r.json().get("data"):
@@ -282,25 +281,20 @@ def fetch_vix():
     return 0
 
 def fetch_base_1m_candles(idx):
-    """Fetches and merges both historical and intraday candles for perfect timing"""
     try:
         safe_key = urllib.parse.quote(INDICES[idx]["key"])
         to_date = date.today().strftime("%Y-%m-%d")
         from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
         
-        # 1. Fetch Historical (up to yesterday)
         url_hist = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_date}/{from_date}"
         r_hist = requests.get(url_hist, headers=hdrs(), timeout=10)
         
-        # 2. Fetch Intraday (today's live candles)
         url_intra = f"https://api.upstox.com/v2/historical-candle/intraday/{safe_key}/1minute"
         r_intra = requests.get(url_intra, headers=hdrs(), timeout=10)
         
         candles = []
-        if r_hist.status_code == 200:
-            candles += r_hist.json().get("data", {}).get("candles", [])
-        if r_intra.status_code == 200:
-            candles += r_intra.json().get("data", {}).get("candles", [])
+        if r_hist.status_code == 200: candles += r_hist.json().get("data", {}).get("candles", [])
+        if r_intra.status_code == 200: candles += r_intra.json().get("data", {}).get("candles", [])
             
         unique = {}
         for c in candles:
@@ -365,10 +359,12 @@ def compute_max_pain(chain):
     return mp
 
 def get_vwap(candles):
-    today_date = datetime.now().strftime("%Y-%m-%d")
+    if not candles: return None
+    # Use the date from the last candle fetched to avoid timezone mismatches
+    last_date = candles[-1]["time"][:10]
     cum_vol = cum_pv = 0
     for c in candles:
-        if c.get("time", "").startswith(today_date):
+        if c.get("time", "").startswith(last_date):
             v = c.get('vol', 0)
             cum_vol += v
             cum_pv += ((c['high'] + c['low'] + c['close']) / 3) * v
@@ -376,8 +372,7 @@ def get_vwap(candles):
 
 def calc_ema(prices, period):
     if not prices: return None
-    if len(prices) < period:
-        return round(sum(prices) / len(prices), 2)
+    if len(prices) < period: return round(sum(prices) / len(prices), 2)
     k = 2.0 / (period + 1); ema = sum(prices[:period]) / period
     for p in prices[period:]: ema = p * k + ema * (1 - k)
     return round(ema, 2)
@@ -392,8 +387,7 @@ def calc_macd(closes):
 
 def calc_ema_array(prices, period):
     if not prices: return []
-    if len(prices) < period:
-        return [round(sum(prices[:i+1])/(i+1), 2) for i in range(len(prices))]
+    if len(prices) < period: return [round(sum(prices[:i+1])/(i+1), 2) for i in range(len(prices))]
     emas = [None] * (period - 1)
     k = 2.0 / (period + 1)
     ema = sum(prices[:period]) / period
@@ -425,13 +419,10 @@ def calc_rsi_array(closes, p=14):
     if len(closes) < p+1: return []
     gains = [max(closes[i]-closes[i-1], 0) for i in range(1, len(closes))]
     losses = [max(closes[i-1]-closes[i], 0) for i in range(1, len(closes))]
-    if sum(losses[:p]) == 0: 
-        rsis = [None]*p + [100.0]
-    else:
-        ag = sum(gains[:p])/p
-        al = sum(losses[:p])/p
-        rsis = [None]*p
-        rsis.append(100.0 if al==0 else 100 - (100/(1+ag/al)))
+    if sum(losses[:p]) == 0: return [None]*p + [100.0] * (len(gains) - p + 1)
+    ag = sum(gains[:p])/p; al = sum(losses[:p])/p
+    rsis = [None]*p
+    rsis.append(100.0 if al==0 else 100 - (100/(1+ag/al)))
     for i in range(p, len(gains)):
         ag = (ag*(p-1) + gains[i])/p
         al = (al*(p-1) + losses[i])/p
@@ -450,8 +441,7 @@ def calc_adx(candles, p=14):
     def sm(lst, p):
         if sum(lst[:p]) == 0: return [0]*len(lst)
         s = sum(lst[:p]); r = [s]
-        for i in range(p, len(lst)): 
-            s = s - s/p + lst[i]; r.append(s)
+        for i in range(p, len(lst)): s = s - s/p + lst[i]; r.append(s)
         return r
     atr = sm(trl, p); pDM = sm(pdml, p); nDM = sm(ndml, p)
     dxl = []
@@ -497,8 +487,7 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
             d_str = times[i][:10]
             t_str = times[i][11:16]
             c_time = f"{d_str[8:10]}-{d_str[5:7]} {t_str}" 
-        except: 
-            c_time = "-"
+        except: c_time = "-"
 
         curr_bull = e7 > e15
         
@@ -601,11 +590,11 @@ def market_state(pcr, adx, oi_matrix_signal, alerts, vix):
     elif vix>25: return "HIGH VOLATILITY RANGE"
     else: return "NEUTRAL / WAIT"
 
-def analyze_vix_price(spot, vwap, vix, base_vix):
-    if not vwap or not base_vix or base_vix == 0: 
+def analyze_vix_price(spot, baseline_trend_val, vix, base_vix):
+    if not baseline_trend_val or not base_vix or base_vix == 0: 
         return {"signal": "WAITING", "desc": "Need more data for baseline comparison"}
     
-    price_up = spot > vwap
+    price_up = spot > baseline_trend_val
     vix_up = vix > base_vix
     
     if price_up and vix_up: return {"signal": "STRONG BULLISH", "desc": "Price ↑ + VIX ↑ | Fear rising + Rally = Breakout expected."}
@@ -707,7 +696,6 @@ def classify_strike_oi_flow(v, prev_spot, spot):
 
 def get_activity(atm_strikes, idx):
     acts = []
-    # Dynamic thresholds: Nifty is highly liquid, Sensex needs a smaller threshold to trigger
     thresh = 20000 if idx == "NIFTY" else 10000 if idx == "BANKNIFTY" else 5000
     
     for s, v in atm_strikes.items():
@@ -809,7 +797,14 @@ def refresh(idx):
         cum_call_add = sum(v["call_oi_chg_day"] for v in chain.values())
         cum_net_flow = cum_put_add - cum_call_add
 
-        atm_v = atm_strikes.get(str(atm), {})
+        # Robust ATM lookup
+        atm_float = float(atm)
+        atm_v = {}
+        for k, v in atm_strikes.items():
+            if abs(float(k) - atm_float) < 0.1:
+                atm_v = v
+                break
+
         current_straddle = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
         old_data = oi_cache[idx].get("data") or {}
         morning_straddle = old_data.get("intelligence", {}).get("morning_straddle")
@@ -841,10 +836,19 @@ def refresh(idx):
             v["call_ema"] = v["ltp_technicals"]["call"].get("ema7", 0) or 0
             v["put_ema"] = v["ltp_technicals"]["put"].get("ema7", 0) or 0
 
-        vwap_val = get_vwap(candle_cache_store[idx]["5m"])
-        vix_matrix = analyze_vix_price(spot, vwap_val, vix, store["baseline_vix"])
-        
         ind_data = get_indicators(candle_cache_store[idx]["5m"])
+        
+        ind_data["tech"] = {
+            "3m": compute_tf_signals(idx, candle_cache_store[idx]["3m"], "3min", 1, 1.0),
+            "5m": compute_tf_signals(idx, candle_cache_store[idx]["5m"], "5min", 1, 1.0),
+            "15m": compute_tf_signals(idx, candle_cache_store[idx]["15m"], "15min", 1, 1.0)
+        }
+
+        # SPOT Indices have 0 volume, VWAP returns None. Fallback to 15m EMA for VIX Matrix.
+        vwap_val = get_vwap(candle_cache_store[idx]["5m"])
+        baseline_trend_val = vwap_val if vwap_val else ind_data["tech"]["15m"].get("ema15")
+        vix_matrix = analyze_vix_price(spot, baseline_trend_val, vix, store["baseline_vix"])
+        
         mkt_state = market_state(pcr, ind_data.get("adx"), oi_signal, alerts, vix)
         
         gex_data = [{"strike":s,"net_gex":v["call_gex"] - v["put_gex"]} for s,v in sorted(chain.items()) if abs(s-atm) <= 10*step]
@@ -858,13 +862,8 @@ def refresh(idx):
         avg_skew=round(sum(x["skew"] for x in skew_data)/len(skew_data),2) if skew_data else 0
         iv_skew = {"data":skew_data,"avg_skew":avg_skew,"signal":"BEARISH SKEW — put IV elevated" if avg_skew>3 else "BULLISH SKEW — call IV elevated" if avg_skew<-3 else "NEUTRAL SKEW — balanced"}
 
-        ind_data["tech"] = {
-            "3m": compute_tf_signals(idx, candle_cache_store[idx]["3m"], "3min", 1, 1.0),
-            "5m": compute_tf_signals(idx, candle_cache_store[idx]["5m"], "5min", 1, 1.0),
-            "15m": compute_tf_signals(idx, candle_cache_store[idx]["15m"], "15min", 1, 1.0),
-            "overall_bias": mkt_state,
-            "confluence": "Aligned" if mkt_state.startswith("BULL") or mkt_state.startswith("BEAR") else "Mixed"
-        }
+        ind_data["tech"]["overall_bias"] = mkt_state
+        ind_data["tech"]["confluence"] = "Aligned" if mkt_state.startswith("BULL") or mkt_state.startswith("BEAR") else "Mixed"
         
         fut_prem = futures - spot
         if fut_prem > (step * 0.2): future_bias = "LONG BUILDUP"
