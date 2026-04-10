@@ -1109,4 +1109,4 @@ def force_telegram_summary():
 
 if __name__ == "__main__":
     MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWQ4YzEyMDc2N2VlYTE5OWNiNTU2YjYiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc1ODEyODk2LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzU4NTg0MDB9.VdCeOv6B1D88Ado86VFhjDomvbCeRtLeyf6jlLRN7ns"
-    app.run(host="0.0.0.0", port=5000, debug=False)=
+    app.run(host="0.0.0.0", port=5000, debug=False)
