@@ -43,9 +43,14 @@ def take_screenshots():
             browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-dev-shm-usage'])
             page = browser.new_page(viewport={"width": 1920, "height": 1080})
             
+                      
             print(f"📸 [AutoSnap] Loading {URL}...")
             page.goto(URL, wait_until="networkidle")
             
+            # 🔥 CRITICAL FIX: Force the bot to wait until the "INITIALIZING" state disappears
+            page.wait_for_function("!document.body.innerText.includes('Waiting for second data cycle')", timeout=90000)
+            time.sleep(3) # Give heatmaps 3 seconds to fully paint
+
             # Wait for the dashboard to successfully pull data
             page.wait_for_function("document.getElementById('state-val').innerText !== '—'", timeout=45000)
             time.sleep(3) # Give heatmaps 3 seconds to fully paint
