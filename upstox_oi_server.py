@@ -60,7 +60,7 @@ oi_cache = {idx: {"data": None} for idx in INDICES}
 candle_cache_store = {idx: {"1m": [], "3m": [], "15m": []} for idx in INDICES}
 
 # ══════════════════════════════════════════════════
-#  STATE RECOVERY ENGINE (Multi-Asset)
+#  STATE RECOVERY ENGINE
 # ══════════════════════════════════════════════════
 def reverse_engineer_baseline(idx):
     if len(STORE[idx]["baseline_oi"]) > 0: return
@@ -134,12 +134,10 @@ def generate_5min_summary(idx, data, atm_strikes, atm):
     atm_v = atm_strikes.get(str(atm), {})
     s_curr = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
     s_decay = intel.get("straddle_decay", 0)
-    s_low = int(atm - s_curr)
-    s_high = int(atm + s_curr)
-    vix_mat = intel.get("vix_matrix", {})
     
     t5 = intel.get("index_technicals", {}).get("5m", {})
     t15 = intel.get("index_technicals", {}).get("15m", {})
+    vix_mat = intel.get("vix_matrix", {})
     
     msg = (
         f"⏱ <b>5-MIN {idx} SCANNER</b>\n"
@@ -284,17 +282,36 @@ def fetch_vix():
     return 0
 
 def fetch_base_1m_candles(idx):
+    """Fetches and merges both historical and intraday candles for perfect timing"""
     try:
         safe_key = urllib.parse.quote(INDICES[idx]["key"])
-        to_date = date.today().strftime("%Y-%m-%d"); from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
-        url = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_date}/{from_date}"
-        r = requests.get(url, headers=hdrs(), timeout=10)
-        if r.status_code == 200:
-            cr = r.json().get("data", {}).get("candles", [])
-            res = [{"time": c[0], "open": float(c[1]), "high": float(c[2]), "low": float(c[3]), "close": float(c[4]), "vol": float(c[5]) if len(c)>5 else 0} for c in cr if len(c)>=5]
-            res.sort(key=lambda x: x["time"])
-            return res
-    except: pass
+        to_date = date.today().strftime("%Y-%m-%d")
+        from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
+        
+        # 1. Fetch Historical (up to yesterday)
+        url_hist = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_date}/{from_date}"
+        r_hist = requests.get(url_hist, headers=hdrs(), timeout=10)
+        
+        # 2. Fetch Intraday (today's live candles)
+        url_intra = f"https://api.upstox.com/v2/historical-candle/intraday/{safe_key}/1minute"
+        r_intra = requests.get(url_intra, headers=hdrs(), timeout=10)
+        
+        candles = []
+        if r_hist.status_code == 200:
+            candles += r_hist.json().get("data", {}).get("candles", [])
+        if r_intra.status_code == 200:
+            candles += r_intra.json().get("data", {}).get("candles", [])
+            
+        unique = {}
+        for c in candles:
+            if len(c) >= 5:
+                unique[c[0]] = {"time": c[0], "open": float(c[1]), "high": float(c[2]), "low": float(c[3]), "close": float(c[4]), "vol": float(c[5]) if len(c)>5 else 0}
+                
+        res = list(unique.values())
+        res.sort(key=lambda x: x["time"])
+        return res
+    except Exception as e:
+        print("Candle error:", e)
     return []
 
 def resample_candles(candles_1m, tf):
@@ -336,7 +353,7 @@ def fetch_chain(idx, expiry):
     except: return []
 
 # ══════════════════════════════════════════════════
-#  MATH & PROCESSORS (VERIFIED)
+#  MATH & PROCESSORS
 # ══════════════════════════════════════════════════
 def compute_max_pain(chain):
     strikes = sorted(chain.keys())
@@ -358,7 +375,9 @@ def get_vwap(candles):
     return round(cum_pv / cum_vol, 2) if cum_vol > 0 else None
 
 def calc_ema(prices, period):
-    if not prices or len(prices) < period: return None
+    if not prices: return None
+    if len(prices) < period:
+        return round(sum(prices) / len(prices), 2)
     k = 2.0 / (period + 1); ema = sum(prices[:period]) / period
     for p in prices[period:]: ema = p * k + ema * (1 - k)
     return round(ema, 2)
@@ -372,7 +391,9 @@ def calc_macd(closes):
     return None
 
 def calc_ema_array(prices, period):
-    if not prices or len(prices) < period: return [None] * len(prices)
+    if not prices: return []
+    if len(prices) < period:
+        return [round(sum(prices[:i+1])/(i+1), 2) for i in range(len(prices))]
     emas = [None] * (period - 1)
     k = 2.0 / (period + 1)
     ema = sum(prices[:period]) / period
@@ -684,17 +705,20 @@ def classify_strike_oi_flow(v, prev_spot, spot):
         {"total_oi_chg_l": round(total_chg/100000,2), "total_oi_l": round((c_o+p_o)/100000,2), "net_note": net_note}
     )
 
-def get_activity(atm_strikes):
+def get_activity(atm_strikes, idx):
     acts = []
+    # Dynamic thresholds: Nifty is highly liquid, Sensex needs a smaller threshold to trigger
+    thresh = 20000 if idx == "NIFTY" else 10000 if idx == "BANKNIFTY" else 5000
+    
     for s, v in atm_strikes.items():
-        if v["call_oi_chg"] > 50000:
+        if v["call_oi_chg"] > thresh:
             acts.append({"strike": s, "type": "CE", "trend": "BEAR", "ltp": v["call_ltp"], "oi_chg": v["call_oi_chg"], "note": "Heavy Resistance Added"})
-        elif v["call_oi_chg"] < -50000:
+        elif v["call_oi_chg"] < -thresh:
             acts.append({"strike": s, "type": "CE", "trend": "BULL", "ltp": v["call_ltp"], "oi_chg": v["call_oi_chg"], "note": "Resistance Unwinding"})
             
-        if v["put_oi_chg"] > 50000:
+        if v["put_oi_chg"] > thresh:
             acts.append({"strike": s, "type": "PE", "trend": "BULL", "ltp": v["put_ltp"], "oi_chg": v["put_oi_chg"], "note": "Heavy Support Added"})
-        elif v["put_oi_chg"] < -50000:
+        elif v["put_oi_chg"] < -thresh:
             acts.append({"strike": s, "type": "PE", "trend": "BEAR", "ltp": v["put_ltp"], "oi_chg": v["put_oi_chg"], "note": "Support Unwinding"})
             
     acts.sort(key=lambda x: abs(x["oi_chg"]), reverse=True)
@@ -830,7 +854,7 @@ def refresh(idx):
         for dist in [1,2,3]:
             c_strike, p_strike = atm+dist*step, atm-dist*step
             ce, pe = chain.get(c_strike,{}), chain.get(p_strike,{})
-            if ce.get("call_iv") and pe.get("put_iv"): skew_data.append({"dist":dist,"call_strike":c_strike,"call_iv":ce["call_iv"],"put_strike":p_strike,"put_iv":pe["put_iv"],"skew":round(pe["put_iv"]-ce["call_iv"],2)})
+            if ce.get("call_iv") and pe.get("put_iv"): skew_data.append({"dist":dist,"strike":c_strike,"call_iv":ce["call_iv"],"put_iv":pe["put_iv"],"skew":round(pe["put_iv"]-ce["call_iv"],2)})
         avg_skew=round(sum(x["skew"] for x in skew_data)/len(skew_data),2) if skew_data else 0
         iv_skew = {"data":skew_data,"avg_skew":avg_skew,"signal":"BEARISH SKEW — put IV elevated" if avg_skew>3 else "BULLISH SKEW — call IV elevated" if avg_skew<-3 else "NEUTRAL SKEW — balanced"}
 
@@ -871,7 +895,7 @@ def refresh(idx):
             "straddle_decay": round(straddle_decay, 2),
             "vix_matrix": vix_matrix,
             "migrations": get_migrations(atm_strikes),
-            "activity": get_activity(atm_strikes),
+            "activity": get_activity(atm_strikes, idx),
             "analysis": get_analysis(mkt_state, pcr, vix, round(cum_net_flow / 100000, 2)),
             "pin_risk": get_pin_risk(chain, atm),
         }
