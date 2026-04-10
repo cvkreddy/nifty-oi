@@ -36,6 +36,7 @@ CACHE_TTL    = 60  # Fast 60s refresh for live pricing
 ATM_RANGE    = 5
 TOKEN_FILE   = "token_data.json"
 DATA_FILE    = "data_cache.json"  
+STATE_FILE   = "server_state.json"
 
 token_store  = {"access_token": None}
 debug_status = {"last_error": "Initializing Triple Engine..."}
@@ -55,6 +56,59 @@ STORE = {idx: {
 
 oi_cache = {idx: {"data": None} for idx in INDICES}
 candle_cache_store = {idx: {"1m": [], "3m": [], "15m": []} for idx in INDICES}
+
+def reverse_engineer_baseline(idx):
+    if len(STORE[idx]["baseline_oi"]) > 0: return
+    try:
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, "r") as f:
+                d_all = json.load(f)
+                d = d_all.get(idx, {})
+                if d.get("timestamp") and d["timestamp"].startswith(date.today().isoformat()):
+                    chain = d.get("chain", {})
+                    if chain:
+                        for s, v in chain.items():
+                            b_coi = v["call_oi"] - v.get("call_oi_chg_day", 0)
+                            b_poi = v["put_oi"] - v.get("put_oi_chg_day", 0)
+                            b_cltp = v["call_ltp"] - v.get("call_ltp_chg_day", 0)
+                            b_pltp = v["put_ltp"] - v.get("put_ltp_chg_day", 0)
+                            STORE[idx]["baseline_oi"][str(s)] = {"call_oi": b_coi, "put_oi": b_poi, "call_ltp": b_cltp, "put_ltp": b_pltp}
+    except: pass
+
+def load_server_state():
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, "r") as f:
+                st = json.load(f)
+                if st.get("date") == date.today().isoformat():
+                    for idx in INDICES:
+                        saved_idx = st.get(idx, {})
+                        STORE[idx]["baseline_oi"] = saved_idx.get("baseline_oi", {})
+                        STORE[idx]["baseline_vix"] = saved_idx.get("baseline_vix")
+                        STORE[idx]["baseline_rsi"] = saved_idx.get("baseline_rsi", {})
+                        STORE[idx]["prev_oi"] = saved_idx.get("prev_oi", {})
+                        STORE[idx]["prev_spot"] = saved_idx.get("prev_spot")
+                        STORE[idx]["prev_pcr"] = saved_idx.get("prev_pcr")
+        except: pass
+    for idx in INDICES: reverse_engineer_baseline(idx)
+
+# 🔥 THIS IS THE FUNCTION THAT WAS MISSING! 🔥
+def save_server_state():
+    try:
+        st = {"date": date.today().isoformat()}
+        for idx in INDICES:
+            st[idx] = {
+                "baseline_oi": STORE[idx]["baseline_oi"],
+                "baseline_vix": STORE[idx]["baseline_vix"],
+                "baseline_rsi": STORE[idx]["baseline_rsi"],
+                "prev_oi": STORE[idx]["prev_oi"],
+                "prev_spot": STORE[idx]["prev_spot"],
+                "prev_pcr": STORE[idx]["prev_pcr"]
+            }
+        with open(STATE_FILE, "w") as f: json.dump(st, f)
+    except: pass
+
+load_server_state()
 
 def send_telegram_alert(message):
     if not TELEGRAM_BOT_TOKEN: return
@@ -283,9 +337,6 @@ def fetch_chain(idx, expiry):
         return r.json().get("data", []) if r.status_code == 200 else []
     except: return []
 
-# ══════════════════════════════════════════════════
-#  MATH & PROCESSORS 
-# ══════════════════════════════════════════════════
 def compute_max_pain(chain):
     strikes = sorted(chain.keys())
     if not strikes: return 0
