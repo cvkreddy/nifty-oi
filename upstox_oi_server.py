@@ -28,6 +28,9 @@ API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
+# 🔥 INSTANT BYPASS: Paste your long Upstox Access Token (starting with "ey...") below!
+MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWQ4YzEyMDc2N2VlYTE5OWNiNTU2YjYiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc1ODEyODk2LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzU4NTg0MDB9.VdCeOv6B1D88Ado86VFhjDomvbCeRtLeyf6jlLRN7ns"
+
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
 
@@ -223,6 +226,10 @@ def save_token(token):
     except: pass
 
 def load_token():
+    # 🔥 Bypasses file load if manual token is provided!
+    if MANUAL_ACCESS_TOKEN and len(MANUAL_ACCESS_TOKEN) > 50:
+        token_store["access_token"] = MANUAL_ACCESS_TOKEN
+        return
     if os.path.exists(TOKEN_FILE):
         try:
             with open(TOKEN_FILE, "r") as f: token_store["access_token"] = json.load(f).get("access_token")
@@ -665,13 +672,13 @@ def classify_strike_oi_flow(v, prev_spot, spot):
     elif c_c < -THRESH and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
     elif c_c > THRESH and cl <= 0: cf = ("SHORT BUILDUP", "BEARISH", "🔴")
     elif c_c < -THRESH and cl <= 0: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
-    else: cf = ("STABLE", "NEUTRAL", "⚪")
+    else: cf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
 
     if p_c > THRESH and pl > 0: pf = ("LONG BUILDUP", "BEARISH", "🔴")
     elif p_c < -THRESH and pl > 0: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
     elif p_c > THRESH and pl <= 0: pf = ("SHORT BUILDUP", "BULLISH", "✅")
     elif p_c < -THRESH and pl <= 0: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
-    else: pf = ("STABLE", "NEUTRAL", "⚪")
+    else: pf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
 
     total_chg = c_c + p_c
     if c_c > 25000 and p_c < -25000: net_note = "🔄 OI SHIFT: Money moving to CALL side."
@@ -869,7 +876,6 @@ def refresh(idx):
         else: max_pain_signal = "PINNED"
         max_pain_desc = f"{abs(mp_drift):.1f} pts from MP"
 
-        # 🔥 Pass cycle_count to frontend so it knows if data is safe
         intelligence = {
             "cycle_count": len(store["history"]),
             "market_state": mkt_state,
@@ -1015,4 +1021,5 @@ def force_telegram_summary():
     return f"Summary sent to Telegram for {idx} successfully!", 200
 
 if __name__ == "__main__":
+    MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWQ4YzEyMDc2N2VlYTE5OWNiNTU2YjYiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc1ODEyODk2LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzU4NTg0MDB9.VdCeOv6B1D88Ado86VFhjDomvbCeRtLeyf6jlLRN7ns"
     app.run(host="0.0.0.0", port=5000, debug=False)
