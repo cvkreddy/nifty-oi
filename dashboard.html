@@ -215,7 +215,7 @@
             <th style="text-align:center;color:var(--bull)">PE EMA</th>
           </tr>
         </thead>
-        <tbody id="flow-tbody"><tr><td colspan="10" class="loading">Waiting for 2nd data cycle...</td></tr></tbody>
+        <tbody id="flow-tbody"><tr><td colspan="10" class="loading">Waiting for data...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -225,7 +225,7 @@
       <span class="ct info">🔄 OI MIGRATION TRACKER</span>
       <span class="cs" id="mig-time">OI exiting one strike → entering another</span>
     </div>
-    <div id="mig-body"><div class="loading">Waiting for 2nd cycle...</div></div>
+    <div id="mig-body"><div class="loading">Waiting for data...</div></div>
     <div class="pin-box" id="pin-box">
       <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;margin-bottom:6px;font-family:var(--ui);font-weight:700">⏰ EXPIRY PIN RISK</div>
       <div class="pin-inner" id="pin-inner">
@@ -674,7 +674,7 @@ function render(d, hist) {
 
     renderTech(intel.index_technicals);
     renderChain(d.chain, atm, spot);
-    renderFlow(d.atm_strikes, atm, intel.cycle_count);
+    renderFlow(d.atm_strikes, atm);
     if (intel.migrations) renderMig(intel.migrations);
     if (intel.pin_risk) renderPin(intel.pin_risk);
     if (hist.length) renderHist(hist, atm);
@@ -748,23 +748,15 @@ function renderChain(chain, atm, spot) {
     sHTML('put-tbody', pHtml || '<tr><td colspan="8" class="loading">No data</td></tr>');
 }
 
-// 🔥 THIS IS THE FUNCTION I FAILED TO PASTE CORRECTLY LAST TIME 🔥
-function renderFlow(atmStrikes, atm, cycleCount) {
+function renderFlow(atmStrikes, atm) {
     let fHtml = '';
-    
-    // Explicitly handle the "Zero Values" reboot scenario!
-    if (cycleCount < 2) {
-        sHTML('flow-tbody', '<tr><td colspan="10" class="loading" style="color:var(--warn)">SERVER DEPLOYED: Gathering initial baseline... Wait 3 minutes for true velocity data.</td></tr>');
-        return;
-    }
-
     let strikes = Object.keys(atmStrikes).map(Number).sort((a, b) => a - b);
     strikes.forEach(k => {
         let v = atmStrikes[k];
         let nf = (v.put_oi_chg || 0) - (v.call_oi_chg || 0);
         
-        let ceSig = v.call_flow ? v.call_flow.condition : 'STABLE / NO CHANGE';
-        let peSig = v.put_flow ? v.put_flow.condition : 'STABLE / NO CHANGE';
+        let ceSig = v.call_flow ? v.call_flow.condition : 'STABLE';
+        let peSig = v.put_flow ? v.put_flow.condition : 'STABLE';
         
         let isAtm = Math.abs(k - atm) < 0.1;
 

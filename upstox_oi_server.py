@@ -31,11 +31,13 @@ REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 # 🔥 INSTANT BYPASS: Paste your long Upstox Access Token (starting with "ey...") below!
 MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWQ4YzEyMDc2N2VlYTE5OWNiNTU2YjYiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc1ODEyODk2LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzU4NTg0MDB9.VdCeOv6B1D88Ado86VFhjDomvbCeRtLeyf6jlLRN7ns"
 
+
+
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
 
-# Keep the safe 180s to stop shadow-banning
-CACHE_TTL    = 180  
+# Sped up to 2 minutes for faster live updates!
+CACHE_TTL    = 120  
 ATM_RANGE    = 5
 TOKEN_FILE   = "token_data.json"
 DATA_FILE    = "data_cache.json"  
@@ -122,7 +124,7 @@ def send_telegram_alert(message):
     try: requests.post(url, json=payload, timeout=5)
     except: pass
 
-def generate_5min_summary(idx, data, atm_strikes, atm):
+def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
     spot = data.get("spot", 0)
     pcr = data.get("pcr", 0)
     intel = data.get("intelligence", {})
@@ -143,12 +145,14 @@ def generate_5min_summary(idx, data, atm_strikes, atm):
     t15 = intel.get("index_technicals", {}).get("15m", {})
     vix_mat = intel.get("vix_matrix", {})
     
+    boot_note = "<i>(Building baseline...)</i>" if is_boot else ""
+    
     msg = (
         f"⏱ <b>5-MIN {idx} SCANNER</b>\n"
         f"🎯 <b>Spot:</b> ₹{spot} | <b>PCR:</b> {pcr}\n"
         f"⚖️ <b>Straddle:</b> ₹{s_curr:.1f} ({s_decay:+.1f}% Day)\n"
-        f"🔴 <b>ATM CE:</b> ₹{atm_v.get('call_ltp', 0):.1f} ({atm_v.get('call_ltp_chg_day', 0):+.1f} D | {atm_v.get('call_ltp_chg', 0):+.1f} 5m)\n"
-        f"🟢 <b>ATM PE:</b> ₹{atm_v.get('put_ltp', 0):.1f} ({atm_v.get('put_ltp_chg_day', 0):+.1f} D | {atm_v.get('put_ltp_chg', 0):+.1f} 5m)\n"
+        f"🔴 <b>ATM CE:</b> ₹{atm_v.get('call_ltp', 0):.1f} ({atm_v.get('call_ltp_chg', 0):+.1f} 5m) {boot_note}\n"
+        f"🟢 <b>ATM PE:</b> ₹{atm_v.get('put_ltp', 0):.1f} ({atm_v.get('put_ltp_chg', 0):+.1f} 5m) {boot_note}\n"
         f"🌊 <b>Smart Flow:</b> {flow_bias} ({net_flow_l:+.1f}L Net)\n"
         f"📊 <b>VIX Matrix: {vix_mat.get('signal', 'WAITING')}</b>\n"
         f"↳ <i>{vix_mat.get('desc', 'Need more data')}</i>\n"
@@ -201,7 +205,7 @@ def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
     
     if store["last_summary"] == 0: 
         store["last_summary"] = current_time
-        summary = generate_5min_summary(idx, data, atm_strikes, atm)
+        summary = generate_5min_summary(idx, data, atm_strikes, atm, is_boot=True)
         send_telegram_alert(f"🚀 <b>SERVER LIVE ({idx})</b>\n\n{summary}")
         return
         
@@ -226,7 +230,6 @@ def save_token(token):
     except: pass
 
 def load_token():
-    # 🔥 Bypasses file load if manual token is provided!
     if MANUAL_ACCESS_TOKEN and len(MANUAL_ACCESS_TOKEN) > 50:
         token_store["access_token"] = MANUAL_ACCESS_TOKEN
         return
@@ -877,7 +880,6 @@ def refresh(idx):
         max_pain_desc = f"{abs(mp_drift):.1f} pts from MP"
 
         intelligence = {
-            "cycle_count": len(store["history"]),
             "market_state": mkt_state,
             "oi_matrix_condition": oi_cond, "oi_matrix_signal": oi_signal, "oi_matrix_desc": oi_desc,
             "pcr_zone": "BULLISH" if pcr > 1.2 else "BEARISH" if pcr < 0.8 else "NEUTRAL",
@@ -1021,5 +1023,4 @@ def force_telegram_summary():
     return f"Summary sent to Telegram for {idx} successfully!", 200
 
 if __name__ == "__main__":
-    MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWQ4YzEyMDc2N2VlYTE5OWNiNTU2YjYiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc1ODEyODk2LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzU4NTg0MDB9.VdCeOv6B1D88Ado86VFhjDomvbCeRtLeyf6jlLRN7ns"
     app.run(host="0.0.0.0", port=5000, debug=False)
