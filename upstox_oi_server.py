@@ -1,5 +1,3 @@
-
-
   
 
 """
@@ -32,8 +30,6 @@ REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 # 🚨 TELEGRAM CREDENTIALS 🚨
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
-
-   
 
 CACHE_TTL    = 150  
 ATM_RANGE    = 5
@@ -246,7 +242,6 @@ def callback():
         return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
     save_token(data.get("access_token"))
     send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
-    # Kickstart all
     for idx in INDICES: refresh(idx)
     return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p></body></html>"""
 
@@ -261,12 +256,11 @@ def fetch_spot(idx):
 def fetch_futures(spot, idx):
     from datetime import date
     now = date.today(); months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
-    # Map index prefix
     prefix = "NIFTY" if idx == "NIFTY" else "BANKNIFTY" if idx == "BANKNIFTY" else "SENSEX"
     for delta in [0, 1]:
         m = (now.month - 1 + delta) % 12; y = str(now.year)[2:] if now.month + delta <= 12 else str(now.year + 1)[2:]
         if idx == "SENSEX":
-            sym = f"BSE_FO|{prefix}{y}{months[m]}FUT" # General fallback guess for BSE
+            sym = f"BSE_FO|{prefix}{y}{months[m]}FUT" 
         else:
             sym = f"NSE_FO|{prefix}{y}{months[m]}FUT"
         try:
@@ -803,7 +797,6 @@ def refresh(idx):
 
         oi_cache[idx]["data"] = data
         
-        # Save cache dynamically
         try:
             full_cache = {}
             if os.path.exists(DATA_FILE):
@@ -832,7 +825,7 @@ def loop():
     while True:
         for idx in INDICES.keys():
             refresh(idx)
-            time.sleep(2) # Stagger API calls to prevent UPSTOX rate limits
+            time.sleep(2) 
         time.sleep(CACHE_TTL)
 
 threading.Thread(target=loop, daemon=True).start()

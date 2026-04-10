@@ -494,6 +494,7 @@ function sStyle(id, prop, val) { const el = g(id); if (el && el.style) { el.styl
 function sText(id, text) { const el = g(id); if (el) { el.textContent = text; } }
 function sHTML(id, html) { const el = g(id); if (el) { el.innerHTML = html; } }
 function styl(id,t,c){const el=g(id);if(el){el.textContent=t;el.style.color=c;}}
+function set(id,t){const e=g(id);if(e)e.textContent=t;} // Added for older function compatibility just in case
 
 function fc(n){const a=Math.abs(n);if(a>=100000)return(n>=0?'+':'−')+(a/100000).toFixed(2)+'L';if(a>=1000)return(n>=0?'+':'−')+(a/1000).toFixed(1)+'K';return(n>=0?'+':'−')+Math.round(a)}
 function fmt(n){return n?Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}
@@ -664,7 +665,7 @@ function render(d,hist){
       diffEl.style.color = diff > 0 ? 'var(--bull)' : 'var(--bear)';
   }
 
-  const atmV=d.atm_strikes[str(atm)]||{}
+  const atmV=d.atm_strikes[String(atm)]||{} // 🔥 FIXED: Safe JavaScript String Conversion
   const ceLtp = atmV.call_ltp || 0;
   const peLtp = atmV.put_ltp || 0;
   const ceDayChg = atmV.call_ltp_chg_day || 0;
@@ -972,13 +973,13 @@ function renderSkew(skewObj){
 
 function renderGreeks(atm,pcr,vix,atk,ind){
   sText('atm-lbl', 'ATM: ₹'+Math.round(atm).toLocaleString('en-IN'))
-  const a=atk[str(atm)]||{},civ=a.call_iv||0,piv=a.put_iv||0,avgIV=civ&&piv?(civ+piv)/2:civ||piv||vix||20
+  const a=atk[String(atm)]||{},civ=a.call_iv||0,piv=a.put_iv||0,avgIV=civ&&piv?(civ+piv)/2:civ||piv||vix||20 // 🔥 FIXED
   const cd=a.call_delta||Math.min(0.65,Math.max(0.35,0.50+(pcr-1)*0.05)),pd=a.put_delta||(-(1-cd))
   const cg=a.call_gamma||0.0004,ct2=a.call_theta||-(atm*(avgIV/100)*cg*15.87),cv=a.call_vega||(atm*cg*100*(avgIV/100))
   
   const cells=[
-    {l:'DELTA (CALL)',v:'+'+cd.toFixed(3),c:'var(--bull)',s:'₹ move per ₹1 NIFTY'},
-    {l:'DELTA (PUT)', v:pd.toFixed(3),c:'var(--bear)',s:'Moves opposite NIFTY'},
+    {l:'DELTA (CALL)',v:'+'+cd.toFixed(3),c:'var(--bull)',s:'₹ move per ₹1 Index'},
+    {l:'DELTA (PUT)', v:pd.toFixed(3),c:'var(--bear)',s:'Moves opposite Index'},
     {l:'GAMMA',v:cg.toFixed(5),c:'var(--text)',s:'Delta change rate'},
     {l:'THETA/DAY',v:'₹'+(Math.abs(ct2)*25).toFixed(0)+'/lot',c:'var(--bear)',s:'Time decay daily'},
     {l:'VEGA',v:'₹'+(Math.abs(cv)*25).toFixed(0)+'/lot',c:'var(--warn)',s:'Per 1% IV change'},
