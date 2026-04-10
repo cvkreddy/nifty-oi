@@ -1,5 +1,3 @@
-  
-
 """
 ====================================================
   MULTI-ASSET OI SERVER — Triple Engine Architecture
@@ -7,14 +5,18 @@
 ====================================================
 """
 
-import os, csv, time, math, threading, json, urllib.parse, traceback
+import os, csv, time, math, threading, json, urllib.parse, traceback, glob
 from datetime import datetime, date, timedelta
-from flask import Flask, jsonify, request, redirect, send_file
+from flask import Flask, jsonify, request, redirect, send_file, send_from_directory
 from flask_cors import CORS
+from autosnap import start_auto_snapper
 import requests
 
-app  = Flask(__name__)
+app = Flask(__name__)
 CORS(app)
+
+# Start the background screenshot engine
+start_auto_snapper()
 
 @app.after_request
 def add_header(response):
@@ -836,6 +838,51 @@ threading.Thread(target=loop, daemon=True).start()
 
 @app.route("/")
 def dashboard(): return send_file("dashboard.html")
+
+@app.route('/gallery')
+def gallery():
+    """Generates a beautiful dark-mode gallery of all saved screenshots"""
+    os.makedirs("static/screenshots", exist_ok=True)
+    
+    # Get all images and sort them by newest first
+    files = glob.glob("static/screenshots/*.png")
+    files.sort(key=os.path.getmtime, reverse=True)
+    
+    html = """
+    <html><head><title>OI Snap Gallery</title>
+    <style>
+        body { background: #07090c; color: #c9d1d9; font-family: sans-serif; text-align: center; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; padding: 20px; }
+        .card { background: #0f1319; border: 1px solid #212836; border-radius: 10px; padding: 10px; }
+        img { width: 100%; border-radius: 5px; cursor: pointer; transition: 0.2s; }
+        img:hover { transform: scale(1.02); box-shadow: 0 0 15px rgba(0, 184, 255, 0.4); }
+        a { color: #00b8ff; text-decoration: none; font-weight: bold; }
+    </style></head><body>
+    <h1>📸 Automated Screenshot Gallery</h1>
+    <p><a href="/">← Back to Live Dashboard</a></p>
+    <div class="grid">
+    """
+    
+    if not files:
+        html += "<h3>No screenshots taken yet. Waiting for the first 5-minute cycle...</h3>"
+        
+    for f in files:
+        filename = os.path.basename(f)
+        html += f'''
+        <div class="card">
+            <h4 style="margin-top:5px; color:#8b949e">{filename}</h4>
+            <a href="/static/screenshots/{filename}" target="_blank">
+                <img src="/static/screenshots/{filename}" loading="lazy">
+            </a>
+        </div>'''
+        
+    html += "</div></body></html>"
+    return html
+
+@app.route('/static/screenshots/<filename>')
+def serve_screenshot(filename):
+    """Serves the actual image files to the browser"""
+    return send_from_directory('static/screenshots', filename)
 
 @app.route("/oi/json")
 def oi_json():
