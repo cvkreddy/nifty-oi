@@ -665,13 +665,13 @@ def classify_strike_oi_flow(v, prev_spot, spot):
     elif c_c < -THRESH and cl > 0: cf = ("SHORT COVERING", "WEAK BULLISH", "📈")
     elif c_c > THRESH and cl <= 0: cf = ("SHORT BUILDUP", "BEARISH", "🔴")
     elif c_c < -THRESH and cl <= 0: cf = ("LONG UNWINDING", "WEAK BEARISH", "🟡")
-    else: cf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
+    else: cf = ("STABLE", "NEUTRAL", "⚪")
 
     if p_c > THRESH and pl > 0: pf = ("LONG BUILDUP", "BEARISH", "🔴")
     elif p_c < -THRESH and pl > 0: pf = ("SHORT COVERING", "WEAK BEARISH", "🟡")
     elif p_c > THRESH and pl <= 0: pf = ("SHORT BUILDUP", "BULLISH", "✅")
     elif p_c < -THRESH and pl <= 0: pf = ("LONG UNWINDING", "WEAK BULLISH", "📈")
-    else: pf = ("STABLE / NO CHANGE", "NEUTRAL", "⚪")
+    else: pf = ("STABLE", "NEUTRAL", "⚪")
 
     total_chg = c_c + p_c
     if c_c > 25000 and p_c < -25000: net_note = "🔄 OI SHIFT: Money moving to CALL side."
@@ -869,7 +869,9 @@ def refresh(idx):
         else: max_pain_signal = "PINNED"
         max_pain_desc = f"{abs(mp_drift):.1f} pts from MP"
 
+        # 🔥 Pass cycle_count to frontend so it knows if data is safe
         intelligence = {
+            "cycle_count": len(store["history"]),
             "market_state": mkt_state,
             "oi_matrix_condition": oi_cond, "oi_matrix_signal": oi_signal, "oi_matrix_desc": oi_desc,
             "pcr_zone": "BULLISH" if pcr > 1.2 else "BEARISH" if pcr < 0.8 else "NEUTRAL",

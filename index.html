@@ -278,7 +278,6 @@
 </div>
 
 <script>
-// 🔥 GLOBAL STATE & ISOLATED MEMORY
 let currentIdx = 'NIFTY';
 let targetTime = Date.now() + 300000;
 let snapCount = 0;
@@ -289,7 +288,6 @@ let memory = {
     'SENSEX': { pcrHistory: [], prevOIChg: {}, cycleCount: 0 }
 };
 
-// 🔥 CRASH-PROOF DOM WRAPPERS
 function g(id) { return document.getElementById(id); }
 function sStyle(id, prop, val) { const el = g(id); if (el && el.style) { el.style[prop] = val; } }
 function sText(id, text) { const el = g(id); if (el) { el.textContent = text; } }
@@ -353,7 +351,6 @@ function saveScreenshot(auto) {
     takeScreenshotPromise(auto);
 }
 
-// 🔥 THE NEW AUTO-SNAP ALL FEATURE
 async function runAutoSnapCycle() {
     if (isSnapping) return;
     isSnapping = true;
@@ -369,7 +366,7 @@ async function runAutoSnapCycle() {
         if(tabEl) tabEl.classList.add('active');
         
         await doFetchCore(); 
-        await new Promise(r => setTimeout(r, 800)); // Let the chart paint
+        await new Promise(r => setTimeout(r, 800)); 
         await takeScreenshotPromise(true);
     }
     
@@ -616,7 +613,15 @@ function render(d, hist) {
         diffEl.style.color = diff > 0 ? 'var(--bull)' : 'var(--bear)';
     }
 
-    const atmV = d.atm_strikes[String(atm)] || {};
+    const atm_float = parseFloat(atm);
+    let atmV = {};
+    for (let k in d.atm_strikes) {
+        if (Math.abs(parseFloat(k) - atm_float) < 0.1) {
+            atmV = d.atm_strikes[k];
+            break;
+        }
+    }
+
     const ceLtp = atmV.call_ltp || 0;
     const peLtp = atmV.put_ltp || 0;
     const ceDayChg = atmV.call_ltp_chg_day || 0;
@@ -669,7 +674,7 @@ function render(d, hist) {
 
     renderTech(intel.index_technicals);
     renderChain(d.chain, atm, spot);
-    renderFlow(d.atm_strikes, atm);
+    renderFlow(d.atm_strikes, atm, intel.cycle_count);
     if (intel.migrations) renderMig(intel.migrations);
     if (intel.pin_risk) renderPin(intel.pin_risk);
     if (hist.length) renderHist(hist, atm);
@@ -713,7 +718,7 @@ function renderChain(chain, atm, spot) {
 
     visible.forEach(k => {
         let v = chain[k];
-        let isAtm = k === atm;
+        let isAtm = Math.abs(k - atm) < 0.1;
         let cCls = isAtm ? 'sk-a' : k < spot ? 'sk-c' : '';
         let pCls = isAtm ? 'sk-a' : k > spot ? 'sk-p' : '';
         
@@ -743,19 +748,28 @@ function renderChain(chain, atm, spot) {
     sHTML('put-tbody', pHtml || '<tr><td colspan="8" class="loading">No data</td></tr>');
 }
 
-function renderFlow(atmStrikes, atm) {
+// 🔥 THIS IS THE FUNCTION I FAILED TO PASTE CORRECTLY LAST TIME 🔥
+function renderFlow(atmStrikes, atm, cycleCount) {
     let fHtml = '';
+    
+    // Explicitly handle the "Zero Values" reboot scenario!
+    if (cycleCount < 2) {
+        sHTML('flow-tbody', '<tr><td colspan="10" class="loading" style="color:var(--warn)">SERVER DEPLOYED: Gathering initial baseline... Wait 3 minutes for true velocity data.</td></tr>');
+        return;
+    }
+
     let strikes = Object.keys(atmStrikes).map(Number).sort((a, b) => a - b);
     strikes.forEach(k => {
         let v = atmStrikes[k];
         let nf = (v.put_oi_chg || 0) - (v.call_oi_chg || 0);
         
-        // 🔥 FIX: The condition logic strictly relies on the flawless Python backend now!
         let ceSig = v.call_flow ? v.call_flow.condition : 'STABLE / NO CHANGE';
         let peSig = v.put_flow ? v.put_flow.condition : 'STABLE / NO CHANGE';
         
-        fHtml += `<tr class="${k === atm ? 'ar' : ''}">
-            <td class="td-s" style="color:${k === atm ? 'var(--atm)' : ''}">${k}</td>
+        let isAtm = Math.abs(k - atm) < 0.1;
+
+        fHtml += `<tr class="${isAtm ? 'ar' : ''}">
+            <td class="td-s" style="color:${isAtm ? 'var(--atm)' : ''}">${k}</td>
             <td style="text-align:left">${getFlowPill(ceSig)}</td>
             <td style="color:${v.call_oi_chg >= 0 ? 'var(--bear)' : 'var(--bull)'};font-weight:700">${fc(v.call_oi_chg || 0)}</td>
             <td style="color:var(--text2)">${fcAbs(v.call_vol || 0)}</td>
@@ -801,7 +815,7 @@ function renderHist(hist, atm) {
     hist.forEach(h => {
         let cH = (h.call_oi / maxOI) * 100;
         let pH = (h.put_oi / maxOI) * 100;
-        let isAtm = h.strike === atm;
+        let isAtm = Math.abs(h.strike - atm) < 0.1;
         html += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px">
             <div style="display:flex;gap:2px;align-items:flex-end;width:100%;justify-content:center;height:90px">
                 <div style="width:12px;height:${cH}%;background:var(--bear);border-radius:2px 2px 0 0;opacity:${isAtm ? 1 : 0.7}"></div>
