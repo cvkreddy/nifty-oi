@@ -447,7 +447,6 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
         return {"label": label, "candle_count": len(candles) if candles else 0, "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-"}
     
     store = STORE[idx]
-    
     vwap = get_vwap(candles)
     closes = [c["close"] for c in candles]
     times = [c["time"] for c in candles]
@@ -596,20 +595,22 @@ def process_chain(idx, raw):
         ce_gk, pe_gk = ce.get("option_greeks",{}), pe.get("option_greeks",{})
         
         call_oi, put_oi = float(ce_md.get("oi",0) or 0), float(pe_md.get("oi",0) or 0)
-        call_vol, put_vol = float(ce_md.get("volume",0) or 0), float(pe_md.get("volume",0) or 0)
-        call_ltp, put_ltp = float(ce_md.get("ltp",0) or ce_md.get("last_price",0) or 0), float(pe_md.get("ltp",0) or pe_md.get("last_price",0) or 0)
         
         prev = store["prev_oi"].get(str(strike), {}) if store["prev_oi"] else {}
         base = store["baseline_oi"].get(str(strike), {}) if store["baseline_oi"] else {}
 
         c_oi_5m = call_oi - prev["call_oi"] if "call_oi" in prev else 0
         p_oi_5m = put_oi - prev["put_oi"] if "put_oi" in prev else 0
-        c_ltp_5m = call_ltp - prev["call_ltp"] if "call_ltp" in prev else 0
-        p_ltp_5m = put_ltp - prev["put_ltp"] if "put_ltp" in prev else 0
         
         c_oi_d = call_oi - base["call_oi"] if "call_oi" in base else 0
         p_oi_d = put_oi - base["put_oi"] if "put_oi" in base else 0
         
+        call_ltp = float(ce_md.get("ltp",0) or ce_md.get("last_price",0) or 0)
+        put_ltp = float(pe_md.get("ltp",0) or pe_md.get("last_price",0) or 0)
+        
+        c_ltp_5m = call_ltp - prev["call_ltp"] if "call_ltp" in prev else 0
+        p_ltp_5m = put_ltp - prev["put_ltp"] if "put_ltp" in prev else 0
+
         c_prev_close = ce_md.get("previous_close") or ce_md.get("close_price")
         p_prev_close = pe_md.get("previous_close") or pe_md.get("close_price")
         c_ltp_d = call_ltp - c_prev_close if c_prev_close else (call_ltp - base["call_ltp"] if "call_ltp" in base else 0)
@@ -621,13 +622,17 @@ def process_chain(idx, raw):
             "call_vol_oi": round(float(ce_md.get("volume",0) or 0)/call_oi,2) if call_oi else 0,
             "call_iv": round(float(ce_gk.get("iv",0) or 0)*100,2), 
             "call_ltp": call_ltp, "call_ltp_chg": round(c_ltp_5m, 2), "call_ltp_chg_day": round(c_ltp_d, 2),
-            "call_delta": float(ce_gk.get("delta",0) or 0), "call_gamma": float(ce_gk.get("gamma",0) or 0), "call_gex": float(ce_gk.get("gamma",0) or 0) * call_oi * 25,
+            "call_delta": float(ce_gk.get("delta",0) or 0), "call_gamma": float(ce_gk.get("gamma",0) or 0), 
+            "call_theta": float(ce_gk.get("theta",0) or 0), "call_vega": float(ce_gk.get("vega",0) or 0),
+            "call_gex": float(ce_gk.get("gamma",0) or 0) * call_oi * 25,
             
             "put_oi": put_oi, "put_oi_chg": round(p_oi_5m, 2), "put_oi_chg_day": round(p_oi_d, 2),
             "put_vol_oi": round(float(pe_md.get("volume",0) or 0)/put_oi,2) if put_oi else 0,
             "put_iv": round(float(pe_gk.get("iv",0) or 0)*100,2), 
             "put_ltp": put_ltp, "put_ltp_chg": round(p_ltp_5m, 2), "put_ltp_chg_day": round(p_ltp_d, 2),
-            "put_delta": float(pe_gk.get("delta",0) or 0), "put_gamma": float(pe_gk.get("gamma",0) or 0), "put_gex": float(pe_gk.get("gamma",0) or 0) * put_oi * 25
+            "put_delta": float(pe_gk.get("delta",0) or 0), "put_gamma": float(pe_gk.get("gamma",0) or 0), 
+            "put_theta": float(pe_gk.get("theta",0) or 0), "put_vega": float(pe_gk.get("vega",0) or 0),
+            "put_gex": float(pe_gk.get("gamma",0) or 0) * put_oi * 25
         }
         
     if len(store["baseline_oi"]) == 0 and result: 
@@ -669,6 +674,56 @@ def classify_strike_oi_flow(v, prev_spot, spot):
         {"condition": pf[0], "signal": pf[1], "emoji": pf[2], "oi_chg_l": round(p_c/100000,2), "oi_total_l": round(p_o/100000,2)},
         {"total_oi_chg_l": round(total_chg/100000,2), "total_oi_l": round((c_o+p_o)/100000,2), "net_note": net_note}
     )
+
+def get_activity(atm_strikes):
+    acts = []
+    for s, v in atm_strikes.items():
+        if v["call_oi_chg"] > 50000:
+            acts.append({"strike": s, "type": "CE", "trend": "BEAR", "ltp": v["call_ltp"], "oi_chg": v["call_oi_chg"], "note": "Heavy Resistance Added"})
+        elif v["call_oi_chg"] < -50000:
+            acts.append({"strike": s, "type": "CE", "trend": "BULL", "ltp": v["call_ltp"], "oi_chg": v["call_oi_chg"], "note": "Resistance Unwinding"})
+            
+        if v["put_oi_chg"] > 50000:
+            acts.append({"strike": s, "type": "PE", "trend": "BULL", "ltp": v["put_ltp"], "oi_chg": v["put_oi_chg"], "note": "Heavy Support Added"})
+        elif v["put_oi_chg"] < -50000:
+            acts.append({"strike": s, "type": "PE", "trend": "BEAR", "ltp": v["put_ltp"], "oi_chg": v["put_oi_chg"], "note": "Support Unwinding"})
+            
+    acts.sort(key=lambda x: abs(x["oi_chg"]), reverse=True)
+    return acts[:4]
+
+def get_migrations(atm_strikes):
+    migs = []
+    ce_strikes = sorted(atm_strikes.values(), key=lambda x: x["call_oi_chg"])
+    pe_strikes = sorted(atm_strikes.values(), key=lambda x: x["put_oi_chg"])
+    
+    if ce_strikes and ce_strikes[0]["call_oi_chg"] < -25000 and ce_strikes[-1]["call_oi_chg"] > 25000:
+        migs.append({"from": str(ce_strikes[0]["strike"]), "to": str(ce_strikes[-1]["strike"]), "type": "CALL", "volume": abs(ce_strikes[0]["call_oi_chg"]), "note": "Resistance shifting"})
+        
+    if pe_strikes and pe_strikes[0]["put_oi_chg"] < -25000 and pe_strikes[-1]["put_oi_chg"] > 25000:
+        migs.append({"from": str(pe_strikes[0]["strike"]), "to": str(pe_strikes[-1]["strike"]), "type": "PUT", "volume": abs(pe_strikes[0]["put_oi_chg"]), "note": "Support shifting"})
+        
+    return migs
+
+def get_pin_risk(chain, atm):
+    closest = None
+    max_oi = 0
+    for s, v in chain.items():
+        if abs(s - atm) <= 150:
+            tot = v["call_oi"] + v["put_oi"]
+            if tot > max_oi:
+                max_oi = tot
+                closest = s
+    if closest:
+        return {"label": f"{closest} STRADDLE PIN", "score": 9.5, "desc": "Max pain concentration dragging price."}
+    return {"label": "NO PIN RISK", "score": 0, "desc": "Market is clear"}
+
+def get_analysis(mkt_state, pcr, vix, net_flow_l):
+    return [
+        {"title": "MARKET TREND", "status": mkt_state, "desc": "Primary trend based on Price Action + OI Flow"},
+        {"title": "PCR SENTIMENT", "status": "BULLISH" if pcr > 1.0 else "BEARISH", "desc": f"Put-Call Ratio is currently at {pcr}"},
+        {"title": "VOLATILITY (VIX)", "status": "ELEVATED" if vix > 15 else "STABLE", "desc": f"India VIX is trading at {vix}"},
+        {"title": "SMART MONEY FLOW", "status": "LONG BUILDUP" if net_flow_l > 0 else "SHORT SELLING", "desc": f"Net OI Flow is {net_flow_l:+.1f}L contracts"}
+    ]
 
 # ══════════════════════════════════════════════════
 #  MAIN REFRESH LOOP
@@ -768,21 +823,36 @@ def refresh(idx):
         avg_skew=round(sum(x["skew"] for x in skew_data)/len(skew_data),2) if skew_data else 0
         iv_skew = {"data":skew_data,"avg_skew":avg_skew,"signal":"BEARISH SKEW — put IV elevated" if avg_skew>3 else "BULLISH SKEW — call IV elevated" if avg_skew<-3 else "NEUTRAL SKEW — balanced"}
 
+        ind_data["tech"] = {
+            "3m": compute_tf_signals(idx, candle_cache_store[idx]["3m"], "3min", 1, 1.0),
+            "5m": compute_tf_signals(idx, candle_cache_store[idx]["5m"], "5min", 1, 1.0),
+            "15m": compute_tf_signals(idx, candle_cache_store[idx]["15m"], "15min", 1, 1.0),
+            "overall_bias": mkt_state,
+            "confluence": "Aligned" if mkt_state.startswith("BULL") or mkt_state.startswith("BEAR") else "Mixed"
+        }
+
         intelligence = {
             "market_state": mkt_state,
             "oi_matrix_condition": oi_cond, "oi_matrix_signal": oi_signal, "oi_matrix_desc": oi_desc,
             "pcr_zone": "BULLISH" if pcr > 1.2 else "BEARISH" if pcr < 0.8 else "NEUTRAL",
             "alerts": alerts, 
             "gex_profile": gex_data[:11], "gex_flip": gex_flip, "iv_skew": iv_skew,
-            "index_technicals": {
-                "3min": compute_tf_signals(idx, candle_cache_store[idx]["3m"], "3min", 1, 1.0),
-                "5min": compute_tf_signals(idx, candle_cache_store[idx]["5m"], "5min", 1, 1.0),
-                "15min": compute_tf_signals(idx, candle_cache_store[idx]["15m"], "15min", 1, 1.0)
-            },
+            "index_technicals": ind_data["tech"],
             "cumulative_net_flow_l": round(cum_net_flow / 100000, 2),
             "morning_straddle": morning_straddle,
             "straddle_decay": round(straddle_decay, 2),
-            "vix_matrix": vix_matrix
+            "vix_matrix": vix_matrix,
+            "migrations": get_migrations(atm_strikes),
+            "activity": get_activity(atm_strikes),
+            "analysis": get_analysis(mkt_state, pcr, vix, round(cum_net_flow / 100000, 2)),
+            "pin_risk": get_pin_risk(chain, atm),
+        }
+        
+        greeks = {
+            "delta": {"val": atm_v.get("call_delta", 0), "desc": "Call Delta"},
+            "gamma": {"val": atm_v.get("call_gamma", 0), "desc": "Call Gamma"},
+            "theta": {"val": atm_v.get("call_theta", 0), "desc": "Call Theta"},
+            "vega": {"val": atm_v.get("call_vega", 0), "desc": "Call Vega"}
         }
 
         data = {
@@ -792,7 +862,7 @@ def refresh(idx):
             "max_pain": max_pain, "expiry": expiry, 
             "total_call_oi": total_call, "total_put_oi": total_put,
             "indicators": ind_data, "intelligence": intelligence,
-            "atm_strikes": atm_strikes, "chain": chain,
+            "atm_strikes": atm_strikes, "chain": chain, "greeks": greeks,
             "timestamp": datetime.now().isoformat(),
             "index_name": idx
         }
@@ -844,7 +914,6 @@ def gallery():
     """Generates a beautiful dark-mode gallery of all saved screenshots"""
     os.makedirs("static/screenshots", exist_ok=True)
     
-    # Get all images and sort them by newest first
     files = glob.glob("static/screenshots/*.png")
     files.sort(key=os.path.getmtime, reverse=True)
     
