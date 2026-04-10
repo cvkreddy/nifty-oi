@@ -1,7 +1,11 @@
+
+
+  
+
 """
 ====================================================
-  NIFTY50 OI Server — The Absolute Master Edition
-  Fixes: Live Intraday Candles, TV Timestamps, ST(1,1)
+  MULTI-ASSET OI SERVER — Triple Engine Architecture
+  Supports: NIFTY 50, BANK NIFTY, SENSEX
 ====================================================
 """
 
@@ -24,50 +28,49 @@ def add_header(response):
 API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
-NIFTY_KEY    = "NSE_INDEX|Nifty 50"
 
 # 🚨 TELEGRAM CREDENTIALS 🚨
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
 
-  
+   
 
 CACHE_TTL    = 150  
-STRIKE_STEP  = 50
 ATM_RANGE    = 5
 TOKEN_FILE   = "token_data.json"
 DATA_FILE    = "data_cache.json"  
 STATE_FILE   = "server_state.json" 
 
-token_store     = {"access_token": None}
-oi_cache        = {"data": None}
+token_store  = {"access_token": None}
+debug_status = {"last_error": "Initializing Triple Engine..."}
 
-baseline_oi     = {}
-baseline_vix    = None
-baseline_rsi    = {} 
-prev_oi         = {}
-prev_pcr        = None
-prev_spot       = None
+# 🔥 TRIPLE ENGINE CONFIGURATION
+INDICES = {
+    "NIFTY": {"key": "NSE_INDEX|Nifty 50", "step": 50},
+    "BANKNIFTY": {"key": "NSE_INDEX|Nifty Bank", "step": 100},
+    "SENSEX": {"key": "BSE_INDEX|SENSEX", "step": 100}
+}
 
-candle_cache    = []
-candle_cache_3m = []
-candle_cache_15 = []          
-ltp_history     = {}          
+# Isolated Memory Banks per Index
+STORE = {idx: {
+    "baseline_oi": {}, "baseline_vix": None, "baseline_rsi": {},
+    "prev_oi": {}, "prev_pcr": None, "prev_spot": None,
+    "ltp_history": {}, "sent_alerts": {}, "last_summary": 0
+} for idx in INDICES}
 
-sent_alerts = {}
-last_5min_summary = 0 
-debug_status = {"last_error": "No data fetched yet. Waiting for first cycle."}
+oi_cache = {idx: {"data": None} for idx in INDICES}
+candle_cache_store = {idx: {"1m": [], "3m": [], "15m": []} for idx in INDICES}
 
 # ══════════════════════════════════════════════════
-#  STATE RECOVERY ENGINE
+#  STATE RECOVERY ENGINE (Multi-Asset)
 # ══════════════════════════════════════════════════
-def reverse_engineer_baseline():
-    global baseline_oi
-    if len(baseline_oi) > 0: return
+def reverse_engineer_baseline(idx):
+    if len(STORE[idx]["baseline_oi"]) > 0: return
     try:
         if os.path.exists(DATA_FILE):
             with open(DATA_FILE, "r") as f:
-                d = json.load(f)
+                d_all = json.load(f)
+                d = d_all.get(idx, {})
                 if d.get("timestamp") and d["timestamp"].startswith(date.today().isoformat()):
                     chain = d.get("chain", {})
                     if chain:
@@ -76,38 +79,39 @@ def reverse_engineer_baseline():
                             b_poi = v["put_oi"] - v.get("put_oi_chg_day", 0)
                             b_cltp = v["call_ltp"] - v.get("call_ltp_chg_day", 0)
                             b_pltp = v["put_ltp"] - v.get("put_ltp_chg_day", 0)
-                            baseline_oi[str(s)] = {"call_oi": b_coi, "put_oi": b_poi, "call_ltp": b_cltp, "put_ltp": b_pltp}
+                            STORE[idx]["baseline_oi"][str(s)] = {"call_oi": b_coi, "put_oi": b_poi, "call_ltp": b_cltp, "put_ltp": b_pltp}
     except: pass
 
 def load_server_state():
-    global baseline_oi, baseline_vix, prev_oi, prev_pcr, prev_spot, baseline_rsi
     if os.path.exists(STATE_FILE):
         try:
             with open(STATE_FILE, "r") as f:
                 st = json.load(f)
                 if st.get("date") == date.today().isoformat():
-                    baseline_oi = st.get("baseline_oi", {})
-                    baseline_vix = st.get("baseline_vix")
-                    baseline_rsi = st.get("baseline_rsi", {})
-                    prev_oi = st.get("prev_oi", {})
-                    prev_spot = st.get("prev_spot")
-                    prev_pcr = st.get("prev_pcr")
+                    for idx in INDICES:
+                        saved_idx = st.get(idx, {})
+                        STORE[idx]["baseline_oi"] = saved_idx.get("baseline_oi", {})
+                        STORE[idx]["baseline_vix"] = saved_idx.get("baseline_vix")
+                        STORE[idx]["baseline_rsi"] = saved_idx.get("baseline_rsi", {})
+                        STORE[idx]["prev_oi"] = saved_idx.get("prev_oi", {})
+                        STORE[idx]["prev_spot"] = saved_idx.get("prev_spot")
+                        STORE[idx]["prev_pcr"] = saved_idx.get("prev_pcr")
         except: pass
-    reverse_engineer_baseline()
+    for idx in INDICES: reverse_engineer_baseline(idx)
 
 def save_server_state():
     try:
-        st = {
-            "date": date.today().isoformat(),
-            "baseline_oi": baseline_oi,
-            "baseline_vix": baseline_vix,
-            "baseline_rsi": baseline_rsi,
-            "prev_oi": prev_oi,
-            "prev_spot": prev_spot,
-            "prev_pcr": prev_pcr
-        }
-        with open(STATE_FILE, "w") as f:
-            json.dump(st, f)
+        st = {"date": date.today().isoformat()}
+        for idx in INDICES:
+            st[idx] = {
+                "baseline_oi": STORE[idx]["baseline_oi"],
+                "baseline_vix": STORE[idx]["baseline_vix"],
+                "baseline_rsi": STORE[idx]["baseline_rsi"],
+                "prev_oi": STORE[idx]["prev_oi"],
+                "prev_spot": STORE[idx]["prev_spot"],
+                "prev_pcr": STORE[idx]["prev_pcr"]
+            }
+        with open(STATE_FILE, "w") as f: json.dump(st, f)
     except: pass
 
 load_server_state()
@@ -122,7 +126,7 @@ def send_telegram_alert(message):
     try: requests.post(url, json=payload, timeout=5)
     except: pass
 
-def generate_5min_summary(data, atm_strikes, atm):
+def generate_5min_summary(idx, data, atm_strikes, atm):
     spot = data.get("spot", 0)
     pcr = data.get("pcr", 0)
     intel = data.get("intelligence", {})
@@ -140,7 +144,7 @@ def generate_5min_summary(data, atm_strikes, atm):
     t15 = intel.get("index_technicals", {}).get("15min", {})
     
     msg = (
-        f"⏱ <b>5-MIN NIFTY SCANNER</b>\n"
+        f"⏱ <b>5-MIN {idx} SCANNER</b>\n"
         f"🎯 <b>Spot:</b> ₹{spot} | <b>PCR:</b> {pcr}\n"
         f"⚖️ <b>Straddle:</b> ₹{s_curr:.1f} ({s_decay:+.1f}% Day)\n"
         f"🔴 <b>ATM CE:</b> ₹{atm_v.get('call_ltp', 0):.1f} ({atm_v.get('call_ltp_chg_day', 0):+.1f} D | {atm_v.get('call_ltp_chg', 0):+.1f} 5m)\n"
@@ -166,7 +170,7 @@ def generate_5min_summary(data, atm_strikes, atm):
 
     strikes_to_show = [float(k) for k in atm_strikes.keys()]
     for s in sorted(strikes_to_show, reverse=True):
-        if abs(s - atm) > 2 * STRIKE_STEP: continue
+        if abs(s - atm) > 2 * INDICES[idx]["step"]: continue
         v = atm_strikes[str(s)]
         marker = " ◄ ATM" if s == atm else ""
         
@@ -189,23 +193,23 @@ def generate_5min_summary(data, atm_strikes, atm):
         
     return msg.strip()
 
-def process_telegram_alerts(alerts, data, atm_strikes, atm):
-    global sent_alerts, last_5min_summary
+def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
     current_time = time.time()
-    if last_5min_summary == 0: 
-        last_5min_summary = current_time
+    store = STORE[idx]
+    if store["last_summary"] == 0: 
+        store["last_summary"] = current_time
         return
     try:
         for a in alerts:
-            msg = f"{a['icon']} <b>{a['type']}</b>\n{a['message']}"
-            if msg not in sent_alerts or (current_time - sent_alerts[msg] > 1800):
+            msg = f"{a['icon']} <b>[{idx}] {a['type']}</b>\n{a['message']}"
+            if msg not in store["sent_alerts"] or (current_time - store["sent_alerts"][msg] > 1800):
                 send_telegram_alert(msg)
-                sent_alerts[msg] = current_time
-        sent_alerts = {k: v for k, v in sent_alerts.items() if current_time - v < 3600}
-        if current_time - last_5min_summary >= 290: 
-            summary = generate_5min_summary(data, atm_strikes, atm)
+                store["sent_alerts"][msg] = current_time
+        store["sent_alerts"] = {k: v for k, v in store["sent_alerts"].items() if current_time - v < 3600}
+        if current_time - store["last_summary"] >= 290: 
+            summary = generate_5min_summary(idx, data, atm_strikes, atm)
             send_telegram_alert(summary)
-            last_5min_summary = current_time
+            store["last_summary"] = current_time
     except: pass
 
 # ══════════════════════════════════════════════════
@@ -241,23 +245,30 @@ def callback():
         debug_status["last_error"] = f"Upstox Auth Rejected"
         return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
     save_token(data.get("access_token"))
-    send_telegram_alert("✅ <b>Upstox Login Successful!</b> Server is tracking.")
-    refresh()
+    send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
+    # Kickstart all
+    for idx in INDICES: refresh(idx)
     return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p></body></html>"""
 
-def fetch_spot():
+def fetch_spot(idx):
+    sym = INDICES[idx]["key"]
     try:
-        r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": NIFTY_KEY}, headers=hdrs(), timeout=10)
+        r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": sym}, headers=hdrs(), timeout=10)
         d = r.json().get("data", {}); key = list(d.keys())[0] if d else None
         return float(d[key].get("last_price", 0)) if key else 0
     except: return 0
 
-def fetch_futures(spot):
+def fetch_futures(spot, idx):
     from datetime import date
     now = date.today(); months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
+    # Map index prefix
+    prefix = "NIFTY" if idx == "NIFTY" else "BANKNIFTY" if idx == "BANKNIFTY" else "SENSEX"
     for delta in [0, 1]:
         m = (now.month - 1 + delta) % 12; y = str(now.year)[2:] if now.month + delta <= 12 else str(now.year + 1)[2:]
-        sym = f"NSE_FO|NIFTY{y}{months[m]}FUT"
+        if idx == "SENSEX":
+            sym = f"BSE_FO|{prefix}{y}{months[m]}FUT" # General fallback guess for BSE
+        else:
+            sym = f"NSE_FO|{prefix}{y}{months[m]}FUT"
         try:
             r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": sym}, headers=hdrs(), timeout=5)
             if r.status_code == 200 and r.json().get("data"):
@@ -276,40 +287,18 @@ def fetch_vix():
     except: pass
     return 0
 
-# 🔥 INTRADAY FIX: Combines Historical and Today's live 1min candles so dates are perfect
-def fetch_base_1m_candles():
+def fetch_base_1m_candles(idx):
     try:
-        safe_key = urllib.parse.quote(NIFTY_KEY)
-        to_date = date.today().strftime("%Y-%m-%d")
-        from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
-        
-        # 1. Fetch Historical (past days)
-        url_hist = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_date}/{from_date}"
-        r_hist = requests.get(url_hist, headers=hdrs(), timeout=10)
-        
-        # 2. Fetch Intraday (Today live)
-        url_intra = f"https://api.upstox.com/v2/historical-candle/intraday/{safe_key}/1minute"
-        r_intra = requests.get(url_intra, headers=hdrs(), timeout=10)
-        
-        candles = []
-        if r_hist.status_code == 200:
-            cr = r_hist.json().get("data", {}).get("candles", [])
-            candles.extend(cr)
-        if r_intra.status_code == 200:
-            cr = r_intra.json().get("data", {}).get("candles", [])
-            candles.extend(cr)
-            
-        res = []
-        seen = set()
-        for c in candles:
-            if len(c) >= 5 and c[0] not in seen:
-                seen.add(c[0])
-                res.append({"time": c[0], "open": float(c[1]), "high": float(c[2]), "low": float(c[3]), "close": float(c[4]), "vol": float(c[5]) if len(c)>5 else 0})
-        res.sort(key=lambda x: x["time"])
-        return res
-    except Exception as e:
-        print("Candle fetch error:", e)
-        pass
+        safe_key = urllib.parse.quote(INDICES[idx]["key"])
+        to_date = date.today().strftime("%Y-%m-%d"); from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
+        url = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_date}/{from_date}"
+        r = requests.get(url, headers=hdrs(), timeout=10)
+        if r.status_code == 200:
+            cr = r.json().get("data", {}).get("candles", [])
+            res = [{"time": c[0], "open": float(c[1]), "high": float(c[2]), "low": float(c[3]), "close": float(c[4]), "vol": float(c[5]) if len(c)>5 else 0} for c in cr if len(c)>=5]
+            res.sort(key=lambda x: x["time"])
+            return res
+    except: pass
     return []
 
 def resample_candles(candles_1m, tf):
@@ -328,9 +317,10 @@ def resample_candles(candles_1m, tf):
     if cg: res.append({"time": ct.isoformat(), "open": cg[0]["open"], "high": max(x["high"] for x in cg), "low": min(x["low"] for x in cg), "close": cg[-1]["close"], "vol": sum(x.get("vol", 0) for x in cg)})
     return res
 
-def get_expiry():
+def get_expiry(idx):
+    sym = INDICES[idx]["key"]
     try:
-        r = requests.get("https://api.upstox.com/v2/option/contract", params={"instrument_key": NIFTY_KEY}, headers=hdrs(), timeout=10)
+        r = requests.get("https://api.upstox.com/v2/option/contract", params={"instrument_key": sym}, headers=hdrs(), timeout=10)
         if r.status_code == 200:
             items = r.json().get("data", [])
             exps = sorted([i if isinstance(i, str) else i.get("expiry") for i in items if i])
@@ -342,9 +332,10 @@ def get_expiry():
     if days == 0: days = 7
     return (today + timedelta(days=days)).strftime("%Y-%m-%d")
 
-def fetch_chain(expiry):
+def fetch_chain(idx, expiry):
+    sym = INDICES[idx]["key"]
     try:
-        r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": NIFTY_KEY, "expiry_date": expiry}, headers=hdrs(), timeout=15)
+        r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": sym, "expiry_date": expiry}, headers=hdrs(), timeout=15)
         return r.json().get("data", []) if r.status_code == 200 else []
     except: return []
 
@@ -387,52 +378,14 @@ def calc_ema_array(prices, period):
         emas.append(round(ema, 2))
     return emas
 
-# 🔥 PERFECTED SUPERTREND (Matches TV ta.supertrend exactly for arrays)
-def calc_supertrend_array(candles, period=1, multiplier=1.0):
-    if not candles or len(candles) < period + 1: return [None] * len(candles)
-    
-    trs = [0.0] * len(candles)
-    for i in range(1, len(candles)):
-        h, l, pc = candles[i]["high"], candles[i]["low"], candles[i-1]["close"]
-        trs[i] = max(h-l, abs(h-pc), abs(l-pc))
-        
-    atrs = [0.0] * len(candles)
-    if period == 1:
-        atrs = trs
-    else:
-        alpha = 1.0 / period
-        atrs[period] = sum(trs[1:period+1]) / period
-        for i in range(period+1, len(candles)):
-            atrs[i] = alpha * trs[i] + (1 - alpha) * atrs[i-1]
-            
-    lower_bands, upper_bands = [0.0] * len(candles), [0.0] * len(candles)
-    st_dirs = [1] * len(candles)
-    dirs = [None] * len(candles)
-    
-    for i in range(period, len(candles)):
-        hl2 = (candles[i]["high"] + candles[i]["low"]) / 2.0
-        basic_ub = hl2 + multiplier * atrs[i]
-        basic_lb = hl2 - multiplier * atrs[i]
-        
-        prev_ub = upper_bands[i-1]
-        prev_lb = lower_bands[i-1]
-        prev_dir = st_dirs[i-1]
-        prev_close = candles[i-1]["close"]
-        
-        final_ub = basic_ub if (basic_ub < prev_ub or prev_close > prev_ub) else prev_ub
-        final_lb = basic_lb if (basic_lb > prev_lb or prev_close < prev_lb) else prev_lb
-            
-        curr_close = candles[i]["close"]
-        
-        if prev_dir == 1 and curr_close <= final_lb: st_dirs[i] = -1
-        elif prev_dir == -1 and curr_close >= final_ub: st_dirs[i] = 1
-        else: st_dirs[i] = prev_dir
-            
-        upper_bands[i] = final_ub
-        lower_bands[i] = final_lb
-        dirs[i] = "BULLISH" if st_dirs[i] == 1 else "BEARISH"
-        
-    return dirs
+def calc_supertrend(candles, period=7, multiplier=3.0):
+    if len(candles) < period + 1: return None, None
+    highs, lows, closes = [c["high"] for c in candles], [c["low"] for c in candles], [c["close"] for c in candles]
+    trs = [max(highs[i]-lows[i], abs(highs[i]-closes[i-1]), abs(lows[i]-closes[i-1])) for i in range(1, len(candles))]
+    atr = sum(trs[-period:]) / period; hl2 = (highs[-1] + lows[-1]) / 2
+    direction = "BULLISH" if closes[-1] > (hl2 - multiplier * atr) else "BEARISH"
+    st_val = round((hl2 - multiplier * atr) if direction == "BULLISH" else (hl2 + multiplier * atr), 2)
+    return direction, st_val
 
 def calc_rsi(closes, p=14):
     if len(closes) < p+1: return None
@@ -493,12 +446,11 @@ def get_indicators(candles):
     adx_val = calc_adx(candles, 14)
     return {"rsi": rsi_val, "adx": adx_val, "candle_count": len(candles)}
 
-# 🔥 RESTORED & PERFECTED: DD-MM HH:MM + Timezone shift to match TV Close Times
-def compute_tf_signals(candles, label, st_period, st_multiplier, tf_mins):
+def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
     if not candles or len(candles) < 15: 
         return {"label": label, "candle_count": len(candles) if candles else 0, "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-"}
     
-    global baseline_rsi
+    store = STORE[idx]
     
     vwap = get_vwap(candles)
     closes = [c["close"] for c in candles]
@@ -506,7 +458,6 @@ def compute_tf_signals(candles, label, st_period, st_multiplier, tf_mins):
     
     ema7_arr = calc_ema_array(closes, 7)
     ema15_arr = calc_ema_array(closes, 15)
-    st_dirs_arr = calc_supertrend_array(candles, st_period, st_multiplier)
     
     trend_start, pull_time, cont_time, st_time = "-", "-", "-", "-"
     is_bull = None
@@ -519,10 +470,9 @@ def compute_tf_signals(candles, label, st_period, st_multiplier, tf_mins):
         c_close = closes[i]
         
         try:
-            # Shift Upstox start time to TradingView close time by adding tf_mins
-            dt = datetime.strptime(times[i][:16], "%Y-%m-%dT%H:%M")
-            dt_close = dt + timedelta(minutes=tf_mins)
-            c_time = dt_close.strftime("%d-%m %H:%M") # Formatted as DD-MM HH:MM
+            d_str = times[i][:10]
+            t_str = times[i][11:16]
+            c_time = f"{d_str[8:10]}-{d_str[5:7]} {t_str}" 
         except: 
             c_time = "-"
 
@@ -551,7 +501,7 @@ def compute_tf_signals(candles, label, st_period, st_multiplier, tf_mins):
             elif not await_pull_s and c_close < e7:
                 cont_time = c_time; await_pull_s = True
                 
-        s_dir = st_dirs_arr[i]
+        s_dir, _ = calc_supertrend(candles[:i+1], st_period, st_multiplier)
         if curr_st is None: 
             curr_st = s_dir
             st_time = c_time
@@ -560,7 +510,7 @@ def compute_tf_signals(candles, label, st_period, st_multiplier, tf_mins):
             curr_st = s_dir
 
     ema7, ema15, price = ema7_arr[-1], ema15_arr[-1], closes[-1]
-    st_dir = st_dirs_arr[-1]
+    st_dir, st_val = calc_supertrend(candles, st_period, st_multiplier)
     
     trend = "N/A"
     if ema7 and ema15:
@@ -573,9 +523,9 @@ def compute_tf_signals(candles, label, st_period, st_multiplier, tf_mins):
     curr_rsi = round(rsis[-1], 2) if rsis and rsis[-1] is not None else 0
     prev_rsi = round(rsis[-2], 2) if rsis and len(rsis) > 1 and rsis[-2] is not None else curr_rsi
     
-    base_r = baseline_rsi.get(label)
+    base_r = store["baseline_rsi"].get(label)
     if not base_r and curr_rsi > 0:
-        baseline_rsi[label] = curr_rsi
+        store["baseline_rsi"][label] = curr_rsi
         base_r = curr_rsi
         
     rsi_5m_chg = round(curr_rsi - prev_rsi, 2) if curr_rsi else 0
@@ -586,17 +536,19 @@ def compute_tf_signals(candles, label, st_period, st_multiplier, tf_mins):
         "ema7": ema7, "ema15": ema15, "vwap": vwap, 
         "price_above_ema7": price > ema7 if ema7 else None, "price_above_ema15": price > ema15 if ema15 else None, 
         "ema7_above_ema15": ema7 > ema15 if ema7 and ema15 else None, "price_above_vwap": price > vwap if vwap else None,
-        "trend": trend, "supertrend": st_dir, "supertrend_val": None, 
+        "trend": trend, "supertrend": st_dir, "supertrend_val": st_val, 
         "rsi": curr_rsi if curr_rsi > 0 else None,
         "rsi_5m_chg": rsi_5m_chg,
         "rsi_day_chg": rsi_day_chg,
         "ts_start": trend_start, "ts_pull": pull_time, "ts_cont": cont_time, "ts_st": st_time
     }
 
-def price_oi_matrix(spot, prev_spot, chain, atm):
-    if prev_spot is None or len(prev_oi)==0: return "INITIALIZING","—","Waiting for second data cycle"
+def price_oi_matrix(spot, prev_spot, chain, atm, idx):
+    store = STORE[idx]
+    step = INDICES[idx]["step"]
+    if prev_spot is None or len(store["prev_oi"])==0: return "INITIALIZING","—","Waiting for second data cycle"
     price_up, price_dn = spot > prev_spot, spot < prev_spot
-    total_oi_chg = sum(v["call_oi_chg"]+v["put_oi_chg"] for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP)
+    total_oi_chg = sum(v["call_oi_chg"]+v["put_oi_chg"] for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*step)
     if price_up and total_oi_chg > 0: return "FRESH LONG BUILD","BULLISH","New buyers entering — strong upward momentum. Hold longs."
     elif price_up and total_oi_chg < 0: return "SHORT COVERING","WEAK BULLISH","Bears exiting, not fresh bulls. Rally may lack strength."
     elif price_dn and total_oi_chg > 0: return "FRESH SHORT BUILD","BEARISH","New sellers entering — strong downward momentum. Hold shorts."
@@ -637,8 +589,8 @@ def analyze_vix_price(spot, vwap, vix, base_vix):
     elif not price_up and not vix_up: return {"signal": "WEAK BEARISH", "desc": "Price ↓ + VIX ↓ | Normal correction = Support might hold."}
     return {"signal": "NEUTRAL", "desc": "Market flat"}
 
-def process_chain(raw):
-    global prev_oi, baseline_oi
+def process_chain(idx, raw):
+    store = STORE[idx]
     result={}
     for item in raw:
         strike=float(item.get("strike_price",0))
@@ -651,8 +603,8 @@ def process_chain(raw):
         call_vol, put_vol = float(ce_md.get("volume",0) or 0), float(pe_md.get("volume",0) or 0)
         call_ltp, put_ltp = float(ce_md.get("ltp",0) or ce_md.get("last_price",0) or 0), float(pe_md.get("ltp",0) or pe_md.get("last_price",0) or 0)
         
-        prev = prev_oi.get(str(strike), {}) if prev_oi else {}
-        base = baseline_oi.get(str(strike), {}) if baseline_oi else {}
+        prev = store["prev_oi"].get(str(strike), {}) if store["prev_oi"] else {}
+        base = store["baseline_oi"].get(str(strike), {}) if store["baseline_oi"] else {}
 
         c_oi_5m = call_oi - prev["call_oi"] if "call_oi" in prev else 0
         p_oi_5m = put_oi - prev["put_oi"] if "put_oi" in prev else 0
@@ -682,8 +634,8 @@ def process_chain(raw):
             "put_delta": float(pe_gk.get("delta",0) or 0), "put_gamma": float(pe_gk.get("gamma",0) or 0), "put_gex": float(pe_gk.get("gamma",0) or 0) * put_oi * 25
         }
         
-    if len(baseline_oi) == 0 and result: 
-        baseline_oi = {str(s): {"call_oi": v["call_oi"], "put_oi": v["put_oi"], "call_ltp": v["call_ltp"], "put_ltp": v["put_ltp"]} for s,v in result.items()}
+    if len(store["baseline_oi"]) == 0 and result: 
+        store["baseline_oi"] = {str(s): {"call_oi": v["call_oi"], "put_oi": v["put_oi"], "call_ltp": v["call_ltp"], "put_ltp": v["put_ltp"]} for s,v in result.items()}
     return result
 
 def classify_strike_oi_flow(v, prev_spot, spot):
@@ -691,7 +643,6 @@ def classify_strike_oi_flow(v, prev_spot, spot):
     c_c, cl, c_o = v.get("call_oi_chg", 0), v.get("call_ltp_chg", 0), v.get("call_oi", 0)
     p_c, pl, p_o = v.get("put_oi_chg", 0), v.get("put_ltp_chg", 0), v.get("put_oi", 0)
     
-    # 🔥 HIGH SENSITIVITY FIX (25,000 contracts trigger)
     THRESH = 25000 
     
     if pup and c_c > THRESH and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
@@ -727,47 +678,48 @@ def classify_strike_oi_flow(v, prev_spot, spot):
 #  MAIN REFRESH LOOP
 # ══════════════════════════════════════════════════
 
-def refresh():
-    global prev_oi, prev_pcr, prev_spot, candle_cache, candle_cache_15, candle_cache_3m, baseline_vix, ltp_history
-
+def refresh(idx):
     load_token()
     if not token_store.get("access_token"):
-        debug_status["last_error"] = "Token missing from memory/disk. Please login."
+        debug_status["last_error"] = "Token missing. Please login."
         return
 
+    store = STORE[idx]
+    step = INDICES[idx]["step"]
+
     try:
-        spot   = fetch_spot()
-        expiry = get_expiry()
-        raw    = fetch_chain(expiry)
+        spot   = fetch_spot(idx)
+        expiry = get_expiry(idx)
+        raw    = fetch_chain(idx, expiry)
         
         if not raw:
-            err_msg = f"Upstox returned no chain data. Token expired or IP limit reached."
+            err_msg = f"[{idx}] Upstox returned no chain data. Token expired or API limit reached."
             debug_status["last_error"] = err_msg
-            if oi_cache.get("data"): oi_cache["data"]["backend_error"] = err_msg
-            else: oi_cache["data"] = {"backend_error": err_msg, "timestamp": datetime.now().isoformat()}
+            if oi_cache[idx].get("data"): oi_cache[idx]["data"]["backend_error"] = err_msg
+            else: oi_cache[idx]["data"] = {"backend_error": err_msg, "timestamp": datetime.now().isoformat()}
             return
 
-        atm   = round(round(spot/50)*50, 2)
-        chain = process_chain(raw)
+        atm   = round(round(spot/step)*step, 2)
+        chain = process_chain(idx, raw)
         if not chain: return
 
         max_pain = compute_max_pain(chain)
-        atm_strikes = {str(s):v for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP}
+        atm_strikes = {str(s):v for s,v in chain.items() if abs(s-atm) <= ATM_RANGE * step}
         
         total_call  = sum(v["call_oi"] for v in chain.values())
         total_put   = sum(v["put_oi"]  for v in chain.values())
         pcr         = round(total_put/total_call,2) if total_call else 0
-        pcr_chg     = round(pcr-prev_pcr,3) if prev_pcr is not None else 0
-        futures     = fetch_futures(spot)
+        pcr_chg     = round(pcr-store["prev_pcr"],3) if store["prev_pcr"] is not None else 0
+        futures     = fetch_futures(spot, idx)
         vix         = fetch_vix()
         
-        if baseline_vix is None and vix > 0: baseline_vix = vix
+        if store["baseline_vix"] is None and vix > 0: store["baseline_vix"] = vix
 
-        candles_1m  = fetch_base_1m_candles()
+        candles_1m  = fetch_base_1m_candles(idx)
         if candles_1m:
-            candle_cache_3m = resample_candles(candles_1m, 3)[-60:]
-            candle_cache    = resample_candles(candles_1m, 5)[-60:]
-            candle_cache_15 = resample_candles(candles_1m, 15)[-40:]
+            candle_cache_store[idx]["3m"] = resample_candles(candles_1m, 3)[-60:]
+            candle_cache_store[idx]["5m"] = resample_candles(candles_1m, 5)[-60:]
+            candle_cache_store[idx]["15m"] = resample_candles(candles_1m, 15)[-40:]
 
         cum_put_add = sum(v["put_oi_chg_day"] for v in chain.values())
         cum_call_add = sum(v["call_oi_chg_day"] for v in chain.values())
@@ -775,7 +727,7 @@ def refresh():
 
         atm_v = atm_strikes.get(str(atm), {})
         current_straddle = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
-        old_data = oi_cache.get("data") or {}
+        old_data = oi_cache[idx].get("data") or {}
         morning_straddle = old_data.get("intelligence", {}).get("morning_straddle")
         if morning_straddle is None and current_straddle > 0: morning_straddle = current_straddle
         straddle_decay = ((current_straddle - morning_straddle) / morning_straddle * 100) if morning_straddle and morning_straddle > 0 else 0
@@ -783,44 +735,43 @@ def refresh():
         alerts = []
         for s,v in chain.items():
             dist = s - spot
-            if 0 < dist <= 150 and v["call_oi_chg"] < 0 and abs(v["call_oi_chg"]) > v["call_oi"]*0.05: alerts.append({"type":"BREAKOUT UP","icon":"⚡","message":f"Res OI dropping"})
-            if -150 <= dist < 0 and v["put_oi_chg"] < 0 and abs(v["put_oi_chg"]) > v["put_oi"]*0.05: alerts.append({"type":"BREAKOUT DOWN","icon":"⚡","message":f"Sup OI dropping"})
+            if 0 < dist <= (step*3) and v["call_oi_chg"] < 0 and abs(v["call_oi_chg"]) > v["call_oi"]*0.05: alerts.append({"type":"BREAKOUT UP","icon":"⚡","message":f"Res OI dropping"})
+            if -(step*3) <= dist < 0 and v["put_oi_chg"] < 0 and abs(v["put_oi_chg"]) > v["put_oi"]*0.05: alerts.append({"type":"BREAKOUT DOWN","icon":"⚡","message":f"Sup OI dropping"})
 
-        oi_cond, oi_signal, oi_desc = price_oi_matrix(spot, prev_spot, chain, atm)
+        oi_cond, oi_signal, oi_desc = price_oi_matrix(spot, store["prev_spot"], chain, atm, idx)
 
         for s_str, v in atm_strikes.items():
             s = float(s_str)
-            cf, pf, nf = classify_strike_oi_flow(v, prev_spot, spot)
+            cf, pf, nf = classify_strike_oi_flow(v, store["prev_spot"], spot)
             v["call_flow"], v["put_flow"], v["net_flow"] = cf, pf, nf
             
-            if s not in ltp_history: ltp_history[s] = {"call": [], "put": []}
-            if v.get("call_ltp"): ltp_history[s]["call"] = (ltp_history[s]["call"] + [float(v["call_ltp"])])[-25:]
-            if v.get("put_ltp"): ltp_history[s]["put"] = (ltp_history[s]["put"] + [float(v["put_ltp"])])[-25:]
+            if s not in store["ltp_history"]: store["ltp_history"][s] = {"call": [], "put": []}
+            if v.get("call_ltp"): store["ltp_history"][s]["call"] = (store["ltp_history"][s]["call"] + [float(v["call_ltp"])])[-25:]
+            if v.get("put_ltp"): store["ltp_history"][s]["put"] = (store["ltp_history"][s]["put"] + [float(v["put_ltp"])])[-25:]
             def s_info(prices):
                 e7 = calc_ema(prices, 7)
                 e15 = calc_ema(prices, 15)
                 price = prices[-1] if prices else None
                 return {"ema7": e7, "ema15": e15, "price_above_ema7": price > e7 if e7 and price else None}
-            v["ltp_technicals"] = {"call": s_info(ltp_history[s]["call"]), "put": s_info(ltp_history[s]["put"])}
+            v["ltp_technicals"] = {"call": s_info(store["ltp_history"][s]["call"]), "put": s_info(store["ltp_history"][s]["put"])}
 
-        vwap_val = get_vwap(candle_cache)
-        vix_matrix = analyze_vix_price(spot, vwap_val, vix, baseline_vix)
+        vwap_val = get_vwap(candle_cache_store[idx]["5m"])
+        vix_matrix = analyze_vix_price(spot, vwap_val, vix, store["baseline_vix"])
         
-        ind_data = get_indicators(candle_cache)
+        ind_data = get_indicators(candle_cache_store[idx]["5m"])
         mkt_state = market_state(pcr, ind_data.get("adx"), oi_signal, alerts, vix)
         
-        gex_data = [{"strike":s,"net_gex":v["call_gex"] - v["put_gex"]} for s,v in sorted(chain.items()) if abs(s-atm) <= 10*STRIKE_STEP]
+        gex_data = [{"strike":s,"net_gex":v["call_gex"] - v["put_gex"]} for s,v in sorted(chain.items()) if abs(s-atm) <= 10*step]
         gex_flip = min(gex_data, key=lambda x:abs(x["net_gex"])) if gex_data else None
 
         skew_data=[]
         for dist in [1,2,3]:
-            c_strike, p_strike = atm+dist*STRIKE_STEP, atm-dist*STRIKE_STEP
+            c_strike, p_strike = atm+dist*step, atm-dist*step
             ce, pe = chain.get(c_strike,{}), chain.get(p_strike,{})
             if ce.get("call_iv") and pe.get("put_iv"): skew_data.append({"dist":dist,"call_strike":c_strike,"call_iv":ce["call_iv"],"put_strike":p_strike,"put_iv":pe["put_iv"],"skew":round(pe["put_iv"]-ce["call_iv"],2)})
         avg_skew=round(sum(x["skew"] for x in skew_data)/len(skew_data),2) if skew_data else 0
         iv_skew = {"data":skew_data,"avg_skew":avg_skew,"signal":"BEARISH SKEW — put IV elevated" if avg_skew>3 else "BULLISH SKEW — call IV elevated" if avg_skew<-3 else "NEUTRAL SKEW — balanced"}
 
-        # 🔥 RESTORED: ST(1,1) logic matching PineScript identically
         intelligence = {
             "market_state": mkt_state,
             "oi_matrix_condition": oi_cond, "oi_matrix_signal": oi_signal, "oi_matrix_desc": oi_desc,
@@ -828,9 +779,9 @@ def refresh():
             "alerts": alerts, 
             "gex_profile": gex_data[:11], "gex_flip": gex_flip, "iv_skew": iv_skew,
             "index_technicals": {
-                "3min": compute_tf_signals(candle_cache_3m, "3min", 1, 1.0, 3),
-                "5min": compute_tf_signals(candle_cache, "5min", 1, 1.0, 5),
-                "15min": compute_tf_signals(candle_cache_15, "15min", 1, 1.0, 15)
+                "3min": compute_tf_signals(idx, candle_cache_store[idx]["3m"], "3min", 1, 1.0),
+                "5min": compute_tf_signals(idx, candle_cache_store[idx]["5m"], "5min", 1, 1.0),
+                "15min": compute_tf_signals(idx, candle_cache_store[idx]["15m"], "15min", 1, 1.0)
             },
             "cumulative_net_flow_l": round(cum_net_flow / 100000, 2),
             "morning_straddle": morning_straddle,
@@ -846,34 +797,42 @@ def refresh():
             "total_call_oi": total_call, "total_put_oi": total_put,
             "indicators": ind_data, "intelligence": intelligence,
             "atm_strikes": atm_strikes, "chain": chain,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "index_name": idx
         }
 
-        oi_cache["data"] = data
+        oi_cache[idx]["data"] = data
+        
+        # Save cache dynamically
         try:
-            with open(DATA_FILE, "w") as f: json.dump(data, f)
+            full_cache = {}
+            if os.path.exists(DATA_FILE):
+                with open(DATA_FILE, "r") as f: full_cache = json.load(f)
+            full_cache[idx] = data
+            with open(DATA_FILE, "w") as f: json.dump(full_cache, f)
         except: pass
 
-        prev_oi   = {str(s):{"call_oi":v["call_oi"],"put_oi":v["put_oi"],"call_ltp":v["call_ltp"],"put_ltp":v["put_ltp"]} for s,v in chain.items()}
-        prev_pcr  = pcr
-        prev_spot = spot
+        store["prev_oi"]   = {str(s):{"call_oi":v["call_oi"],"put_oi":v["put_oi"],"call_ltp":v["call_ltp"],"put_ltp":v["put_ltp"]} for s,v in chain.items()}
+        store["prev_pcr"]  = pcr
+        store["prev_spot"] = spot
         
         save_server_state()
-        
-        debug_status["last_error"] = "Data fetched successfully."
-        process_telegram_alerts(alerts, data, atm_strikes, atm)
+        debug_status["last_error"] = f"[{idx}] Data fetched successfully."
+        process_telegram_alerts(idx, alerts, data, atm_strikes, atm)
         
     except Exception as e:
         error_trace = traceback.format_exc()
-        print("[REFRESH CRASH]\n", error_trace)
-        debug_status["last_error"] = f"CRASH in refresh(): {str(e)}"
-        if oi_cache.get("data"): oi_cache["data"]["backend_error"] = f"Crash: {str(e)}"
-        else: oi_cache["data"] = {"backend_error": f"Crash: {str(e)}", "timestamp": datetime.now().isoformat()}
+        print(f"[{idx} REFRESH CRASH]\n", error_trace)
+        debug_status["last_error"] = f"CRASH in {idx}: {str(e)}"
+        if oi_cache[idx].get("data"): oi_cache[idx]["data"]["backend_error"] = f"Crash: {str(e)}"
+        else: oi_cache[idx]["data"] = {"backend_error": f"Crash: {str(e)}", "timestamp": datetime.now().isoformat()}
 
 def loop():
     time.sleep(5) 
     while True:
-        refresh()
+        for idx in INDICES.keys():
+            refresh(idx)
+            time.sleep(2) # Stagger API calls to prevent UPSTOX rate limits
         time.sleep(CACHE_TTL)
 
 threading.Thread(target=loop, daemon=True).start()
@@ -887,49 +846,50 @@ def dashboard(): return send_file("dashboard.html")
 
 @app.route("/oi/json")
 def oi_json():
-    d = oi_cache.get("data")
+    idx = request.args.get("idx", "NIFTY")
+    if idx not in INDICES: idx = "NIFTY"
+    
+    d = oi_cache[idx].get("data")
     if not d and os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r") as f:
-                d = json.load(f)
-                oi_cache["data"] = d
+                d_all = json.load(f)
+                d = d_all.get(idx)
+                if d: oi_cache[idx]["data"] = d
         except: pass
         
     if not d: 
         diag_msg = debug_status.get('last_error', 'Unknown Error')
-        return jsonify({"error": f"Data Empty. [Diagnostic: {diag_msg}] — Click login to try again."})
-        
-    try:
-        last_upd = datetime.fromisoformat(d["timestamp"])
-        if (datetime.now() - last_upd).total_seconds() > 180:
-            refresh()
-            if os.path.exists(DATA_FILE):
-                with open(DATA_FILE, "r") as f: d = json.load(f)
-    except: pass
+        return jsonify({"error": f"Data Empty for {idx}. [Diagnostic: {diag_msg}] — Click login."})
     return jsonify(d)
 
 @app.route("/oi/histogram")
 def histogram():
-    d = oi_cache.get("data")
+    idx = request.args.get("idx", "NIFTY")
+    if idx not in INDICES: idx = "NIFTY"
+    
+    d = oi_cache[idx].get("data")
     if not d and os.path.exists(DATA_FILE):
         try:
-            with open(DATA_FILE, "r") as f: d = json.load(f)
+            with open(DATA_FILE, "r") as f:
+                d_all = json.load(f)
+                d = d_all.get(idx)
         except: pass
+    
     if not d or not d.get("chain"): return jsonify([])
-    chain=d["chain"]; atm=d["atm"]
-    return jsonify(sorted([v for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*STRIKE_STEP], key=lambda x:x["strike"]))
+    chain = d["chain"]
+    atm = d["atm"]
+    step = INDICES[idx]["step"]
+    return jsonify(sorted([v for s,v in chain.items() if abs(s-atm) <= ATM_RANGE * step], key=lambda x:x["strike"]))
 
 @app.route("/telegram/force_summary")
 def force_telegram_summary():
-    d = oi_cache.get("data")
-    if not d and os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, "r") as f: d = json.load(f)
-        except: pass
-    if not d: return "No data available yet.", 400
-    msg = generate_5min_summary(d, d.get("atm_strikes", {}), d.get("atm", 0))
+    idx = request.args.get("idx", "NIFTY")
+    d = oi_cache[idx].get("data")
+    if not d: return f"No data available for {idx} yet.", 400
+    msg = generate_5min_summary(idx, d, d.get("atm_strikes", {}), d.get("atm", 0))
     send_telegram_alert(msg)
-    return "Summary sent to Telegram successfully!", 200
+    return f"Summary sent to Telegram for {idx} successfully!", 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)

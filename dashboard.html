@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NIFTY50 Pro OI Dashboard</title>
+<title>Pro OI Terminal — Multi-Asset</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -27,6 +27,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13
 .btn:hover{background:rgba(0,255,136,.2);box-shadow:0 0 10px rgba(0,255,136,0.2);}
 .btn-ss{font-family:var(--ui);font-size:12px;font-weight:600;background:rgba(0,184,255,.1);
   border:1px solid rgba(0,184,255,.3);color:var(--info);padding:5px 12px;border-radius:6px;cursor:pointer;}
+
+/* 🔥 TRIPLE ENGINE TABS */
+.tabs {display:flex; gap:12px; padding:12px 18px; background:var(--bg2); border-bottom:1px solid var(--border);}
+.tab {padding:6px 16px; border-radius:6px; cursor:pointer; font-family:var(--ui); font-weight:700; font-size:14px; color:var(--text2); border:1px solid transparent; transition:all 0.2s; letter-spacing:1px;}
+.tab:hover {color:var(--text);}
+.tab.active {background:rgba(0,184,255,.1); border-color:rgba(0,184,255,.3); color:var(--info); text-shadow:0 0 8px rgba(0,184,255,0.4);}
 
 .verdict-banner{padding:10px 18px;border-bottom:2px solid transparent;font-family:var(--ui);
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;transition:all .4s;}
@@ -121,7 +127,6 @@ tr:hover td{background:rgba(255,255,255,.03);}
 .bull{color:var(--bull)!important;}.bear{color:var(--bear)!important;}
 .warn{color:var(--warn)!important;}.info{color:var(--info)!important;}.atmc{color:var(--atm)!important;}
 
-/* UI Modules */
 .pcr-spark{width:90px;height:24px;margin-top:6px;}
 .flow-tbl td{font-size:12px;padding:6px 10px;vertical-align:top;}
 .flow-tbl th{font-size:11px;padding:8px 10px;}
@@ -182,6 +187,13 @@ tr:hover td{background:rgba(255,255,255,.03);}
     <button class="btn" onclick="doFetch()">↺ REFRESH</button>
   </div>
 </div>
+
+<div class="tabs">
+  <div class="tab active" id="tab-NIFTY" onclick="switchTab('NIFTY')">NIFTY 50</div>
+  <div class="tab" id="tab-BANKNIFTY" onclick="switchTab('BANKNIFTY')">BANK NIFTY</div>
+  <div class="tab" id="tab-SENSEX" onclick="switchTab('SENSEX')">SENSEX</div>
+</div>
+
 <div id="err">⚠ Error fetching data</div>
 
 <div class="verdict-banner" id="verdict-banner">
@@ -276,7 +288,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
 
 <div class="card" style="border-radius:0; border-left:none; border-right:none; margin-bottom:14px;">
   <div class="ch">
-    <span class="ct info">📊 NIFTY 50 TECHNICALS (3m, 5m, 15m)</span>
+    <span class="ct info">📊 TECHNICALS (3m, 5m, 15m)</span>
     <span class="cs" id="tech-bias-lbl" style="font-weight:700;font-size:13px">Bias: —</span>
   </div>
   <div id="nifty-tech-full">
@@ -424,11 +436,29 @@ tr:hover td{background:rgba(255,255,255,.03);}
 </div>
 
 <script>
-let targetTime = Date.now() + 300000;
-let pcrHistory   = []      
-let prevOIChg    = {}      
-let cycleCount   = 0
-let snapCount    = 0
+let currentIdx   = 'NIFTY';
+let targetTime   = Date.now() + 300000;
+let pcrHistory   = [];      
+let prevOIChg    = {};      
+let cycleCount   = 0;
+let snapCount    = 0;
+
+function switchTab(idx) {
+    currentIdx = idx;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + idx).classList.add('active');
+    
+    cycleCount = 0; 
+    prevOIChg = {};
+    pcrHistory = [];
+    
+    g('call-tbody').innerHTML = '<tr><td colspan="8" class="loading">Loading ' + idx + '...</td></tr>';
+    g('put-tbody').innerHTML = '<tr><td colspan="8" class="loading">Loading ' + idx + '...</td></tr>';
+    g('flow-tbody').innerHTML = '<tr><td colspan="10" class="loading">Loading ' + idx + '...</td></tr>';
+    g('histogram').innerHTML = '<div class="loading">Loading...</div>';
+    
+    doFetch();
+}
 
 function loadH2C(){const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';document.head.appendChild(s)}
 loadH2C()
@@ -439,7 +469,7 @@ function saveScreenshot(auto){
   html2canvas(document.body,{scale:1,useCORS:true,allowTaint:true,logging:false}).then(c=>{
     const dataUrl=c.toDataURL('image/png')
     const a=document.createElement('a')
-    a.download=`nifty_oi_${auto?'auto':'snap'}_${ts}.png`
+    a.download=`${currentIdx}_oi_${auto?'auto':'snap'}_${ts}.png`
     a.href=dataUrl; a.style.display='none'
     document.body.appendChild(a); a.click(); document.body.removeChild(a)
     snapCount++
@@ -459,13 +489,12 @@ function hexToRgb(cssVar){
   return '139,148,158'
 }
 
-// 🔥 CRASH PROOF DOM HELPERS
 function g(id){return document.getElementById(id)}
 function sStyle(id, prop, val) { const el = g(id); if (el && el.style) { el.style[prop] = val; } }
 function sText(id, text) { const el = g(id); if (el) { el.textContent = text; } }
 function sHTML(id, html) { const el = g(id); if (el) { el.innerHTML = html; } }
 function styl(id,t,c){const el=g(id);if(el){el.textContent=t;el.style.color=c;}}
-function set(id,t){const e=g(id);if(e)e.textContent=t;} // RESTORED FOR OLDER FUNCTIONS
+function set(id,t){const e=g(id);if(e)e.textContent=t;} 
 
 function fc(n){const a=Math.abs(n);if(a>=100000)return(n>=0?'+':'−')+(a/100000).toFixed(2)+'L';if(a>=1000)return(n>=0?'+':'−')+(a/1000).toFixed(1)+'K';return(n>=0?'+':'−')+Math.round(a)}
 function fmt(n){return n?Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}
@@ -506,10 +535,9 @@ async function doFetch(){
   sStyle('dot', 'background', 'var(--warn)');
   try{
     const cb = new Date().getTime()
-    const [jr,hr]=await Promise.all([fetch('/oi/json?_='+cb),fetch('/oi/histogram?_='+cb)])
+    const [jr,hr]=await Promise.all([fetch('/oi/json?idx='+currentIdx+'&_='+cb),fetch('/oi/histogram?idx='+currentIdx+'&_='+cb)])
     const raw=await jr.json()
     
-    // SAFE GUARD: Catch server auth/missing token errors
     if(raw.error) {
       if (raw.error.includes('login') || raw.error.includes('token') || raw.error.includes('stuck')) {
          sText('vb-icon', '🔒');
@@ -520,12 +548,11 @@ async function doFetch(){
       throw new Error(raw.error)
     }
 
-    // SAFE GUARD: Catch python background crashes
     if (raw.backend_error) {
         sStyle('err', 'display', 'block');
         sHTML('err', `⚠ BACKEND DATA FROZEN: ${raw.backend_error} <a href="/login" style="color:#fff; text-decoration:underline; margin-left:10px">Try Re-Login</a>`);
         sStyle('dot', 'background', 'var(--bear)');
-        return; // ABORT RENDER
+        return; 
     } else {
         sStyle('err', 'display', 'none');
     }
@@ -544,7 +571,7 @@ async function doFetch(){
     const bTime = new Date(raw.timestamp).toLocaleTimeString('en-IN');
     const fTime = new Date().toLocaleTimeString('en-IN');
     sHTML('upd', `<span style="color:var(--bull)">DATA: ${bTime}</span> | FETCHED: ${fTime}`);
-    sText('st-left', 'Live · Spot ₹'+fmt(raw.spot)+' · PCR '+raw.pcr.toFixed(2));
+    sText('st-left', `${currentIdx} · Live Spot ₹${fmt(raw.spot)} · PCR ${raw.pcr.toFixed(2)}`);
 
     setTimeout(() => {
         saveScreenshot(true);
@@ -946,19 +973,17 @@ function renderSkew(skewObj){
 
 function renderGreeks(atm,pcr,vix,atk,ind){
   set('atm-lbl','ATM: ₹'+Math.round(atm).toLocaleString('en-IN'))
-  const a=atk[atm]||{},civ=a.call_iv||0,piv=a.put_iv||0,avgIV=civ&&piv?(civ+piv)/2:civ||piv||vix||20
+  const a=atk[str(atm)]||{},civ=a.call_iv||0,piv=a.put_iv||0,avgIV=civ&&piv?(civ+piv)/2:civ||piv||vix||20
   const cd=a.call_delta||Math.min(0.65,Math.max(0.35,0.50+(pcr-1)*0.05)),pd=a.put_delta||(-(1-cd))
   const cg=a.call_gamma||0.0004,ct2=a.call_theta||-(atm*(avgIV/100)*cg*15.87),cv=a.call_vega||(atm*cg*100*(avgIV/100))
-  const ri=ind.rsi,ai=ind.adx
+  
   const cells=[
     {l:'DELTA (CALL)',v:'+'+cd.toFixed(3),c:'var(--bull)',s:'₹ move per ₹1 NIFTY'},
     {l:'DELTA (PUT)', v:pd.toFixed(3),c:'var(--bear)',s:'Moves opposite NIFTY'},
     {l:'GAMMA',v:cg.toFixed(5),c:'var(--text)',s:'Delta change rate'},
     {l:'THETA/DAY',v:'₹'+(Math.abs(ct2)*25).toFixed(0)+'/lot',c:'var(--bear)',s:'Time decay daily'},
     {l:'VEGA',v:'₹'+(Math.abs(cv)*25).toFixed(0)+'/lot',c:'var(--warn)',s:'Per 1% IV change'},
-    {l:'IV ATM AVG',v:avgIV.toFixed(1)+'%',c:avgIV>35?'var(--bear)':avgIV>25?'var(--warn)':'var(--bull)',s:'Option richness'},
-    {l:'RSI (14)',v:ri?ri.toFixed(1)+' — '+(ind.rsi_signal||''):'N/A',c:ri>=70?'var(--bear)':ri<=30?'var(--bull)':'var(--warn)',s:'Momentum'},
-    {l:'ADX (14)',v:ai?ai.toFixed(1)+' — '+(ind.adx_signal||''):'N/A',c:ai>=25?'var(--bull)':ai>=20?'var(--warn)':'var(--text2)',s:'Trend strength'},
+    {l:'IV ATM AVG',v:avgIV.toFixed(1)+'%',c:avgIV>35?'var(--bear)':avgIV>25?'var(--warn)':'var(--bull)',s:'Option richness'}
   ]
   g('greeks').innerHTML=cells.map(c=>`<div class="gc"><div class="gl">${c.l}</div><div class="gv" style="color:${c.c}">${c.v}</div><div class="gs">${c.s}</div></div>`).join('')
 }
