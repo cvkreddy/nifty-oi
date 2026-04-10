@@ -40,7 +40,10 @@ Simply replace your entire `dashboard.html` with this code:
     <div class="dot" id="dot"></div>
     <div class="timer" id="timer">5:00</div>
     <button class="btn" onclick="doFetch()">↺ REFRESH</button>
-  </div></div><div class="tabs">
+    <a href="/login" class="btn" style="text-decoration:none; display:inline-block;">🔑 LOGIN</a>
+  </div></div>
+
+<div class="tabs">
   <div class="tab active" id="tab-NIFTY" onclick="switchTab('NIFTY')">NIFTY 50</div>
   <div class="tab" id="tab-BANKNIFTY" onclick="switchTab('BANKNIFTY')">BANK NIFTY</div>
   <div class="tab" id="tab-SENSEX" onclick="switchTab('SENSEX')">SENSEX</div></div><div id="err">⚠ Error fetching data</div><div class="verdict-banner" id="verdict-banner">
