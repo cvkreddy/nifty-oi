@@ -10,6 +10,8 @@ SNAP_CHAT_ID   = "1592988014"
 
 URL = "https://nifty-oi.onrender.com"
 
+_browser_installed = False
+
 def send_to_telegram(image_path, index_name):
     url = f"https://api.telegram.org/bot{SNAP_BOT_TOKEN}/sendPhoto"
     try:
@@ -25,9 +27,14 @@ def send_to_telegram(image_path, index_name):
         print(f"❌ Failed to send screenshot: {e}")
 
 def take_screenshots():
+    global _browser_installed
     print("📸 [AutoSnap] Waking up headless browser...")
     os.makedirs("static/screenshots", exist_ok=True)
-    os.system("playwright install chromium")
+    
+    # Only install playwright once to save CPU power!
+    if not _browser_installed:
+        os.system("playwright install chromium")
+        _browser_installed = True
     
     try:
         with sync_playwright() as p:
@@ -37,7 +44,7 @@ def take_screenshots():
             print(f"📸 [AutoSnap] Loading {URL}...")
             page.goto(URL, wait_until="networkidle")
             
-            # Wait for data to load, skip the cycle count check completely
+            # 🔥 Revert to fast 45s wait so it doesn't freeze the server
             page.wait_for_function("document.getElementById('state-val').innerText !== '—'", timeout=45000)
             time.sleep(3.5) # Give heatmaps time to fully paint
             

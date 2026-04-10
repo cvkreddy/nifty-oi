@@ -28,11 +28,9 @@ API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
-# 🚨 TEXT SUMMARY BOT CREDENTIALS 🚨
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
 
-# 🔥 CRITICAL FIX: Safe 3-minute rate limit so Upstox never freezes data again
 CACHE_TTL    = 180  
 ATM_RANGE    = 5
 TOKEN_FILE   = "token_data.json"
@@ -48,9 +46,11 @@ INDICES = {
     "SENSEX": {"key": "BSE_INDEX|SENSEX", "step": 100}
 }
 
+# 🔥 FIX: Properly initialized memory dictionary to stop KeyErrors!
 STORE = {idx: {
     "baseline_oi": {}, "baseline_vix": None, "baseline_rsi": {},
     "history": [], 
+    "prev_oi": {}, "prev_pcr": None, "prev_spot": None,
     "ltp_history": {}, "sent_alerts": {}, "last_summary": 0
 } for idx in INDICES}
 
@@ -89,6 +89,7 @@ def load_server_state():
                         STORE[idx]["prev_oi"] = saved_idx.get("prev_oi", {})
                         STORE[idx]["prev_spot"] = saved_idx.get("prev_spot")
                         STORE[idx]["prev_pcr"] = saved_idx.get("prev_pcr")
+                        STORE[idx]["history"] = saved_idx.get("history", [])
         except: pass
     for idx in INDICES: reverse_engineer_baseline(idx)
 
@@ -102,7 +103,8 @@ def save_server_state():
                 "baseline_rsi": STORE[idx]["baseline_rsi"],
                 "prev_oi": STORE[idx]["prev_oi"],
                 "prev_spot": STORE[idx]["prev_spot"],
-                "prev_pcr": STORE[idx]["prev_pcr"]
+                "prev_pcr": STORE[idx]["prev_pcr"],
+                "history": STORE[idx]["history"] # Safely saves Rolling Buffer!
             }
         with open(STATE_FILE, "w") as f: json.dump(st, f)
     except Exception as e: 
@@ -922,7 +924,6 @@ def refresh(idx):
             with open(DATA_FILE, "w") as f: json.dump(full_cache, f)
         except: pass
         
-        # Safe save state
         try:
             save_server_state()
         except Exception as e:
