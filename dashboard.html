@@ -845,9 +845,13 @@ function renderTech(tech) {
     ['3m', '5m', '15m'].forEach(tf => {
         let d = tech[tf];
         if (d) {
-            let html = `<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">Trend</span><span style="color:${msColor(d.trend)};font-weight:700">${d.trend || '—'}</span></div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">RSI</span><span>${d.rsi || '—'}</span></div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">MACD</span><span>${d.macd || '—'}</span></div>`;
+            let html = `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">Trend</span><span style="color:${msColor(d.trend)};font-weight:700">${d.trend || '—'}</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">RSI</span><span>${d.rsi || '—'}</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">MACD</span><span>${d.macd || '—'}</span></div>
+            <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:6px;"></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">Cross</span><span style="font-size:11px">${d.ts_start || '—'}</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">Pullback</span><span style="font-size:11px">${d.ts_pull || '—'}</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">SuperTrend</span><span style="font-size:11px">${d.ts_st || '—'}</span></div>`;
             sHTML(`tech-${tf}-full`, html);
         }
     });

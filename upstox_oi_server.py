@@ -138,8 +138,8 @@ def generate_5min_summary(idx, data, atm_strikes, atm):
     s_high = int(atm + s_curr)
     vix_mat = intel.get("vix_matrix", {})
     
-    t5 = intel.get("index_technicals", {}).get("5min", {})
-    t15 = intel.get("index_technicals", {}).get("15min", {})
+    t5 = intel.get("index_technicals", {}).get("5m", {})
+    t15 = intel.get("index_technicals", {}).get("15m", {})
     
     msg = (
         f"⏱ <b>5-MIN {idx} SCANNER</b>\n"
@@ -150,8 +150,8 @@ def generate_5min_summary(idx, data, atm_strikes, atm):
         f"🌊 <b>Smart Flow:</b> {flow_bias} ({net_flow_l:+.1f}L Net)\n"
         f"📊 <b>VIX Matrix: {vix_mat.get('signal', 'N/A')}</b>\n"
         f"↳ <i>{vix_mat.get('desc', 'N/A')}</i>\n"
-        f"⏱ <b>TIMING (5m):</b> Cross: {t5.get('ts_start','-')} | Pull: {t5.get('ts_pull','-')} | Cont: {t5.get('ts_cont','-')} | ST: {t5.get('ts_st','-')}\n"
-        f"⏱ <b>TIMING (15m):</b> Cross: {t15.get('ts_start','-')} | Pull: {t15.get('ts_pull','-')} | Cont: {t15.get('ts_cont','-')} | ST: {t15.get('ts_st','-')}\n"
+        f"⏱ <b>TIMING (5m):</b> Cross: {t5.get('ts_start','-')} | Pull: {t5.get('ts_pull','-')} | ST: {t5.get('ts_st','-')}\n"
+        f"⏱ <b>TIMING (15m):</b> Cross: {t15.get('ts_start','-')} | Pull: {t15.get('ts_pull','-')} | ST: {t15.get('ts_st','-')}\n"
         f"━━━━━━━━━━━━━━━━\n\n"
     )
     
@@ -363,6 +363,14 @@ def calc_ema(prices, period):
     for p in prices[period:]: ema = p * k + ema * (1 - k)
     return round(ema, 2)
 
+def calc_macd(closes):
+    if len(closes) < 26: return None
+    ema12 = calc_ema(closes, 12)
+    ema26 = calc_ema(closes, 26)
+    if ema12 is not None and ema26 is not None:
+        return round(ema12 - ema26, 2)
+    return None
+
 def calc_ema_array(prices, period):
     if not prices or len(prices) < period: return [None] * len(prices)
     emas = [None] * (period - 1)
@@ -506,6 +514,7 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
 
     ema7, ema15, price = ema7_arr[-1], ema15_arr[-1], closes[-1]
     st_dir, st_val = calc_supertrend(candles, st_period, st_multiplier)
+    macd_val = calc_macd(closes)
     
     trend = "N/A"
     if ema7 and ema15:
@@ -528,7 +537,7 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
 
     return {
         "label": label, "candle_count": len(candles), "current_price": round(price, 2) if price else None, 
-        "ema7": ema7, "ema15": ema15, "vwap": vwap, 
+        "ema7": ema7, "ema15": ema15, "vwap": vwap, "macd": macd_val,
         "price_above_ema7": price > ema7 if ema7 else None, "price_above_ema15": price > ema15 if ema15 else None, 
         "ema7_above_ema15": ema7 > ema15 if ema7 and ema15 else None, "price_above_vwap": price > vwap if vwap else None,
         "trend": trend, "supertrend": st_dir, "supertrend_val": st_val, 
@@ -805,6 +814,8 @@ def refresh(idx):
                 price = prices[-1] if prices else None
                 return {"ema7": e7, "ema15": e15, "price_above_ema7": price > e7 if e7 and price else None}
             v["ltp_technicals"] = {"call": s_info(store["ltp_history"][s]["call"]), "put": s_info(store["ltp_history"][s]["put"])}
+            v["call_ema"] = v["ltp_technicals"]["call"].get("ema7", 0) or 0
+            v["put_ema"] = v["ltp_technicals"]["put"].get("ema7", 0) or 0
 
         vwap_val = get_vwap(candle_cache_store[idx]["5m"])
         vix_matrix = analyze_vix_price(spot, vwap_val, vix, store["baseline_vix"])
@@ -830,13 +841,30 @@ def refresh(idx):
             "overall_bias": mkt_state,
             "confluence": "Aligned" if mkt_state.startswith("BULL") or mkt_state.startswith("BEAR") else "Mixed"
         }
+        
+        fut_prem = futures - spot
+        if fut_prem > (step * 0.2): future_bias = "LONG BUILDUP"
+        elif fut_prem < -(step * 0.1): future_bias = "SHORT BUILDUP"
+        else: future_bias = "NEUTRAL"
+        future_desc = f"{fut_prem:+.1f} pts premium"
+
+        mp_drift = spot - max_pain
+        if mp_drift > (step * 0.5): max_pain_signal = "BULLISH DRIFT"
+        elif mp_drift < -(step * 0.5): max_pain_signal = "BEARISH DRIFT"
+        else: max_pain_signal = "PINNED"
+        max_pain_desc = f"{abs(mp_drift):.1f} pts from MP"
 
         intelligence = {
             "market_state": mkt_state,
             "oi_matrix_condition": oi_cond, "oi_matrix_signal": oi_signal, "oi_matrix_desc": oi_desc,
             "pcr_zone": "BULLISH" if pcr > 1.2 else "BEARISH" if pcr < 0.8 else "NEUTRAL",
             "alerts": alerts, 
-            "gex_profile": gex_data[:11], "gex_flip": gex_flip, "iv_skew": iv_skew,
+            "gex": {"profile": gex_data[:11], "flip_zone": gex_flip["strike"] if gex_flip else "—"},
+            "skew": iv_skew,
+            "future_bias": future_bias,
+            "future_desc": future_desc,
+            "max_pain_signal": max_pain_signal,
+            "max_pain_desc": max_pain_desc,
             "index_technicals": ind_data["tech"],
             "cumulative_net_flow_l": round(cum_net_flow / 100000, 2),
             "morning_straddle": morning_straddle,
