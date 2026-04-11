@@ -346,67 +346,6 @@ def fetch_base_1m_candles(idx):
     except Exception: 
         return []
 
-def extract_levels(candles, spot):
-    if not candles: return {}
-    dates = sorted(list(set([c["time"][:10] for c in candles])))
-    if not dates: return {}
-    
-    today_str = dates[-1]
-    yest_str = dates[-2] if len(dates) > 1 else None
-    
-    today_candles = [c for c in candles if c["time"][:10] == today_str]
-    yest_candles = [c for c in candles if c["time"][:10] == yest_str] if yest_str else []
-    
-    yest_high = max([c["high"] for c in yest_candles]) if yest_candles else None
-    yest_low = min([c["low"] for c in yest_candles]) if yest_candles else None
-    
-    today_open = today_candles[0]["open"] if today_candles else None
-    
-    orb_high, orb_low = None, None
-    orb_candles = [c for c in today_candles if "09:15" <= c["time"][11:16] <= "09:29"]
-    if len(orb_candles) >= 1:
-        orb_high = max([c["high"] for c in orb_candles])
-        orb_low = min([c["low"] for c in orb_candles])
-        
-    orb_status = "IN ORB RANGE"
-    orb_time = "-"
-    if orb_high and orb_low:
-        if spot > orb_high: orb_status = "ABOVE ORB (BULLISH)"
-        elif spot < orb_low: orb_status = "BELOW ORB (BEARISH)"
-        
-        for c in today_candles:
-            t = c["time"][11:16]
-            if t > "09:29":
-                if c["high"] > orb_high and orb_status.startswith("ABOVE"):
-                    orb_time = t
-                    break
-                elif c["low"] < orb_low and orb_status.startswith("BELOW"):
-                    orb_time = t
-                    break
-
-    yest_status = "INSIDE YEST RANGE"
-    yest_time = "-"
-    if yest_high and yest_low:
-        if spot > yest_high: yest_status = "ABOVE YEST HIGH"
-        elif spot < yest_low: yest_status = "BELOW YEST LOW"
-        
-        for c in today_candles:
-            t = c["time"][11:16]
-            if c["high"] > yest_high and yest_status.startswith("ABOVE"):
-                yest_time = t
-                break
-            elif c["low"] < yest_low and yest_status.startswith("BELOW"):
-                yest_time = t
-                break
-                
-    return {
-        "today_open": today_open,
-        "yest_high": yest_high, "yest_low": yest_low,
-        "orb_high": orb_high, "orb_low": orb_low,
-        "orb_status": orb_status, "orb_time": orb_time,
-        "yest_status": yest_status, "yest_time": yest_time
-    }
-
 def resample_candles(candles_1m, tf):
     if not candles_1m: return []
     res = []; cg = []; ct = None
@@ -579,6 +518,67 @@ def get_indicators(candles):
     rsi_val = calc_rsi(closes, 14)
     adx_val = calc_adx(candles, 14)
     return {"rsi": rsi_val, "adx": adx_val, "candle_count": len(candles)}
+
+def extract_levels(candles, spot):
+    if not candles: return {}
+    dates = sorted(list(set([c["time"][:10] for c in candles])))
+    if not dates: return {}
+    
+    today_str = dates[-1]
+    yest_str = dates[-2] if len(dates) > 1 else None
+    
+    today_candles = [c for c in candles if c["time"][:10] == today_str]
+    yest_candles = [c for c in candles if c["time"][:10] == yest_str] if yest_str else []
+    
+    yest_high = max([c["high"] for c in yest_candles]) if yest_candles else None
+    yest_low = min([c["low"] for c in yest_candles]) if yest_candles else None
+    
+    today_open = today_candles[0]["open"] if today_candles else None
+    
+    orb_high, orb_low = None, None
+    orb_candles = [c for c in today_candles if "09:15" <= c["time"][11:16] <= "09:29"]
+    if len(orb_candles) >= 1:
+        orb_high = max([c["high"] for c in orb_candles])
+        orb_low = min([c["low"] for c in orb_candles])
+        
+    orb_status = "IN ORB RANGE"
+    orb_time = "-"
+    if orb_high and orb_low:
+        if spot > orb_high: orb_status = "ABOVE ORB (BULLISH)"
+        elif spot < orb_low: orb_status = "BELOW ORB (BEARISH)"
+        
+        for c in today_candles:
+            t = c["time"][11:16]
+            if t > "09:29":
+                if c["high"] > orb_high and orb_status.startswith("ABOVE"):
+                    orb_time = t
+                    break
+                elif c["low"] < orb_low and orb_status.startswith("BELOW"):
+                    orb_time = t
+                    break
+
+    yest_status = "INSIDE YEST RANGE"
+    yest_time = "-"
+    if yest_high and yest_low:
+        if spot > yest_high: yest_status = "ABOVE YEST HIGH"
+        elif spot < yest_low: yest_status = "BELOW YEST LOW"
+        
+        for c in today_candles:
+            t = c["time"][11:16]
+            if c["high"] > yest_high and yest_status.startswith("ABOVE"):
+                yest_time = t
+                break
+            elif c["low"] < yest_low and yest_status.startswith("BELOW"):
+                yest_time = t
+                break
+                
+    return {
+        "today_open": today_open,
+        "yest_high": yest_high, "yest_low": yest_low,
+        "orb_high": orb_high, "orb_low": orb_low,
+        "orb_status": orb_status, "orb_time": orb_time,
+        "yest_status": yest_status, "yest_time": yest_time
+    }
 
 def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
     if not candles or len(candles) < 15: 
@@ -786,6 +786,7 @@ def process_chain(idx, raw, spot):
             "call_open": call_open, "put_open": put_open,
             "call_oi": call_oi, "call_oi_chg": round(c_oi_5m, 2), "call_oi_chg_day": round(c_oi_d, 2),
             "call_vol": call_vol, "put_vol": put_vol,
+            "call_vol_oi": round(call_vol/call_oi, 2) if call_oi else 0,
             "call_iv": round(float(ce_gk.get("iv",0) or 0)*100,2), 
             "call_ltp": call_ltp, "call_ltp_chg": round(c_ltp_5m, 2), "call_ltp_chg_day": round(c_ltp_d, 2),
             "call_delta": float(ce_gk.get("delta",0) or 0), "call_gamma": float(ce_gk.get("gamma",0) or 0), 
@@ -793,6 +794,7 @@ def process_chain(idx, raw, spot):
             "call_gex": float(ce_gk.get("gamma",0) or 0) * call_oi * 25,
             
             "put_oi": put_oi, "put_oi_chg": round(p_oi_5m, 2), "put_oi_chg_day": round(p_oi_d, 2),
+            "put_vol_oi": round(put_vol/put_oi, 2) if put_oi else 0,
             "put_iv": round(float(pe_gk.get("iv",0) or 0)*100,2), 
             "put_ltp": put_ltp, "put_ltp_chg": round(p_ltp_5m, 2), "put_ltp_chg_day": round(p_ltp_d, 2),
             "put_delta": float(pe_gk.get("delta",0) or 0), "put_gamma": float(pe_gk.get("gamma",0) or 0), 
@@ -906,6 +908,17 @@ def refresh(idx):
         raw    = fetch_chain(idx, expiry)
         
         if not raw:
+            # 🛑 WEEKEND / RATE LIMIT FALLBACK
+            if os.path.exists(DATA_FILE):
+                try:
+                    with open(DATA_FILE, "r") as f:
+                        full_cache = json.load(f)
+                        if idx in full_cache and full_cache[idx].get("chain"):
+                            oi_cache[idx]["data"] = full_cache[idx]
+                            debug_status["last_error"] = f"[{idx}] API offline (Weekend/Limit). Loaded cached data."
+                            return
+                except: pass
+                
             err_msg = f"[{idx}] Upstox returned no chain data. Token expired or API limit reached."
             debug_status["last_error"] = err_msg
             if oi_cache[idx].get("data"): oi_cache[idx]["data"]["backend_error"] = err_msg
