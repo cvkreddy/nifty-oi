@@ -34,7 +34,6 @@ MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyN
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
 
-# Sped up to 2 minutes for faster live updates!
 CACHE_TTL    = 120  
 ATM_RANGE    = 5
 TOKEN_FILE   = "token_data.json"
@@ -54,7 +53,7 @@ STORE = {idx: {
     "baseline_oi": {}, "baseline_vix": None, "baseline_rsi": {},
     "history": [], 
     "prev_oi": {}, "prev_pcr": None, "prev_spot": None,
-    "ltp_history": {}, "sent_alerts": {}, "last_summary": 0
+    "sent_alerts": {}, "last_summary": 0
 } for idx in INDICES}
 
 oi_cache = {idx: {"data": None} for idx in INDICES}
@@ -137,6 +136,10 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
     net_flow_l = intel.get("cumulative_net_flow_l", 0)
     flow_bias = "🟢 BULLISH" if net_flow_l > 0 else "🔴 BEARISH" if net_flow_l < 0 else "⚪ NEUTRAL"
     
+    lvl = intel.get("levels", {})
+    orb_sig = "🟡" if "RANGE" in lvl.get("orb_status", "") else "🟢" if "BULLISH" in lvl.get("orb_status", "") else "🔴"
+    yest_sig = "🟡" if "RANGE" in lvl.get("yest_status", "") else "🟢" if "ABOVE" in lvl.get("yest_status", "") else "🔴"
+
     atm_float = float(atm)
     atm_v = {}
     for k, v in atm_strikes.items():
@@ -154,14 +157,15 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
     
     msg = (
         f"⏱ <b>5-MIN {idx} SCANNER</b>\n"
-        f"🎯 <b>Spot:</b> ₹{spot} | <b>PCR:</b> {pcr}\n"
+        f"🎯 <b>Spot:</b> ₹{spot} | <b>Open:</b> ₹{lvl.get('today_open', '-')}\n"
+        f"{orb_sig} <b>ORB:</b> {lvl.get('orb_status', '-')} (Brk: {lvl.get('orb_time', '-')})\n"
+        f"{yest_sig} <b>Yest H/L:</b> {lvl.get('yest_status', '-')} (Brk: {lvl.get('yest_time', '-')})\n"
         f"⚖️ <b>Straddle:</b> ₹{s_curr:.1f} ({s_decay:+.1f}% Day)\n"
         f"🔴 <b>ATM CE:</b> ₹{atm_v.get('call_ltp', 0):.1f} ({atm_v.get('call_ltp_chg', 0):+.1f} 5m) {boot_note}\n"
         f"🟢 <b>ATM PE:</b> ₹{atm_v.get('put_ltp', 0):.1f} ({atm_v.get('put_ltp_chg', 0):+.1f} 5m) {boot_note}\n"
         f"🌊 <b>Smart Flow:</b> {flow_bias} ({net_flow_l:+.1f}L Net)\n"
         f"📊 <b>VIX Matrix: {vix_mat.get('signal', 'WAITING')}</b>\n"
         f"↳ <i>{vix_mat.get('desc', 'Need more data')}</i>\n"
-        f"⏱ <b>TIMING (5m):</b> Cross: {t5.get('ts_start','-')} | ST: {t5.get('ts_st','-')}\n"
         f"━━━━━━━━━━━━━━━━\n\n"
     )
     
@@ -342,11 +346,70 @@ def fetch_base_1m_candles(idx):
     except Exception: 
         return []
 
+def extract_levels(candles, spot):
+    if not candles: return {}
+    dates = sorted(list(set([c["time"][:10] for c in candles])))
+    if not dates: return {}
+    
+    today_str = dates[-1]
+    yest_str = dates[-2] if len(dates) > 1 else None
+    
+    today_candles = [c for c in candles if c["time"][:10] == today_str]
+    yest_candles = [c for c in candles if c["time"][:10] == yest_str] if yest_str else []
+    
+    yest_high = max([c["high"] for c in yest_candles]) if yest_candles else None
+    yest_low = min([c["low"] for c in yest_candles]) if yest_candles else None
+    
+    today_open = today_candles[0]["open"] if today_candles else None
+    
+    orb_high, orb_low = None, None
+    orb_candles = [c for c in today_candles if "09:15" <= c["time"][11:16] <= "09:29"]
+    if len(orb_candles) >= 1:
+        orb_high = max([c["high"] for c in orb_candles])
+        orb_low = min([c["low"] for c in orb_candles])
+        
+    orb_status = "IN ORB RANGE"
+    orb_time = "-"
+    if orb_high and orb_low:
+        if spot > orb_high: orb_status = "ABOVE ORB (BULLISH)"
+        elif spot < orb_low: orb_status = "BELOW ORB (BEARISH)"
+        
+        for c in today_candles:
+            t = c["time"][11:16]
+            if t > "09:29":
+                if c["high"] > orb_high and orb_status.startswith("ABOVE"):
+                    orb_time = t
+                    break
+                elif c["low"] < orb_low and orb_status.startswith("BELOW"):
+                    orb_time = t
+                    break
+
+    yest_status = "INSIDE YEST RANGE"
+    yest_time = "-"
+    if yest_high and yest_low:
+        if spot > yest_high: yest_status = "ABOVE YEST HIGH"
+        elif spot < yest_low: yest_status = "BELOW YEST LOW"
+        
+        for c in today_candles:
+            t = c["time"][11:16]
+            if c["high"] > yest_high and yest_status.startswith("ABOVE"):
+                yest_time = t
+                break
+            elif c["low"] < yest_low and yest_status.startswith("BELOW"):
+                yest_time = t
+                break
+                
+    return {
+        "today_open": today_open,
+        "yest_high": yest_high, "yest_low": yest_low,
+        "orb_high": orb_high, "orb_low": orb_low,
+        "orb_status": orb_status, "orb_time": orb_time,
+        "yest_status": yest_status, "yest_time": yest_time
+    }
+
 def resample_candles(candles_1m, tf):
     if not candles_1m: return []
-    res = []
-    cg = []
-    ct = None
+    res = []; cg = []; ct = None
     for c in candles_1m:
         try:
             dt = datetime.strptime(c["time"][:16], "%Y-%m-%dT%H:%M")
@@ -423,14 +486,6 @@ def calc_ema(prices, period):
     for p in prices[period:]: 
         ema = p * k + ema * (1 - k)
     return round(ema, 2)
-
-def calc_macd(closes):
-    if len(closes) < 26: return None
-    ema12 = calc_ema(closes, 12)
-    ema26 = calc_ema(closes, 26)
-    if ema12 is not None and ema26 is not None: 
-        return round(ema12 - ema26, 2)
-    return None
 
 def calc_ema_array(prices, period):
     if not prices: return []
@@ -600,7 +655,6 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
 
     ema7, ema15, price = ema7_arr[-1], ema15_arr[-1], closes[-1]
     st_dir, st_val = calc_supertrend(candles, st_period, st_multiplier)
-    macd_val = calc_macd(closes)
     
     trend = "N/A"
     if ema7 and ema15:
@@ -627,7 +681,7 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
 
     return {
         "label": label, "candle_count": len(candles), "current_price": round(price, 2) if price else None, 
-        "ema7": ema7, "ema15": ema15, "vwap": vwap, "macd": macd_val,
+        "ema7": ema7, "ema15": ema15, "vwap": vwap, 
         "price_above_ema7": price > ema7 if ema7 else None, "price_above_ema15": price > ema15 if ema15 else None, 
         "ema7_above_ema15": ema7 > ema15 if ema7 and ema15 else None, "price_above_vwap": price > vwap if vwap else None,
         "trend": trend, "supertrend": st_dir, "supertrend_val": st_val, 
@@ -707,6 +761,8 @@ def process_chain(idx, raw, spot):
         call_oi, put_oi = float(ce_md.get("oi",0) or 0), float(pe_md.get("oi",0) or 0)
         call_vol, put_vol = float(ce_md.get("volume",0) or 0), float(pe_md.get("volume",0) or 0)
         call_ltp, put_ltp = float(ce_md.get("ltp",0) or ce_md.get("last_price",0) or 0), float(pe_md.get("ltp",0) or pe_md.get("last_price",0) or 0)
+        call_open = float(ce_md.get("open_price", 0))
+        put_open  = float(pe_md.get("open_price", 0))
         
         prev_v = prev_chain.get(str(strike), {})
         base_v = base_chain.get(str(strike), {})
@@ -727,9 +783,9 @@ def process_chain(idx, raw, spot):
 
         result[strike] = {
             "strike": strike,
+            "call_open": call_open, "put_open": put_open,
             "call_oi": call_oi, "call_oi_chg": round(c_oi_5m, 2), "call_oi_chg_day": round(c_oi_d, 2),
             "call_vol": call_vol, "put_vol": put_vol,
-            "call_vol_oi": round(call_vol/call_oi, 2) if call_oi else 0,
             "call_iv": round(float(ce_gk.get("iv",0) or 0)*100,2), 
             "call_ltp": call_ltp, "call_ltp_chg": round(c_ltp_5m, 2), "call_ltp_chg_day": round(c_ltp_d, 2),
             "call_delta": float(ce_gk.get("delta",0) or 0), "call_gamma": float(ce_gk.get("gamma",0) or 0), 
@@ -737,7 +793,6 @@ def process_chain(idx, raw, spot):
             "call_gex": float(ce_gk.get("gamma",0) or 0) * call_oi * 25,
             
             "put_oi": put_oi, "put_oi_chg": round(p_oi_5m, 2), "put_oi_chg_day": round(p_oi_d, 2),
-            "put_vol_oi": round(put_vol/put_oi, 2) if put_oi else 0,
             "put_iv": round(float(pe_gk.get("iv",0) or 0)*100,2), 
             "put_ltp": put_ltp, "put_ltp_chg": round(p_ltp_5m, 2), "put_ltp_chg_day": round(p_ltp_d, 2),
             "put_delta": float(pe_gk.get("delta",0) or 0), "put_gamma": float(pe_gk.get("gamma",0) or 0), 
@@ -876,6 +931,8 @@ def refresh(idx):
         if store["baseline_vix"] is None and vix > 0: store["baseline_vix"] = vix
 
         candles_1m  = fetch_base_1m_candles(idx)
+        levels_data = extract_levels(candles_1m, spot)
+        
         if candles_1m:
             candle_cache_store[idx]["3m"] = resample_candles(candles_1m, 3)[-60:]
             candle_cache_store[idx]["5m"] = resample_candles(candles_1m, 5)[-60:]
@@ -911,18 +968,6 @@ def refresh(idx):
             s = float(s_str)
             cf, pf, nf = classify_strike_oi_flow(v, prev_spot, spot)
             v["call_flow"], v["put_flow"], v["net_flow"] = cf, pf, nf
-            
-            if s not in store["ltp_history"]: store["ltp_history"][s] = {"call": [], "put": []}
-            if v.get("call_ltp"): store["ltp_history"][s]["call"] = (store["ltp_history"][s]["call"] + [float(v["call_ltp"])])[-25:]
-            if v.get("put_ltp"): store["ltp_history"][s]["put"] = (store["ltp_history"][s]["put"] + [float(v["put_ltp"])])[-25:]
-            def s_info(prices):
-                e7 = calc_ema(prices, 7)
-                e15 = calc_ema(prices, 15)
-                price = prices[-1] if prices else None
-                return {"ema7": e7, "ema15": e15, "price_above_ema7": price > e7 if e7 and price else None}
-            v["ltp_technicals"] = {"call": s_info(store["ltp_history"][s]["call"]), "put": s_info(store["ltp_history"][s]["put"])}
-            v["call_ema"] = v["ltp_technicals"]["call"].get("ema7", 0) or 0
-            v["put_ema"] = v["ltp_technicals"]["put"].get("ema7", 0) or 0
 
         ind_data = get_indicators(candle_cache_store[idx]["5m"])
         ind_data["tech"] = {
@@ -968,6 +1013,7 @@ def refresh(idx):
             "market_state": mkt_state,
             "oi_matrix_condition": oi_cond, "oi_matrix_signal": oi_signal, "oi_matrix_desc": oi_desc,
             "pcr_zone": "BULLISH" if pcr > 1.2 else "BEARISH" if pcr < 0.8 else "NEUTRAL",
+            "levels": levels_data,
             "alerts": alerts, 
             "gex": {"profile": gex_data[:11], "flip_zone": gex_flip["strike"] if gex_flip else "—"},
             "skew": iv_skew,
@@ -1108,5 +1154,4 @@ def force_telegram_summary():
     return f"Summary sent to Telegram for {idx} successfully!", 200
 
 if __name__ == "__main__":
-    MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWQ4YzEyMDc2N2VlYTE5OWNiNTU2YjYiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc1ODEyODk2LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzU4NTg0MDB9.VdCeOv6B1D88Ado86VFhjDomvbCeRtLeyf6jlLRN7ns"
     app.run(host="0.0.0.0", port=5000, debug=False)
