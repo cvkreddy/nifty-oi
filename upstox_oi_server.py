@@ -212,7 +212,17 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
 def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
     ist_now = datetime.utcnow() + timedelta(hours=5, minutes=30)
     current_mins = ist_now.hour * 60 + ist_now.minute
-    if ist_now.weekday() >= 5 or not (540 <= current_mins <= 935):
+    today_str = ist_now.strftime("%Y-%m-%d")
+    
+    # Official 2026 NSE Holidays
+    holidays = [
+        "2026-01-15", "2026-01-26", "2026-03-03", "2026-03-26", 
+        "2026-03-31", "2026-04-03", "2026-04-14", "2026-05-01", 
+        "2026-05-28", "2026-06-26", "2026-09-14", "2026-10-02", 
+        "2026-10-20", "2026-11-10", "2026-11-24", "2026-12-25"
+    ]
+    
+    if ist_now.weekday() >= 5 or today_str in holidays or not (540 <= current_mins <= 935):
         return
         
     current_time = time.time()

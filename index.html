@@ -1002,8 +1002,35 @@ function renderAnalysis(anls) {
 
 setInterval(() => {
     if (isSnapping) return;
-    const now = Date.now();
-    let diff = Math.floor((targetTime - now) / 1000);
+    
+    // Check if market is actually open (IST Time)
+    let now = new Date();
+    let utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    let ist = new Date(utc + (3600000 * 5.5));
+    
+    let day = ist.getDay();
+    let timeInMins = ist.getHours() * 60 + ist.getMinutes();
+    let yyyy = ist.getFullYear();
+    let mm = String(ist.getMonth() + 1).padStart(2, '0');
+    let dd = String(ist.getDate()).padStart(2, '0');
+    let todayStr = `${yyyy}-${mm}-${dd}`;
+    
+    const holidays = [
+        "2026-01-15", "2026-01-26", "2026-03-03", "2026-03-26", 
+        "2026-03-31", "2026-04-03", "2026-04-14", "2026-05-01", 
+        "2026-05-28", "2026-06-26", "2026-09-14", "2026-10-02", 
+        "2026-10-20", "2026-11-10", "2026-11-24", "2026-12-25"
+    ];
+
+    let isMarketOpen = (day !== 0 && day !== 6 && !holidays.includes(todayStr) && timeInMins >= 540 && timeInMins <= 935);
+
+    if (!isMarketOpen) {
+        sText('snap-status', '💤 Market Closed (No Auto-Snap)');
+        targetTime = Date.now() + 300000; // Reset timer so it doesn't snap
+        return;
+    }
+
+    let diff = Math.floor((targetTime - Date.now()) / 1000);
     if (diff <= 0) {
         targetTime = Date.now() + 300000;
         runAutoSnapCycle();

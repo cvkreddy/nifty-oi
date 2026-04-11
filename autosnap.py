@@ -10,7 +10,6 @@ SNAP_BOT_TOKEN = "8605909436:AAHDDLQnVEEzs2pj1fxOxNRllcpHSCwYUos"
 SNAP_CHAT_ID   = "1592988014"
 
 URL = "https://nifty-oi.onrender.com"
-
 _browser_installed = False
 
 def is_market_hours():
@@ -19,6 +18,17 @@ def is_market_hours():
     
     # Skip Weekends (5 = Saturday, 6 = Sunday)
     if ist_now.weekday() >= 5: 
+        return False
+        
+    # Official 2026 NSE Holidays Array
+    today_str = ist_now.strftime("%Y-%m-%d")
+    holidays_2026 = [
+        "2026-01-15", "2026-01-26", "2026-03-03", "2026-03-26", 
+        "2026-03-31", "2026-04-03", "2026-04-14", "2026-05-01", 
+        "2026-05-28", "2026-06-26", "2026-09-14", "2026-10-02", 
+        "2026-10-20", "2026-11-10", "2026-11-24", "2026-12-25"
+    ]
+    if today_str in holidays_2026:
         return False
         
     current_mins = ist_now.hour * 60 + ist_now.minute
@@ -42,7 +52,7 @@ def send_to_telegram(image_path, index_name):
         print(f"❌ Failed to send screenshot: {e}")
 
 def take_screenshots():
-    # 🔥 MUTE BOT OUTSIDE TRADING HOURS
+    # 🔥 MUTE BOT OUTSIDE TRADING HOURS OR ON HOLIDAYS
     if not is_market_hours():
         print("💤 Market is closed. Skipping screenshot cycle.")
         return
@@ -63,27 +73,23 @@ def take_screenshots():
             print(f"📸 [AutoSnap] Loading {URL}...")
             page.goto(URL, timeout=90000)
             
-            # Wait for data to load
             page.wait_for_function("document.getElementById('state-val').innerText !== '—'", timeout=60000)
             time.sleep(4) 
             
             timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
             
-            # 1. NIFTY
             page.click("#tab-NIFTY")
             time.sleep(2)
             nifty_path = f"static/screenshots/NIFTY_{timestamp}.png"
             page.screenshot(path=nifty_path, full_page=True)
             send_to_telegram(nifty_path, "NIFTY 50")
             
-            # 2. BANKNIFTY
             page.click("#tab-BANKNIFTY")
             time.sleep(2)
             bank_path = f"static/screenshots/BANKNIFTY_{timestamp}.png"
             page.screenshot(path=bank_path, full_page=True)
             send_to_telegram(bank_path, "BANK NIFTY")
             
-            # 3. SENSEX
             page.click("#tab-SENSEX")
             time.sleep(2)
             sensex_path = f"static/screenshots/SENSEX_{timestamp}.png"
