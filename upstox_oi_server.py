@@ -53,7 +53,13 @@ STORE = {idx: {
     "baseline_oi": {}, "baseline_vix": None, "baseline_rsi": {},
     "history": [], 
     "prev_oi": {}, "prev_pcr": None, "prev_spot": None,
-    "sent_alerts": {}, "last_summary": 0
+    "sent_alerts": {}, "last_summary": 0,
+    # ── NEW: Alert log, PCR history, OI wall tracking ──
+    "alert_log": [],          # timestamped alert history for today
+    "pcr_history": [],        # [{time, pcr}] for sparkline
+    "prev_max_ce_strike": None,   # previous cycle's max call OI strike
+    "prev_max_pe_strike": None,   # previous cycle's max put OI strike
+    "straddle_history": [],   # [{time, value}] for decay chart
 } for idx in INDICES}
 
 oi_cache = {idx: {"data": None} for idx in INDICES}
@@ -488,6 +494,25 @@ def calc_rsi_array(closes, p=14):
         rsis.append(100.0 if al==0 else 100 - (100/(1+ag/al)))
     return rsis
 
+def calc_macd(prices, fast=12, slow=26, signal=9):
+    """Returns (macd_val, signal_val, histogram_val) or (None, None, None)."""
+    if len(prices) < slow + signal:
+        return None, None, None
+    ema_fast = calc_ema_array(prices, fast)
+    ema_slow = calc_ema_array(prices, slow)
+    macd_line = [
+        round(f - s, 4) if f is not None and s is not None else None
+        for f, s in zip(ema_fast, ema_slow)
+    ]
+    valid_macd = [x for x in macd_line if x is not None]
+    if len(valid_macd) < signal:
+        return None, None, None
+    sig_arr = calc_ema_array(valid_macd, signal)
+    macd_val = valid_macd[-1]
+    sig_val  = sig_arr[-1] if sig_arr else None
+    hist_val = round(macd_val - sig_val, 4) if sig_val is not None else None
+    return round(macd_val, 2), round(sig_val, 2) if sig_val is not None else None, round(hist_val, 2) if hist_val is not None else None
+
 def calc_adx(candles, p=14):
     if not candles or len(candles) < p + 2: return None
     trl, pdml, ndml = [], [], []
@@ -689,6 +714,9 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
     rsi_5m_chg = round(curr_rsi - prev_rsi, 2) if curr_rsi else 0
     rsi_day_chg = round(curr_rsi - base_r, 2) if curr_rsi and base_r else 0
 
+    # ── MACD ──────────────────────────────────────────────────────────────────
+    macd_val, macd_sig, macd_hist = calc_macd(closes)
+
     return {
         "label": label, "candle_count": len(candles), "current_price": round(price, 2) if price else None, 
         "ema7": ema7, "ema15": ema15, "vwap": vwap, 
@@ -698,6 +726,7 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
         "rsi": curr_rsi if curr_rsi > 0 else None,
         "rsi_5m_chg": rsi_5m_chg,
         "rsi_day_chg": rsi_day_chg,
+        "macd": macd_val, "macd_signal": macd_sig, "macd_hist": macd_hist,
         "ts_start": trend_start, "ts_pull": pull_time, "ts_cont": cont_time, "ts_st": st_time
     }
 
@@ -757,7 +786,17 @@ def process_chain(idx, raw, spot):
         if now - history[0]["ts"] < 240: 
             prev_record = history[0]
 
+    # ── Velocity: second history point ~10 min ago ─────────────────────────
+    target_ts_v = now - 600
+    prev2_record = None
+    if len(history) >= 2:
+        prev2_record = min(history, key=lambda x: abs(x["ts"] - target_ts_v))
+        if prev2_record is prev_record:   # same record, need a different one
+            others = [h for h in history if h is not prev_record]
+            prev2_record = min(others, key=lambda x: abs(x["ts"] - target_ts_v)) if others else None
+
     prev_chain = prev_record["chain"] if prev_record else {}
+    prev2_chain = prev2_record["chain"] if prev2_record else {}
     base_chain = store["baseline_oi"]
 
     result = {}
@@ -779,6 +818,13 @@ def process_chain(idx, raw, spot):
 
         c_oi_5m = call_oi - prev_v.get("call_oi", call_oi)
         p_oi_5m = put_oi - prev_v.get("put_oi", put_oi)
+
+        # ── OI Velocity: acceleration of OI change (5m now vs 5m-10min) ──
+        prev2_v = prev2_chain.get(str(strike), {})
+        c_oi_prev5m = prev_v.get("call_oi", call_oi) - prev2_v.get("call_oi", prev_v.get("call_oi", call_oi))
+        p_oi_prev5m = prev_v.get("put_oi", put_oi)   - prev2_v.get("put_oi", prev_v.get("put_oi", put_oi))
+        c_oi_velocity = round(c_oi_5m - c_oi_prev5m, 2)   # +ve = accelerating, -ve = decelerating
+        p_oi_velocity = round(p_oi_5m - p_oi_prev5m, 2)
         
         c_oi_d = call_oi - base_v.get("call_oi", call_oi)
         p_oi_d = put_oi - base_v.get("put_oi", put_oi)
@@ -795,6 +841,7 @@ def process_chain(idx, raw, spot):
             "strike": strike,
             "call_open": call_open, "put_open": put_open,
             "call_oi": call_oi, "call_oi_chg": round(c_oi_5m, 2), "call_oi_chg_day": round(c_oi_d, 2),
+            "call_oi_velocity": c_oi_velocity,
             "call_vol": call_vol, "put_vol": put_vol,
             "call_vol_oi": round(call_vol/call_oi, 2) if call_oi else 0,
             "call_iv": round(float(ce_gk.get("iv",0) or 0)*100,2), 
@@ -804,6 +851,7 @@ def process_chain(idx, raw, spot):
             "call_gex": float(ce_gk.get("gamma",0) or 0) * call_oi * 25,
             
             "put_oi": put_oi, "put_oi_chg": round(p_oi_5m, 2), "put_oi_chg_day": round(p_oi_d, 2),
+            "put_oi_velocity": p_oi_velocity,
             "put_vol_oi": round(put_vol/put_oi, 2) if put_oi else 0,
             "put_iv": round(float(pe_gk.get("iv",0) or 0)*100,2), 
             "put_ltp": put_ltp, "put_ltp_chg": round(p_ltp_5m, 2), "put_ltp_chg_day": round(p_ltp_d, 2),
@@ -1008,6 +1056,49 @@ def refresh(idx):
         gex_data = [{"strike":s,"net_gex":v["call_gex"] - v["put_gex"]} for s,v in sorted(chain.items()) if abs(s-atm) <= 10*step]
         gex_flip = min(gex_data, key=lambda x:abs(x["net_gex"])) if gex_data else None
 
+        # ── Wall Shift Detection ───────────────────────────────────────────────
+        wall_shifts = []
+        if chain:
+            max_ce_strike = max(chain.items(), key=lambda x: x[1]["call_oi"])[0]
+            max_pe_strike = max(chain.items(), key=lambda x: x[1]["put_oi"])[0]
+        else:
+            max_ce_strike = max_pe_strike = None
+        if store["prev_max_ce_strike"] is not None and max_ce_strike != store["prev_max_ce_strike"]:
+            shift_msg = f"Call wall shifted: {store['prev_max_ce_strike']} → {max_ce_strike}"
+            wall_shifts.append({"type": "CALL_WALL_SHIFT", "from": store["prev_max_ce_strike"],
+                                 "to": max_ce_strike, "icon": "🔄", "message": shift_msg})
+            alerts.append({"type": "CALL WALL SHIFT", "icon": "🔄",
+                           "message": f"Resistance moved {store['prev_max_ce_strike']} → {max_ce_strike}"})
+        if store["prev_max_pe_strike"] is not None and max_pe_strike != store["prev_max_pe_strike"]:
+            shift_msg = f"Put wall shifted: {store['prev_max_pe_strike']} → {max_pe_strike}"
+            wall_shifts.append({"type": "PUT_WALL_SHIFT", "from": store["prev_max_pe_strike"],
+                                 "to": max_pe_strike, "icon": "🔄", "message": shift_msg})
+            alerts.append({"type": "PUT WALL SHIFT", "icon": "🔄",
+                           "message": f"Support moved {store['prev_max_pe_strike']} → {max_pe_strike}"})
+        store["prev_max_ce_strike"] = max_ce_strike
+        store["prev_max_pe_strike"] = max_pe_strike
+
+        # ── Alert Log ─────────────────────────────────────────────────────────
+        ist_ts = (datetime.utcnow() + timedelta(hours=5, minutes=30)).strftime("%H:%M:%S")
+        for a in alerts:
+            store["alert_log"].append({
+                "time": ist_ts,
+                "type": a.get("type", "ALERT"),
+                "msg":  a.get("message", a.get("msg", "")),
+                "icon": a.get("icon", "⚡")
+            })
+        store["alert_log"] = store["alert_log"][-100:]
+
+        # ── PCR History ───────────────────────────────────────────────────────
+        ist_hm = (datetime.utcnow() + timedelta(hours=5, minutes=30)).strftime("%H:%M")
+        store["pcr_history"].append({"time": ist_hm, "pcr": pcr})
+        store["pcr_history"] = store["pcr_history"][-40:]
+
+        # ── Straddle History ──────────────────────────────────────────────────
+        if current_straddle > 0:
+            store["straddle_history"].append({"time": ist_hm, "value": round(current_straddle, 1)})
+            store["straddle_history"] = store["straddle_history"][-40:]
+
         skew_data=[]
         for dist in [1,2,3]:
             c_strike, p_strike = atm+dist*step, atm-dist*step
@@ -1053,6 +1144,12 @@ def refresh(idx):
             "activity": get_activity(atm_strikes, idx),
             "analysis": get_analysis(mkt_state, pcr, vix, round(cum_net_flow / 100000, 2)),
             "pin_risk": get_pin_risk(chain, atm),
+            # ── NEW fields ────────────────────────────────────────────────────
+            "wall_shifts": wall_shifts,
+            "max_ce_strike": max_ce_strike,
+            "max_pe_strike": max_pe_strike,
+            "pcr_history": store["pcr_history"][-20:],
+            "straddle_history": store["straddle_history"][-20:],
         }
         
         greeks = {
@@ -1175,6 +1272,20 @@ def force_telegram_summary():
     msg = generate_5min_summary(idx, d, d.get("atm_strikes", {}), d.get("atm", 0))
     send_telegram_alert(msg)
     return f"Summary sent to Telegram for {idx} successfully!", 200
+
+@app.route("/oi/alert_log")
+def alert_log_route():
+    """Returns today's alert timeline for the requested index."""
+    idx = request.args.get("idx", "NIFTY")
+    if idx not in INDICES: idx = "NIFTY"
+    return jsonify(list(reversed(STORE[idx].get("alert_log", []))))
+
+@app.route("/oi/pcr_history")
+def pcr_history_route():
+    """Returns intraday PCR history for sparkline rendering."""
+    idx = request.args.get("idx", "NIFTY")
+    if idx not in INDICES: idx = "NIFTY"
+    return jsonify(STORE[idx].get("pcr_history", []))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)

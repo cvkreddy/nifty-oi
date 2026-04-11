@@ -26,6 +26,34 @@
 
 .sk-c{color:var(--bear);font-weight:700;}.sk-p{color:var(--bull);font-weight:700;}.sk-a{color:var(--atm);font-weight:700;}.vel-arrow{font-size:14px;margin-left:4px;font-weight:900;}.vel-up2{color:var(--bear);text-shadow:0 0 5px var(--bear);}.vel-up1{color:rgba(255,59,87,.7)}.vel-dn1{color:rgba(0,255,136,.7)}.vel-dn2{color:var(--bull);text-shadow:0 0 5px var(--bull);}.vel-flat{color:var(--text2)}#nifty-tech-full {display: grid;grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));gap: 0;border-bottom: 1px solid var(--border);}.tech-col {padding: 12px 16px;border-right: 1px solid var(--border);}.tech-col:last-child {border-right: none;}.statusbar{padding:8px 20px;background:var(--bg2);border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px;color:var(--text2);position:fixed;bottom:0;left:0;right:0;font-family:var(--ui);font-weight:600;letter-spacing:0.5px;}.loading{color:var(--text2);padding:20px;text-align:center;font-size:14px;font-family:var(--ui);letter-spacing:1px;}.bull{color:var(--bull)!important;}.bear{color:var(--bear)!important;}.warn{color:var(--warn)!important;}.info{color:var(--info)!important;}.atmc{color:var(--atm)!important;}.pcr-spark{width:90px;height:24px;margin-top:6px;}.flow-tbl td{font-size:12px;padding:6px 10px;vertical-align:middle;}.flow-tbl th{font-size:11px;padding:8px 10px;}.mig-row{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,.03);font-size:12px;}.mig-row:last-child{border-bottom:none;}.mig-from{width:56px;text-align:right;font-weight:700;}.mig-to{width:56px;font-weight:700;}.mig-chg{width:48px;text-align:right;font-weight:700;}.mig-note{font-size:11px;color:var(--text2);flex:1;font-family:var(--ui);}.pin-box{padding:10px 16px;border-top:1px solid var(--border);background:var(--bg3);}.pin-inner{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:6px;border:1px solid transparent;}.pin-label{font-size:11px;font-weight:700;letter-spacing:1px;font-family:var(--ui);}.pin-note{font-size:11px;font-family:var(--ui);flex:1;color:var(--text2);}.pin-score{font-size:17px;font-weight:700;}.gg{display:grid;grid-template-columns:repeat(4,1fr);}.gc{padding:10px 14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);}.gc:nth-child(4n){border-right:none;}.gc:nth-last-child(-n+4){border-bottom:none;}.gl{font-size:10px;color:var(--text2);letter-spacing:1px;margin-bottom:4px;font-family:var(--ui);font-weight:700;}.gv{font-size:14px;font-weight:700;}.gs{font-size:10px;color:var(--text2);margin-top:2px;}.ag{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;}.ac{padding:12px 16px;border-right:1px solid var(--border);}.ac:last-child{border-right:none;}.at2{font-size:11px;letter-spacing:1.5px;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);font-family:var(--ui);}.arow{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);}.arow:last-child{border-bottom:none;}.ast{font-size:13px;font-weight:700;}.aoi{font-size:12px;font-weight:700;}.achg{font-size:10px;color:var(--text2);}.anote{font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5;}.aempty{font-size:12px;color:var(--text2);padding:6px 0;line-height:1.6;}.skew-row{display:flex;align-items:center;gap:10px;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,.03);}.skew-bar{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,0.5);}.skew-fill{height:100%;border-radius:3px;}.hw{padding:12px 16px;}.gex-row{display:flex;align-items:center;gap:8px;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,.03);}.gex-strike{font-size:13px;width:60px;text-align:right;flex-shrink:0;}.gex-bar-wrap{flex:1;display:flex;align-items:center;gap:2px;}.gex-pos{height:14px;background:var(--bear);border-radius:3px 0 0 3px;box-shadow:0 0 5px rgba(255,59,87,0.3);}.gex-neg{height:14px;background:var(--bull);border-radius:0 3px 3px 0;box-shadow:0 0 5px rgba(0,255,136,0.3);}.gex-mid{width:2px;background:var(--border2);height:16px;flex-shrink:0;}.gex-val{font-size:11px;width:56px;text-align:right;flex-shrink:0;font-weight:700;}
 
+/* ── OI Velocity indicator ─────────────────────────── */
+.vel-acc-up{color:#ff3b57;font-weight:900;font-size:12px;text-shadow:0 0 4px rgba(255,59,87,0.6);}
+.vel-acc-dn{color:#00ff88;font-weight:900;font-size:12px;text-shadow:0 0 4px rgba(0,255,136,0.6);}
+.vel-acc-flat{color:var(--text2);font-size:11px;}
+
+/* ── Alert Log Timeline ────────────────────────────── */
+.alog-wrap{max-height:220px;overflow-y:auto;padding:6px 0;}
+.alog-wrap::-webkit-scrollbar{width:4px;}.alog-wrap::-webkit-scrollbar-track{background:var(--bg3);}.alog-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.alog-row{display:flex;align-items:flex-start;gap:10px;padding:6px 14px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:12px;transition:background 0.1s;}
+.alog-row:hover{background:rgba(255,255,255,0.03);}
+.alog-time{color:var(--text2);font-size:10px;white-space:nowrap;margin-top:1px;font-family:var(--ui);min-width:56px;}
+.alog-type{font-weight:700;font-size:11px;padding:2px 6px;border-radius:4px;white-space:nowrap;font-family:var(--ui);}
+.alog-msg{color:var(--text2);font-size:11px;line-height:1.4;flex:1;}
+.alog-empty{padding:20px;text-align:center;color:var(--text2);font-size:12px;font-family:var(--ui);}
+
+/* ── Straddle & PCR sparklines ─────────────────────── */
+.mini-spark{display:inline-block;vertical-align:middle;}
+
+/* ── Wall shift badge ──────────────────────────────── */
+.wall-shift-badge{background:rgba(255,184,0,0.15);color:var(--warn);border:1px solid rgba(255,184,0,0.4);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;font-family:var(--ui);animation:blink 1.4s infinite;}
+
+/* ── MACD display ──────────────────────────────────── */
+.macd-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:11px;}
+.macd-hist-bar{display:inline-block;height:8px;min-width:2px;border-radius:2px;vertical-align:middle;margin-left:4px;}
+
+/* ── Straddle decay chart ──────────────────────────── */
+.straddle-spark-wrap{flex:1;min-width:120px;display:flex;align-items:center;gap:8px;}
+
 /* Open Price Tags */
 .open-tag { font-size:9px; padding:2px 4px; border-radius:3px; margin-left:4px; font-weight:700; }
 .open-up { background:rgba(0,255,136,0.1); color:var(--bull); border:1px solid rgba(0,255,136,0.3); }
@@ -85,6 +113,7 @@
   <div style="flex:2">
     <div style="font-size:14px;color:var(--text2);font-weight:600;" id="state-note">—</div>
     <div style="font-size:12px;color:var(--text2);margin-top:4px;" id="matrix-desc">—</div>
+    <div style="font-size:11px;margin-top:4px;font-family:var(--ui);" id="wall-info"></div>
   </div>
 </div>
 
@@ -157,6 +186,11 @@
       <div class="range-dot" id="range-dot" style="left:50%"></div>
     </div>
     <span style="font-size:12px;color:var(--text2);margin-left:6px;font-weight:700" id="range-high">—</span>
+  </div>
+  <div class="straddle-spark-wrap">
+    <span style="font-size:10px;color:var(--info);font-family:var(--ui);font-weight:700;letter-spacing:1px">STRADDLE TREND</span>
+    <svg id="straddle-spark" class="mini-spark" width="100" height="28" viewBox="0 0 100 28"></svg>
+    <span id="straddle-spark-lbl" style="font-size:11px;font-weight:700;color:var(--text2)">—</span>
   </div>
 </div>
 
@@ -258,10 +292,12 @@
             <th class="th-s" style="min-width:80px">STRIKE</th>
             <th style="text-align:left;min-width:180px;color:var(--bear)">🔴 CALL (CE) FLOW</th>
             <th style="text-align:left;min-width:70px;color:var(--bear)">CE Δ OI</th>
+            <th style="text-align:center;color:var(--warn);min-width:60px">CE VEL</th>
             <th style="text-align:center;color:var(--text2);min-width:90px">CE Vol</th>
             <th style="text-align:center;min-width:140px">NET FLOW</th>
             <th style="text-align:left;min-width:180px;color:var(--bull)">✅ PUT (PE) FLOW</th>
             <th style="text-align:left;min-width:70px;color:var(--bull)">PE Δ OI</th>
+            <th style="text-align:center;color:var(--warn);min-width:60px">PE VEL</th>
             <th style="text-align:center;color:var(--text2);min-width:90px">PE Vol</th>
           </tr>
         </thead>
@@ -319,6 +355,38 @@
       <div class="loading" style="grid-column:1/-1">Waiting...</div>
     </div>
   </div>
+
+  <div class="card full">
+    <div class="ch">
+      <span class="ct info">📋 ALERT LOG — TODAY'S ACTIVITY TIMELINE</span>
+      <span class="cs" id="alert-log-count" style="font-size:11px;color:var(--text2)">0 events</span>
+    </div>
+    <div class="alog-wrap" id="alert-log-body">
+      <div class="alog-empty">No alerts recorded yet today.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch">
+      <span class="ct info">📈 PCR TREND — INTRADAY HISTORY</span>
+      <span class="cs" id="pcr-hist-lbl" style="font-size:11px;color:var(--text2)">—</span>
+    </div>
+    <div style="padding:12px 16px;">
+      <svg id="pcr-hist-chart" width="100%" height="80" viewBox="0 0 400 80" preserveAspectRatio="none" style="display:block;"></svg>
+      <div id="pcr-hist-labels" style="display:flex;justify-content:space-between;font-size:9px;color:var(--text2);font-family:var(--ui);margin-top:4px;"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ch">
+      <span class="ct warn">📉 STRADDLE DECAY CHART</span>
+      <span class="cs" id="straddle-hist-lbl" style="font-size:11px;color:var(--text2)">—</span>
+    </div>
+    <div style="padding:12px 16px;">
+      <svg id="straddle-hist-chart" width="100%" height="80" viewBox="0 0 400 80" preserveAspectRatio="none" style="display:block;"></svg>
+      <div id="straddle-hist-labels" style="display:flex;justify-content:space-between;font-size:9px;color:var(--text2);font-family:var(--ui);margin-top:4px;"></div>
+    </div>
+  </div>
 </div>
 
 <div style="height:40px"></div>
@@ -333,9 +401,9 @@ let targetTime = Date.now() + 300000;
 let snapCount = 0;
 let isSnapping = false;
 let memory = {
-    'NIFTY': { pcrHistory: [], prevOIChg: {}, cycleCount: 0 },
+    'NIFTY':     { pcrHistory: [], prevOIChg: {}, cycleCount: 0 },
     'BANKNIFTY': { pcrHistory: [], prevOIChg: {}, cycleCount: 0 },
-    'SENSEX': { pcrHistory: [], prevOIChg: {}, cycleCount: 0 }
+    'SENSEX':    { pcrHistory: [], prevOIChg: {}, cycleCount: 0 }
 };
 
 function g(id) { return document.getElementById(id); }
@@ -471,6 +539,20 @@ function velArrow(strike, isCall, currentChg) {
     return '<span class="vel-flat vel-arrow">→</span>';
 }
 
+// OI Velocity acceleration indicator (acceleration of rate of change)
+function oiVelIndicator(velocity, isCall) {
+    if (velocity === undefined || velocity === null || velocity === 0) return '<span class="vel-acc-flat">—</span>';
+    const sign = velocity > 0 ? 1 : -1;
+    const abs = Math.abs(velocity);
+    // For calls: +ve velocity = accelerating resistance (bearish), -ve = decelerating (bullish)
+    // For puts:  +ve velocity = accelerating support (bullish), -ve = decelerating (bearish)
+    const bearish = isCall ? sign > 0 : sign < 0;
+    const arrow = abs > 50000 ? (sign > 0 ? '▲▲' : '▼▼') : (sign > 0 ? '▲' : '▼');
+    const cls = bearish ? 'vel-acc-up' : 'vel-acc-dn';
+    const title = (abs / 100000).toFixed(2) + 'L accel';
+    return `<span class="${cls}" title="${title}">${arrow}</span>`;
+}
+
 function sigColor(sig) {
     if (!sig) return 'var(--text2)';
     if (sig.includes('BULL') || sig.includes('COVERING') || sig.includes('WRITING') && !sig.includes('CALL')) return 'var(--bull)';
@@ -513,9 +595,10 @@ async function doFetchCore() {
     sStyle('dot', 'background', 'var(--warn)');
     try {
         const cb = new Date().getTime();
-        const [jr, hr] = await Promise.all([
+        const [jr, hr, alr] = await Promise.all([
             fetch('/oi/json?idx=' + currentIdx + '&_=' + cb),
-            fetch('/oi/histogram?idx=' + currentIdx + '&_=' + cb)
+            fetch('/oi/histogram?idx=' + currentIdx + '&_=' + cb),
+            fetch('/oi/alert_log?idx=' + currentIdx + '&_=' + cb)
         ]);
         const raw = await jr.json();
         
@@ -560,6 +643,11 @@ async function doFetchCore() {
         try {
             const hRaw = await hr.json();
             hist = hRaw.map(h => ({ ...h, strike: parseFloat(h.strike || 0) }));
+        } catch (e) {}
+
+        try {
+            const aLogs = await alr.json();
+            renderAlertLog(aLogs);
         } catch (e) {}
         
         render(raw, hist);
@@ -757,6 +845,10 @@ function render(d, hist) {
     if (intel.skew) renderSkew(intel.skew);
     if (intel.activity) renderActivity(intel.activity);
     if (intel.analysis) renderAnalysis(intel.analysis);
+    // ── NEW renderers ────────────────────────────────────────────────────────
+    if (intel.pcr_history) renderPCRHistory(intel.pcr_history);
+    if (intel.straddle_history) renderStraddleHistory(intel.straddle_history);
+    renderWallShifts(intel.wall_shifts || [], intel.max_ce_strike, intel.max_pe_strike);
 
     Object.keys(d.chain).forEach(k => {
         mem.prevOIChg[k] = { call_chg: d.chain[k].call_oi_chg, put_chg: d.chain[k].put_oi_chg };
@@ -773,8 +865,31 @@ function renderTech(tech) {
     ['3m', '5m', '15m'].forEach(tf => {
         let d = tech[tf];
         if (d) {
+            // MACD display
+            const macdVal  = d.macd     !== undefined && d.macd     !== null ? d.macd     : null;
+            const macdSig  = d.macd_signal !== undefined && d.macd_signal !== null ? d.macd_signal : null;
+            const macdHist = d.macd_hist   !== undefined && d.macd_hist   !== null ? d.macd_hist   : null;
+            let macdHtml = '';
+            if (macdVal !== null) {
+                const histColor = macdHist >= 0 ? 'var(--bull)' : 'var(--bear)';
+                const histW = Math.min(40, Math.abs(macdHist || 0) * 20);
+                macdHtml = `<div class="macd-row">
+                    <span style="color:var(--text2)">MACD</span>
+                    <span style="font-weight:700;color:${macdVal >= 0 ? 'var(--bull)' : 'var(--bear)'}">${macdVal}</span>
+                </div>
+                <div class="macd-row">
+                    <span style="color:var(--text2)">Signal</span>
+                    <span>${macdSig !== null ? macdSig : '—'}</span>
+                </div>
+                <div class="macd-row">
+                    <span style="color:var(--text2)">Hist</span>
+                    <span style="color:${histColor};font-weight:700">${macdHist !== null ? (macdHist >= 0 ? '+' : '') + macdHist : '—'}<span class="macd-hist-bar" style="width:${histW}px;background:${histColor};opacity:0.7"></span></span>
+                </div>`;
+            }
+
             let html = `<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">Trend</span><span style="color:${msColor(d.trend)};font-weight:700">${d.trend || '—'}</span></div>
             <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">RSI</span><span>${d.rsi || '—'}</span></div>
+            ${macdHtml}
             <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:6px; margin-top:4px;"></div>
             <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">Cross</span><span style="font-size:11px">${d.ts_start || '—'}</span></div>
             <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">Pullback</span><span style="font-size:11px">${d.ts_pull || '—'}</span></div>
@@ -855,11 +970,16 @@ function renderFlow(atmStrikes, atm, cycleCount) {
         let ceDimClass = ceSig.includes('STABLE') ? 'dim' : '';
         let peDimClass = peSig.includes('STABLE') ? 'dim' : '';
 
+        // OI Velocity indicators
+        const ceVel = oiVelIndicator(v.call_oi_velocity, true);
+        const peVel = oiVelIndicator(v.put_oi_velocity, false);
+
         fHtml += `<tr class="${isAtm ? 'ar' : ''}">
             <td class="td-s" style="color:${isAtm ? 'var(--atm)' : ''}">${k}</td>
             
             <td style="text-align:left" class="${ceDimClass}">${getFlowPill(ceSig)}</td>
             <td>${dimZ(v.call_oi_chg, fc, v.call_oi_chg >= 0 ? 'var(--bear)' : 'var(--bull)')}</td>
+            <td style="text-align:center">${ceVel}</td>
             <td style="padding:0">
                 <div class="vol-wrap"><div class="vol-bg" style="width:${cVolPct}%; right:2px; left:auto;"></div><span class="vol-txt">${fcAbs(v.call_vol || 0)}</span></div>
             </td>
@@ -868,12 +988,13 @@ function renderFlow(atmStrikes, atm, cycleCount) {
             
             <td style="text-align:left" class="${peDimClass}">${getFlowPill(peSig)}</td>
             <td>${dimZ(v.put_oi_chg, fc, v.put_oi_chg >= 0 ? 'var(--bull)' : 'var(--bear)')}</td>
+            <td style="text-align:center">${peVel}</td>
             <td style="padding:0">
                 <div class="vol-wrap"><div class="vol-bg" style="width:${pVolPct}%; left:2px;"></div><span class="vol-txt">${fcAbs(v.put_vol || 0)}</span></div>
             </td>
         </tr>`;
     });
-    sHTML('flow-tbody', fHtml || '<tr><td colspan="8" class="loading">No flow data</td></tr>');
+    sHTML('flow-tbody', fHtml || '<tr><td colspan="10" class="loading">No flow data</td></tr>');
     sText('flow-time', new Date().toLocaleTimeString('en-IN'));
 }
 
@@ -998,6 +1119,109 @@ function renderAnalysis(anls) {
         </div>
     `).join('');
     sHTML('analysis-grid', html || '<div class="loading" style="grid-column:1/-1">Waiting for enough data...</div>');
+}
+
+// ── Alert Log Renderer ───────────────────────────────────────────────────────
+function renderAlertLog(logs) {
+    const el = g('alert-log-body');
+    if (!el) return;
+    if (!logs || logs.length === 0) {
+        el.innerHTML = '<div class="alog-empty">✅ No alerts recorded yet today. Watching...</div>';
+        sText('alert-log-count', '0 events');
+        return;
+    }
+    sText('alert-log-count', logs.length + ' events');
+    const typeColors = {
+        'BREAKOUT UP':    { bg:'rgba(0,255,136,0.1)',  color:'var(--bull)' },
+        'BREAKOUT DOWN':  { bg:'rgba(255,59,87,0.1)',  color:'var(--bear)' },
+        'CALL WALL SHIFT':{ bg:'rgba(255,184,0,0.12)', color:'var(--warn)' },
+        'PUT WALL SHIFT': { bg:'rgba(255,184,0,0.12)', color:'var(--warn)' },
+    };
+    el.innerHTML = logs.map(a => {
+        const style = typeColors[a.type] || { bg:'rgba(139,148,158,0.08)', color:'var(--text2)' };
+        return `<div class="alog-row">
+            <span class="alog-time">${a.time || '—'}</span>
+            <span class="alog-type" style="background:${style.bg};color:${style.color};border:1px solid ${style.color.replace(')',',0.3)')}">${a.icon || '⚡'} ${a.type}</span>
+            <span class="alog-msg">${a.msg || ''}</span>
+        </div>`;
+    }).join('');
+}
+
+// ── SVG Sparkline Helper ─────────────────────────────────────────────────────
+function renderSparkSVG(svgId, data, valueKey, color, W, H) {
+    const el = g(svgId);
+    if (!el || !data || data.length < 2) return;
+    const vals = data.map(d => d[valueKey]);
+    const mn = Math.min(...vals), mx = Math.max(...vals);
+    const range = mx - mn || 1;
+    const pts = vals.map((v, i) => {
+        const x = Math.round((i / (vals.length - 1)) * W);
+        const y = Math.round(H - ((v - mn) / range) * (H - 6) - 3);
+        return `${x},${y}`;
+    }).join(' ');
+    const last = vals[vals.length - 1], first = vals[0];
+    const lineColor = last > first ? 'var(--bull)' : last < first ? 'var(--bear)' : color;
+    el.innerHTML = `<defs>
+        <linearGradient id="sg_${svgId}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${lineColor}" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="${lineColor}" stop-opacity="0"/>
+        </linearGradient>
+    </defs>
+    <polyline points="${pts}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 3px ${lineColor})"/>`;
+}
+
+// ── PCR History Chart ────────────────────────────────────────────────────────
+function renderPCRHistory(pcrHistory) {
+    if (!pcrHistory || pcrHistory.length < 2) return;
+    const W = 400, H = 80;
+    renderSparkSVG('pcr-hist-chart', pcrHistory, 'pcr', 'var(--info)', W, H);
+
+    const vals = pcrHistory.map(d => d.pcr);
+    const last = vals[vals.length - 1];
+    const first = vals[0];
+    const chg = (last - first).toFixed(3);
+    const col = last > first ? 'var(--bull)' : last < first ? 'var(--bear)' : 'var(--text2)';
+    const lbl = g('pcr-hist-lbl');
+    if (lbl) { lbl.textContent = `PCR: ${last.toFixed(2)} (${chg >= 0 ? '+' : ''}${chg} today)`; lbl.style.color = col; }
+
+    // labels: first & last time
+    const labEl = g('pcr-hist-labels');
+    if (labEl) labEl.innerHTML = `<span>${pcrHistory[0].time}</span><span style="color:${col};font-weight:700">PCR ${last.toFixed(2)}</span><span>${pcrHistory[pcrHistory.length-1].time}</span>`;
+}
+
+// ── Straddle History Chart ───────────────────────────────────────────────────
+function renderStraddleHistory(straddleHistory) {
+    if (!straddleHistory || straddleHistory.length < 2) return;
+    const W = 400, H = 80;
+    renderSparkSVG('straddle-hist-chart', straddleHistory, 'value', 'var(--warn)', W, H);
+
+    const vals = straddleHistory.map(d => d.value);
+    const last = vals[vals.length - 1], first = vals[0];
+    const chg = last - first;
+    const col = chg < 0 ? 'var(--bull)' : chg > 0 ? 'var(--bear)' : 'var(--text2)';
+    const lbl = g('straddle-hist-lbl');
+    if (lbl) { lbl.textContent = `₹${last} (${chg >= 0 ? '+' : ''}${chg.toFixed(1)} vs open)`; lbl.style.color = col; }
+
+    const labEl = g('straddle-hist-labels');
+    if (labEl) labEl.innerHTML = `<span>${straddleHistory[0].time}</span><span style="color:${col};font-weight:700">₹${last}</span><span>${straddleHistory[straddleHistory.length-1].time}</span>`;
+
+    // Also render the inline straddle sparkline in the straddle bar
+    renderSparkSVG('straddle-spark', straddleHistory, 'value', 'var(--info)', 100, 28);
+    const sparkLbl = g('straddle-spark-lbl');
+    if (sparkLbl) { sparkLbl.textContent = (chg >= 0 ? '▲+' : '▼') + Math.abs(chg).toFixed(1); sparkLbl.style.color = col; }
+}
+
+// ── Wall Shift Renderer ──────────────────────────────────────────────────────
+function renderWallShifts(wallShifts, maxCeStrike, maxPeStrike) {
+    const alertsEl = g('alerts-content');
+    if (!alertsEl) return;
+    // Add wall info to state bar as sub-info
+    const wallInfoEl = g('wall-info');
+    if (wallInfoEl) {
+        wallInfoEl.innerHTML = maxCeStrike
+            ? `Max CE Wall: <span style="color:var(--bear);font-weight:700">${maxCeStrike}</span>&nbsp;&nbsp;Max PE Wall: <span style="color:var(--bull);font-weight:700">${maxPeStrike}</span>`
+            : '';
+    }
 }
 
 setInterval(() => {
