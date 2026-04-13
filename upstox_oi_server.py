@@ -29,10 +29,7 @@ API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
 # Kept empty so the LOGIN button works!
-# Kept empty so the LOGIN button works!
 MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWRjOWY5NjhmNDVmNDU3Y2EwNzQ3OTAiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc2MDY2NDU0LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzYxMTc2MDB9.NCOhEsBoNVWgDiaxbsRA51yQ_pUbwvO0LLBXC1OqeS0"
-
-
 
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
@@ -959,10 +956,10 @@ def get_pin_risk(chain, atm):
 
 def get_analysis(mkt_state, pcr, vix, net_flow_l):
     return [
-        {"title": "MARKET TREND", "status": mkt_state, "desc": "Primary trend based on Price Action + OI Flow"},
+        {"title": "MARKET TREND", "status": mkt_state, "desc": "Primary trend based on Price Action + Flow"},
         {"title": "PCR SENTIMENT", "status": "BULLISH" if pcr > 1.0 else "BEARISH", "desc": f"Put-Call Ratio is currently at {pcr}"},
         {"title": "VOLATILITY (VIX)", "status": "ELEVATED" if vix > 15 else "STABLE", "desc": f"India VIX is trading at {vix}"},
-        {"title": "SMART MONEY FLOW", "status": "LONG BUILDUP" if net_flow_l > 0 else "SHORT SELLING", "desc": f"Net OI Flow is {net_flow_l:+.1f}L contracts"}
+        {"title": "SMART MONEY FLOW", "status": "LONG BUILDUP" if net_flow_l > 0 else "SHORT SELLING", "desc": f"Net OI Flow is {net_flow_l:+.1f}L"}
     ]
 
 # ══════════════════════════════════════════════════
@@ -990,7 +987,7 @@ def refresh(idx):
                         full_cache = json.load(f)
                         if idx in full_cache and full_cache[idx].get("chain"):
                             oi_cache[idx]["data"] = full_cache[idx]
-                            debug_status["last_error"] = f"[{idx}] API offline (Weekend/Limit). Loaded cached data."
+                            debug_status["last_error"] = f"[{idx}] API offline. Loaded cache."
                             return
                 except: pass
                 
@@ -1307,6 +1304,10 @@ def pcr_history_route():
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
     return jsonify(STORE[idx].get("pcr_history", []))
+
+@app.route("/login")
+def login(): 
+    return redirect(f"https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id={API_KEY}&redirect_uri={REDIRECT_URI}")
 
 @app.route("/callback")
 def callback():
