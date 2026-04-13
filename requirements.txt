@@ -2,3 +2,5 @@ flask
 flask-cors
 requests
 gunicorn
+playwright==1.42.0
+APScheduler==3.10.4
