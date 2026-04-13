@@ -29,8 +29,8 @@ API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
 # Kept empty so the LOGIN button works!
-# Kept empty so the LOGIN button works!
 MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWRjOWY5NjhmNDVmNDU3Y2EwNzQ3OTAiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc2MDY2NDU0LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzYxMTc2MDB9.NCOhEsBoNVWgDiaxbsRA51yQ_pUbwvO0LLBXC1OqeS0"
+
 
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
@@ -293,14 +293,16 @@ def callback():
     if "access_token" not in data:
         debug_status["last_error"] = f"Upstox Auth Rejected"
         return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
+    
     save_token(data.get("access_token"))
     send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
     
-    # 🔥 ANTI-BURST FIX: Run the initial load in the background slowly so it doesn't crash the UI or hit 429 limits
+    # Run the initial load in the background slowly so it doesn't crash the UI
     def run_init():
         for idx in INDICES: 
             refresh(idx)
             time.sleep(2)
+            
     threading.Thread(target=run_init, daemon=True).start()
     
     return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p><script>setTimeout(()=>window.location.href="/",2000)</script></body></html>"""
@@ -395,7 +397,6 @@ def resample_candles(candles_1m, tf):
         res.append({"time": ct.isoformat(), "open": cg[0]["open"], "high": max(x["high"] for x in cg), "low": min(x["low"] for x in cg), "close": cg[-1]["close"], "vol": sum(x.get("vol", 0) for x in cg)})
     return res
 
-# 🔥 ANTI-BURST FIX: Grab exactly what dates Upstox has open
 def get_valid_expiry_list(idx):
     sym = INDICES[idx]["key"]
     try:
@@ -413,7 +414,6 @@ def get_valid_expiry_list(idx):
     today = date.today()
     return [(today + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(8)]
 
-# 🔥 ANTI-BURST FIX: 0.4s sleep stops 429 Too Many Requests errors
 def find_valid_expiry(idx):
     if EXPIRY_CACHE[idx] and EXPIRY_CACHE[idx] >= date.today().strftime("%Y-%m-%d"):
         raw = fetch_chain(idx, EXPIRY_CACHE[idx])
@@ -429,7 +429,6 @@ def find_valid_expiry(idx):
             
     return None, []
 
-# 🔥 ANTI-BURST FIX: Smart 429 retry loop
 def fetch_chain(idx, expiry):
     sym = INDICES[idx]["key"]
     for attempt in range(3): 
@@ -1005,6 +1004,7 @@ def refresh(idx):
 
     try:
         spot   = fetch_spot(idx)
+        time.sleep(0.4) 
         expiry, raw = find_valid_expiry(idx)
         
         if not raw:
@@ -1037,11 +1037,14 @@ def refresh(idx):
         
         prev_pcr = store["history"][-1]["pcr"] if store["history"] else pcr
         pcr_chg  = round(pcr - prev_pcr, 3)
+        time.sleep(0.4)
         futures  = fetch_futures(spot, idx)
+        time.sleep(0.4)
         vix      = fetch_vix()
         
         if store["baseline_vix"] is None and vix > 0: store["baseline_vix"] = vix
 
+        time.sleep(0.4)
         candles_1m  = fetch_base_1m_candles(idx)
         levels_data = extract_levels(candles_1m, spot)
         
@@ -1297,7 +1300,6 @@ def histogram():
     atm = float(d["atm"])
     step = float(INDICES[idx]["step"])
     
-    # 🚨 BULLETPROOF MATH FIX: Protects against String Types causing the 500 error
     safe_list = []
     for s_str, v in chain.items():
         try:
@@ -1338,14 +1340,15 @@ def callback():
     if "access_token" not in data:
         debug_status["last_error"] = f"Upstox Auth Rejected"
         return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
+    
     save_token(data.get("access_token"))
     send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
     
-    # Run the initial load in the background slowly so it doesn't crash the UI
     def run_init():
         for idx in INDICES: 
             refresh(idx)
             time.sleep(2)
+            
     threading.Thread(target=run_init, daemon=True).start()
     
     return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p><script>setTimeout(()=>window.location.href="/",2000)</script></body></html>"""
