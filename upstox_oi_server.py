@@ -31,6 +31,8 @@ REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 # 🔥 Paste your working token here!
 # Kept empty so the LOGIN button works!
 MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWRjOWY5NjhmNDVmNDU3Y2EwNzQ3OTAiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc2MDY2NDU0LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzYxMTc2MDB9.NCOhEsBoNVWgDiaxbsRA51yQ_pUbwvO0LLBXC1OqeS0"
+
+
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
 
@@ -49,6 +51,7 @@ INDICES = {
     "SENSEX": {"key": "BSE_INDEX|SENSEX", "step": 100}
 }
 
+# 🔥 NEW: Memory cache to lock onto the correct valid expiry
 EXPIRY_CACHE = {"NIFTY": None, "BANKNIFTY": None, "SENSEX": None}
 
 STORE = {idx: {
@@ -303,12 +306,6 @@ def fetch_spot(idx):
     try:
         r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": sym}, headers=hdrs(), timeout=10)
         d = r.json().get("data", {})
-        
-        # Fallback to pure NIFTY 50 string just in case
-        if not d and idx == "NIFTY":
-            r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": "NSE_INDEX|NIFTY 50"}, headers=hdrs(), timeout=10)
-            d = r.json().get("data", {})
-            
         key = list(d.keys())[0] if d else None
         return float(d[key].get("last_price", 0)) if key else 0
     except Exception: 
@@ -389,36 +386,57 @@ def resample_candles(candles_1m, tf):
         res.append({"time": ct.isoformat(), "open": cg[0]["open"], "high": max(x["high"] for x in cg), "low": min(x["low"] for x in cg), "close": cg[-1]["close"], "vol": sum(x.get("vol", 0) for x in cg)})
     return res
 
-# 🚨 THE FIX: Expiry Brute-Force Scanner! Prevents Upstox holiday calendar failures
-def find_valid_expiry(idx):
-    if EXPIRY_CACHE[idx] and EXPIRY_CACHE[idx] >= date.today().strftime("%Y-%m-%d"):
-        raw = fetch_chain(idx, EXPIRY_CACHE[idx])
-        if raw: return EXPIRY_CACHE[idx], raw
-        
-    today = date.today()
-    for i in range(8):
-        test_date = (today + timedelta(days=i)).strftime("%Y-%m-%d")
-        raw = fetch_chain(idx, test_date)
-        if raw:
-            EXPIRY_CACHE[idx] = test_date
-            return test_date, raw
-    return None, []
-
+# 🔥 THE FIX: Evaluates empty ghost expiries and finds the true active one!
 def fetch_chain(idx, expiry):
     sym = INDICES[idx]["key"]
     try:
         r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": sym, "expiry_date": expiry}, headers=hdrs(), timeout=5)
         if r.status_code == 200 and r.json().get("data"):
-            return r.json().get("data", [])
-            
-        if idx == "NIFTY":
-            r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": "NSE_INDEX|NIFTY 50", "expiry_date": expiry}, headers=hdrs(), timeout=5)
-            if r.status_code == 200 and r.json().get("data"):
-                INDICES["NIFTY"]["key"] = "NSE_INDEX|NIFTY 50"
-                return r.json().get("data", [])
+            data = r.json().get("data", [])
+            # Protect against empty Ghost chains by summing OI
+            total_oi = 0
+            for item in data:
+                ce = item.get("call_options") or {}
+                pe = item.get("put_options") or {}
+                c_md = ce.get("market_data") or {}
+                p_md = pe.get("market_data") or {}
+                total_oi += float(c_md.get("oi", 0) or 0)
+                total_oi += float(p_md.get("oi", 0) or 0)
+            if total_oi > 10000:
+                return data
     except Exception: 
         pass
     return []
+
+def get_valid_expiry_and_chain(idx):
+    today_str = date.today().strftime("%Y-%m-%d")
+    
+    if EXPIRY_CACHE.get(idx) and EXPIRY_CACHE[idx] >= today_str:
+        raw = fetch_chain(idx, EXPIRY_CACHE[idx])
+        if raw: return EXPIRY_CACHE[idx], raw
+        
+    sym = INDICES[idx]["key"]
+    try:
+        r = requests.get("https://api.upstox.com/v2/option/contract", params={"instrument_key": sym}, headers=hdrs(), timeout=5)
+        if r.status_code == 200:
+            items = r.json().get("data", [])
+            exps = sorted(list(set([i if isinstance(i, str) else i.get("expiry") for i in items if i])))
+            for e in [x for x in exps if x >= today_str]:
+                raw = fetch_chain(idx, e)
+                if raw:
+                    EXPIRY_CACHE[idx] = e
+                    return e, raw
+    except Exception: pass
+    
+    today = date.today()
+    for i in range(35):
+        test_date = (today + timedelta(days=i)).strftime("%Y-%m-%d")
+        raw = fetch_chain(idx, test_date)
+        if raw:
+            EXPIRY_CACHE[idx] = test_date
+            return test_date, raw
+            
+    return None, []
 
 def compute_max_pain(chain):
     strikes = sorted([float(k) for k in chain.keys()])
@@ -956,10 +974,6 @@ def get_analysis(mkt_state, pcr, vix, net_flow_l):
         {"title": "SMART MONEY FLOW", "status": "LONG BUILDUP" if net_flow_l > 0 else "SHORT SELLING", "desc": f"Net OI Flow is {net_flow_l:+.1f}L contracts"}
     ]
 
-# ══════════════════════════════════════════════════
-#  MAIN REFRESH LOOP
-# ══════════════════════════════════════════════════
-
 def refresh(idx):
     load_token()
     if not token_store.get("access_token"):
@@ -971,7 +985,7 @@ def refresh(idx):
 
     try:
         spot   = fetch_spot(idx)
-        expiry, raw = find_valid_expiry(idx)
+        expiry, raw = get_valid_expiry_and_chain(idx)
         
         if not raw:
             if os.path.exists(DATA_FILE):
@@ -1261,7 +1275,7 @@ def histogram():
     chain = d["chain"]
     atm = float(d["atm"])
     step = float(INDICES[idx]["step"])
-    # 🚨 BULLETPROOF MATH FIX
+    # 🔥 BULLETPROOF FIX: Forces strike to float safely
     safe_list = []
     for s, v in chain.items():
         try:
