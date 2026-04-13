@@ -28,7 +28,7 @@ API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
-# 🔥 Paste your working token here!
+# Kept empty so the LOGIN button works!
 # Kept empty so the LOGIN button works!
 MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWRjOWY5NjhmNDVmNDU3Y2EwNzQ3OTAiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc2MDY2NDU0LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzYxMTc2MDB9.NCOhEsBoNVWgDiaxbsRA51yQ_pUbwvO0LLBXC1OqeS0"
 
@@ -295,9 +295,15 @@ def callback():
         return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
     save_token(data.get("access_token"))
     send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
-    for idx in INDICES: 
-        refresh(idx)
-    return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p></body></html>"""
+    
+    # 🔥 ANTI-BURST FIX: Run the initial load in the background slowly so it doesn't crash the UI or hit 429 limits
+    def run_init():
+        for idx in INDICES: 
+            refresh(idx)
+            time.sleep(2)
+    threading.Thread(target=run_init, daemon=True).start()
+    
+    return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p><script>setTimeout(()=>window.location.href="/",2000)</script></body></html>"""
 
 def fetch_spot(idx):
     sym = INDICES[idx]["key"]
@@ -389,7 +395,7 @@ def resample_candles(candles_1m, tf):
         res.append({"time": ct.isoformat(), "open": cg[0]["open"], "high": max(x["high"] for x in cg), "low": min(x["low"] for x in cg), "close": cg[-1]["close"], "vol": sum(x.get("vol", 0) for x in cg)})
     return res
 
-# 🔥 ANTI-BURST FIX 1: Fetch direct contracts to avoid spamming Upstox 8 times instantly
+# 🔥 ANTI-BURST FIX: Grab exactly what dates Upstox has open
 def get_valid_expiry_list(idx):
     sym = INDICES[idx]["key"]
     try:
@@ -404,20 +410,18 @@ def get_valid_expiry_list(idx):
             valid = sorted([e for e in exps if e >= today_str])
             if valid: return valid
     except: pass
-    
-    # Absolute fallback: Generate next 8 days
     today = date.today()
     return [(today + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(8)]
 
-# 🔥 ANTI-BURST FIX 2: Sleep inside the loop so Upstox doesn't throw a 429 Error
+# 🔥 ANTI-BURST FIX: 0.4s sleep stops 429 Too Many Requests errors
 def find_valid_expiry(idx):
     if EXPIRY_CACHE[idx] and EXPIRY_CACHE[idx] >= date.today().strftime("%Y-%m-%d"):
         raw = fetch_chain(idx, EXPIRY_CACHE[idx])
         if raw: return EXPIRY_CACHE[idx], raw
         
     dates_to_test = get_valid_expiry_list(idx)
-    for test_date in dates_to_test[:4]: # Only test up to 4 to save time
-        time.sleep(0.3) # Slow down to stay under 10 requests/sec limit
+    for test_date in dates_to_test[:4]: 
+        time.sleep(0.4) 
         raw = fetch_chain(idx, test_date)
         if raw:
             EXPIRY_CACHE[idx] = test_date
@@ -425,26 +429,29 @@ def find_valid_expiry(idx):
             
     return None, []
 
-# 🔥 ANTI-BURST FIX 3: Check for 429 (Too Many Requests) and retry gracefully
+# 🔥 ANTI-BURST FIX: Smart 429 retry loop
 def fetch_chain(idx, expiry):
     sym = INDICES[idx]["key"]
-    for _ in range(2):
+    for attempt in range(3): 
         try:
             r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": sym, "expiry_date": expiry}, headers=hdrs(), timeout=5)
-            if r.status_code == 429: # Upstox is screaming "slow down"
-                time.sleep(1)
+            if r.status_code == 429: 
+                time.sleep(1) 
                 continue
             if r.status_code == 200 and r.json().get("data"):
                 return r.json().get("data", [])
                 
             if idx == "NIFTY":
                 r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": "NSE_INDEX|NIFTY 50", "expiry_date": expiry}, headers=hdrs(), timeout=5)
+                if r.status_code == 429:
+                    time.sleep(1)
+                    continue
                 if r.status_code == 200 and r.json().get("data"):
                     INDICES["NIFTY"]["key"] = "NSE_INDEX|NIFTY 50"
                     return r.json().get("data", [])
             break
         except: 
-            break
+            time.sleep(1)
     return []
 
 def compute_max_pain(chain):
@@ -998,7 +1005,6 @@ def refresh(idx):
 
     try:
         spot   = fetch_spot(idx)
-        time.sleep(0.3) # Anti-burst limiter
         expiry, raw = find_valid_expiry(idx)
         
         if not raw:
@@ -1031,14 +1037,11 @@ def refresh(idx):
         
         prev_pcr = store["history"][-1]["pcr"] if store["history"] else pcr
         pcr_chg  = round(pcr - prev_pcr, 3)
-        time.sleep(0.3)
         futures  = fetch_futures(spot, idx)
-        time.sleep(0.3)
         vix      = fetch_vix()
         
         if store["baseline_vix"] is None and vix > 0: store["baseline_vix"] = vix
 
-        time.sleep(0.3)
         candles_1m  = fetch_base_1m_candles(idx)
         levels_data = extract_levels(candles_1m, spot)
         
@@ -1326,6 +1329,26 @@ def pcr_history_route():
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
     return jsonify(STORE[idx].get("pcr_history", []))
+
+@app.route("/callback")
+def callback():
+    code = request.args.get("code")
+    resp = requests.post("https://api.upstox.com/v2/login/authorization/token", data={"code": code, "client_id": API_KEY, "client_secret": API_SECRET, "redirect_uri": REDIRECT_URI, "grant_type": "authorization_code"}, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
+    data = resp.json()
+    if "access_token" not in data:
+        debug_status["last_error"] = f"Upstox Auth Rejected"
+        return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
+    save_token(data.get("access_token"))
+    send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
+    
+    # Run the initial load in the background slowly so it doesn't crash the UI
+    def run_init():
+        for idx in INDICES: 
+            refresh(idx)
+            time.sleep(2)
+    threading.Thread(target=run_init, daemon=True).start()
+    
+    return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p><script>setTimeout(()=>window.location.href="/",2000)</script></body></html>"""
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
