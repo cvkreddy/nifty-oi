@@ -32,7 +32,6 @@ REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 # Kept empty so the LOGIN button works!
 MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWRjOWY5NjhmNDVmNDU3Y2EwNzQ3OTAiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc2MDY2NDU0LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzYxMTc2MDB9.NCOhEsBoNVWgDiaxbsRA51yQ_pUbwvO0LLBXC1OqeS0"
 
-
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
 
@@ -51,7 +50,6 @@ INDICES = {
     "SENSEX": {"key": "BSE_INDEX|SENSEX", "step": 100}
 }
 
-# 🔥 NEW: Memory cache to lock onto the correct valid expiry
 EXPIRY_CACHE = {"NIFTY": None, "BANKNIFTY": None, "SENSEX": None}
 
 STORE = {idx: {
@@ -306,6 +304,11 @@ def fetch_spot(idx):
     try:
         r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": sym}, headers=hdrs(), timeout=10)
         d = r.json().get("data", {})
+        
+        if not d and idx == "NIFTY":
+            r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": "NSE_INDEX|NIFTY 50"}, headers=hdrs(), timeout=10)
+            d = r.json().get("data", {})
+            
         key = list(d.keys())[0] if d else None
         return float(d[key].get("last_price", 0)) if key else 0
     except Exception: 
@@ -386,57 +389,63 @@ def resample_candles(candles_1m, tf):
         res.append({"time": ct.isoformat(), "open": cg[0]["open"], "high": max(x["high"] for x in cg), "low": min(x["low"] for x in cg), "close": cg[-1]["close"], "vol": sum(x.get("vol", 0) for x in cg)})
     return res
 
-# 🔥 THE FIX: Evaluates empty ghost expiries and finds the true active one!
-def fetch_chain(idx, expiry):
-    sym = INDICES[idx]["key"]
-    try:
-        r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": sym, "expiry_date": expiry}, headers=hdrs(), timeout=5)
-        if r.status_code == 200 and r.json().get("data"):
-            data = r.json().get("data", [])
-            # Protect against empty Ghost chains by summing OI
-            total_oi = 0
-            for item in data:
-                ce = item.get("call_options") or {}
-                pe = item.get("put_options") or {}
-                c_md = ce.get("market_data") or {}
-                p_md = pe.get("market_data") or {}
-                total_oi += float(c_md.get("oi", 0) or 0)
-                total_oi += float(p_md.get("oi", 0) or 0)
-            if total_oi > 10000:
-                return data
-    except Exception: 
-        pass
-    return []
-
-def get_valid_expiry_and_chain(idx):
-    today_str = date.today().strftime("%Y-%m-%d")
-    
-    if EXPIRY_CACHE.get(idx) and EXPIRY_CACHE[idx] >= today_str:
-        raw = fetch_chain(idx, EXPIRY_CACHE[idx])
-        if raw: return EXPIRY_CACHE[idx], raw
-        
+# 🔥 ANTI-BURST FIX 1: Fetch direct contracts to avoid spamming Upstox 8 times instantly
+def get_valid_expiry_list(idx):
     sym = INDICES[idx]["key"]
     try:
         r = requests.get("https://api.upstox.com/v2/option/contract", params={"instrument_key": sym}, headers=hdrs(), timeout=5)
         if r.status_code == 200:
-            items = r.json().get("data", [])
-            exps = sorted(list(set([i if isinstance(i, str) else i.get("expiry") for i in items if i])))
-            for e in [x for x in exps if x >= today_str]:
-                raw = fetch_chain(idx, e)
-                if raw:
-                    EXPIRY_CACHE[idx] = e
-                    return e, raw
-    except Exception: pass
+            data = r.json().get("data", [])
+            exps = set()
+            for i in data:
+                if isinstance(i, str): exps.add(i)
+                elif isinstance(i, dict) and i.get("expiry"): exps.add(i.get("expiry"))
+            today_str = date.today().strftime("%Y-%m-%d")
+            valid = sorted([e for e in exps if e >= today_str])
+            if valid: return valid
+    except: pass
     
+    # Absolute fallback: Generate next 8 days
     today = date.today()
-    for i in range(35):
-        test_date = (today + timedelta(days=i)).strftime("%Y-%m-%d")
+    return [(today + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(8)]
+
+# 🔥 ANTI-BURST FIX 2: Sleep inside the loop so Upstox doesn't throw a 429 Error
+def find_valid_expiry(idx):
+    if EXPIRY_CACHE[idx] and EXPIRY_CACHE[idx] >= date.today().strftime("%Y-%m-%d"):
+        raw = fetch_chain(idx, EXPIRY_CACHE[idx])
+        if raw: return EXPIRY_CACHE[idx], raw
+        
+    dates_to_test = get_valid_expiry_list(idx)
+    for test_date in dates_to_test[:4]: # Only test up to 4 to save time
+        time.sleep(0.3) # Slow down to stay under 10 requests/sec limit
         raw = fetch_chain(idx, test_date)
         if raw:
             EXPIRY_CACHE[idx] = test_date
             return test_date, raw
             
     return None, []
+
+# 🔥 ANTI-BURST FIX 3: Check for 429 (Too Many Requests) and retry gracefully
+def fetch_chain(idx, expiry):
+    sym = INDICES[idx]["key"]
+    for _ in range(2):
+        try:
+            r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": sym, "expiry_date": expiry}, headers=hdrs(), timeout=5)
+            if r.status_code == 429: # Upstox is screaming "slow down"
+                time.sleep(1)
+                continue
+            if r.status_code == 200 and r.json().get("data"):
+                return r.json().get("data", [])
+                
+            if idx == "NIFTY":
+                r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": "NSE_INDEX|NIFTY 50", "expiry_date": expiry}, headers=hdrs(), timeout=5)
+                if r.status_code == 200 and r.json().get("data"):
+                    INDICES["NIFTY"]["key"] = "NSE_INDEX|NIFTY 50"
+                    return r.json().get("data", [])
+            break
+        except: 
+            break
+    return []
 
 def compute_max_pain(chain):
     strikes = sorted([float(k) for k in chain.keys()])
@@ -974,6 +983,10 @@ def get_analysis(mkt_state, pcr, vix, net_flow_l):
         {"title": "SMART MONEY FLOW", "status": "LONG BUILDUP" if net_flow_l > 0 else "SHORT SELLING", "desc": f"Net OI Flow is {net_flow_l:+.1f}L contracts"}
     ]
 
+# ══════════════════════════════════════════════════
+#  MAIN REFRESH LOOP
+# ══════════════════════════════════════════════════
+
 def refresh(idx):
     load_token()
     if not token_store.get("access_token"):
@@ -985,7 +998,8 @@ def refresh(idx):
 
     try:
         spot   = fetch_spot(idx)
-        expiry, raw = get_valid_expiry_and_chain(idx)
+        time.sleep(0.3) # Anti-burst limiter
+        expiry, raw = find_valid_expiry(idx)
         
         if not raw:
             if os.path.exists(DATA_FILE):
@@ -1017,11 +1031,14 @@ def refresh(idx):
         
         prev_pcr = store["history"][-1]["pcr"] if store["history"] else pcr
         pcr_chg  = round(pcr - prev_pcr, 3)
+        time.sleep(0.3)
         futures  = fetch_futures(spot, idx)
+        time.sleep(0.3)
         vix      = fetch_vix()
         
         if store["baseline_vix"] is None and vix > 0: store["baseline_vix"] = vix
 
+        time.sleep(0.3)
         candles_1m  = fetch_base_1m_candles(idx)
         levels_data = extract_levels(candles_1m, spot)
         
@@ -1272,17 +1289,21 @@ def histogram():
             with open(DATA_FILE, "r") as f: d = json.load(f).get(idx)
         except: pass
     if not d or not d.get("chain"): return jsonify([])
+    
     chain = d["chain"]
     atm = float(d["atm"])
     step = float(INDICES[idx]["step"])
-    # 🔥 BULLETPROOF FIX: Forces strike to float safely
+    
+    # 🚨 BULLETPROOF MATH FIX: Protects against String Types causing the 500 error
     safe_list = []
-    for s, v in chain.items():
+    for s_str, v in chain.items():
         try:
-            if abs(float(s) - atm) <= ATM_RANGE * step:
+            s_float = float(s_str)
+            if abs(s_float - atm) <= ATM_RANGE * step:
                 safe_list.append(v)
         except Exception:
             pass
+            
     return jsonify(sorted(safe_list, key=lambda x: float(x.get("strike", 0))))
 
 @app.route("/telegram/force_summary")
