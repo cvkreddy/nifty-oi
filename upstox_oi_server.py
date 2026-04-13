@@ -28,7 +28,7 @@ API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
-# 🔥 Kept empty so you can use the Green LOGIN button in the app!
+# Kept empty so the LOGIN button works!
 MANUAL_ACCESS_TOKEN = ""
 
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
@@ -1247,9 +1247,9 @@ def histogram():
         except: pass
     if not d or not d.get("chain"): return jsonify([])
     chain = d["chain"]
-    atm = d["atm"]
-    step = INDICES[idx]["step"]
-    # 🚨 FIXED ROUTE: Forces strike to float so abs() math never fails!
+    atm = float(d["atm"])
+    step = float(INDICES[idx]["step"])
+    # 🚨 BULLETPROOF FIX: Forces strike to float so abs() math NEVER fails!
     return jsonify(sorted([v for s,v in chain.items() if abs(float(s)-atm) <= ATM_RANGE * step], key=lambda x:float(x.get("strike", 0))))
 
 @app.route("/telegram/force_summary")
@@ -1263,14 +1263,12 @@ def force_telegram_summary():
 
 @app.route("/oi/alert_log")
 def alert_log_route():
-    """Returns today's alert timeline for the requested index."""
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
     return jsonify(list(reversed(STORE[idx].get("alert_log", []))))
 
 @app.route("/oi/pcr_history")
 def pcr_history_route():
-    """Returns intraday PCR history for sparkline rendering."""
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
     return jsonify(STORE[idx].get("pcr_history", []))
