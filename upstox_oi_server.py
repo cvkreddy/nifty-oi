@@ -28,7 +28,7 @@ API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
-# 🚨 FIX 2: THIS MUST BE EMPTY! If it is not empty, the Login button will never work!
+# 🔥 Kept empty so you can use the Green LOGIN button in the app!
 MANUAL_ACCESS_TOKEN = ""
 
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
@@ -54,9 +54,9 @@ STORE = {idx: {
     "history": [], 
     "prev_oi": {}, "prev_pcr": None, "prev_spot": None,
     "sent_alerts": {}, "last_summary": 0,
-    "alert_log": [],         
-    "pcr_history": [],       
-    "prev_max_ce_strike": None,  
+    "alert_log": [],          
+    "pcr_history": [],        
+    "prev_max_ce_strike": None,   
     "prev_max_pe_strike": None,   
     "straddle_history": [],   
 } for idx in INDICES}
@@ -493,7 +493,6 @@ def calc_rsi_array(closes, p=14):
     return rsis
 
 def calc_macd(prices, fast=12, slow=26, signal=9):
-    """Returns (macd_val, signal_val, histogram_val) or (None, None, None)."""
     if len(prices) < slow + signal:
         return None, None, None
     ema_fast = calc_ema_array(prices, fast)
@@ -963,7 +962,6 @@ def refresh(idx):
         raw    = fetch_chain(idx, expiry)
         
         if not raw:
-            # 🛑 WEEKEND / RATE LIMIT FALLBACK
             if os.path.exists(DATA_FILE):
                 try:
                     with open(DATA_FILE, "r") as f:
@@ -1152,7 +1150,6 @@ def refresh(idx):
             "vega": {"val": atm_v.get("call_vega", 0), "desc": "Call Vega"}
         }
 
-        # 🚨 FIX 3: Clear the backend_error immediately if successful!
         data = {
             "backend_error": None, 
             "spot": spot, "futures": futures, "premium": round(futures-spot,2),
@@ -1252,8 +1249,8 @@ def histogram():
     chain = d["chain"]
     atm = d["atm"]
     step = INDICES[idx]["step"]
-    # 🚨 FIX 4: Convert strike to float so it never crashes on JSON math
-    return jsonify(sorted([v for s,v in chain.items() if abs(float(s)-atm) <= ATM_RANGE * step], key=lambda x:float(x["strike"])))
+    # 🚨 FIXED ROUTE: Forces strike to float so abs() math never fails!
+    return jsonify(sorted([v for s,v in chain.items() if abs(float(s)-atm) <= ATM_RANGE * step], key=lambda x:float(x.get("strike", 0))))
 
 @app.route("/telegram/force_summary")
 def force_telegram_summary():
@@ -1266,12 +1263,14 @@ def force_telegram_summary():
 
 @app.route("/oi/alert_log")
 def alert_log_route():
+    """Returns today's alert timeline for the requested index."""
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
     return jsonify(list(reversed(STORE[idx].get("alert_log", []))))
 
 @app.route("/oi/pcr_history")
 def pcr_history_route():
+    """Returns intraday PCR history for sparkline rendering."""
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
     return jsonify(STORE[idx].get("pcr_history", []))
