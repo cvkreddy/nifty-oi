@@ -28,8 +28,8 @@ API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
-# 🔥 Paste your actual Upstox Access Token here
-MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWRjNmI0ODEzM2E1NDdhYWRhOTI5NDkiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc2MDUzMDY0LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzYxMTc2MDB9.WNjIL_XRSXGcW5piHP0pxx0dZ9gbARo8n0dXgpx2axE"
+# 🚨 FIX 2: THIS MUST BE EMPTY! If it is not empty, the Login button will never work!
+MANUAL_ACCESS_TOKEN = ""
 
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
@@ -54,12 +54,11 @@ STORE = {idx: {
     "history": [], 
     "prev_oi": {}, "prev_pcr": None, "prev_spot": None,
     "sent_alerts": {}, "last_summary": 0,
-    # ── NEW: Alert log, PCR history, OI wall tracking ──
-    "alert_log": [],          # timestamped alert history for today
-    "pcr_history": [],        # [{time, pcr}] for sparkline
-    "prev_max_ce_strike": None,   # previous cycle's max call OI strike
-    "prev_max_pe_strike": None,   # previous cycle's max put OI strike
-    "straddle_history": [],   # [{time, value}] for decay chart
+    "alert_log": [],         
+    "pcr_history": [],       
+    "prev_max_ce_strike": None,  
+    "prev_max_pe_strike": None,   
+    "straddle_history": [],   
 } for idx in INDICES}
 
 oi_cache = {idx: {"data": None} for idx in INDICES}
@@ -220,7 +219,6 @@ def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
     current_mins = ist_now.hour * 60 + ist_now.minute
     today_str = ist_now.strftime("%Y-%m-%d")
     
-    # Official 2026 NSE Holidays
     holidays = [
         "2026-01-15", "2026-01-26", "2026-03-03", "2026-03-26", 
         "2026-03-31", "2026-04-03", "2026-04-14", "2026-05-01", 
@@ -410,12 +408,12 @@ def fetch_chain(idx, expiry):
         return []
 
 def compute_max_pain(chain):
-    strikes = sorted(chain.keys())
+    strikes = sorted([float(k) for k in chain.keys()])
     if not strikes: return 0
     min_loss = float("inf")
     mp = strikes[0]
     for s in strikes:
-        loss = sum(v["call_oi"]*(s-k) if k<s else v["put_oi"]*(k-s) if k>s else 0 for k,v in chain.items())
+        loss = sum(v["call_oi"]*(s-float(k)) if float(k)<s else v["put_oi"]*(float(k)-s) if float(k)>s else 0 for k,v in chain.items())
         if loss < min_loss: 
             min_loss = loss
             mp = s
@@ -714,7 +712,6 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
     rsi_5m_chg = round(curr_rsi - prev_rsi, 2) if curr_rsi else 0
     rsi_day_chg = round(curr_rsi - base_r, 2) if curr_rsi and base_r else 0
 
-    # ── MACD ──────────────────────────────────────────────────────────────────
     macd_val, macd_sig, macd_hist = calc_macd(closes)
 
     return {
@@ -734,7 +731,7 @@ def price_oi_matrix(spot, prev_spot, chain, atm, idx):
     step = INDICES[idx]["step"]
     if prev_spot is None: return "INITIALIZING","—","Waiting for second data cycle"
     price_up, price_dn = spot > prev_spot, spot < prev_spot
-    total_oi_chg = sum(v["call_oi_chg"]+v["put_oi_chg"] for s,v in chain.items() if abs(s-atm)<=ATM_RANGE*step)
+    total_oi_chg = sum(v["call_oi_chg"]+v["put_oi_chg"] for s,v in chain.items() if abs(float(s)-atm)<=ATM_RANGE*step)
     if price_up and total_oi_chg > 0: return "FRESH LONG BUILD","BULLISH","New buyers entering — strong upward momentum. Hold longs."
     elif price_up and total_oi_chg < 0: return "SHORT COVERING","WEAK BULLISH","Bears exiting, not fresh bulls. Rally may lack strength."
     elif price_dn and total_oi_chg > 0: return "FRESH SHORT BUILD","BEARISH","New sellers entering — strong downward momentum. Hold shorts."
@@ -786,12 +783,11 @@ def process_chain(idx, raw, spot):
         if now - history[0]["ts"] < 240: 
             prev_record = history[0]
 
-    # ── Velocity: second history point ~10 min ago ─────────────────────────
     target_ts_v = now - 600
     prev2_record = None
     if len(history) >= 2:
         prev2_record = min(history, key=lambda x: abs(x["ts"] - target_ts_v))
-        if prev2_record is prev_record:   # same record, need a different one
+        if prev2_record is prev_record:
             others = [h for h in history if h is not prev_record]
             prev2_record = min(others, key=lambda x: abs(x["ts"] - target_ts_v)) if others else None
 
@@ -819,11 +815,10 @@ def process_chain(idx, raw, spot):
         c_oi_5m = call_oi - prev_v.get("call_oi", call_oi)
         p_oi_5m = put_oi - prev_v.get("put_oi", put_oi)
 
-        # ── OI Velocity: acceleration of OI change (5m now vs 5m-10min) ──
         prev2_v = prev2_chain.get(str(strike), {})
         c_oi_prev5m = prev_v.get("call_oi", call_oi) - prev2_v.get("call_oi", prev_v.get("call_oi", call_oi))
         p_oi_prev5m = prev_v.get("put_oi", put_oi)   - prev2_v.get("put_oi", prev_v.get("put_oi", put_oi))
-        c_oi_velocity = round(c_oi_5m - c_oi_prev5m, 2)   # +ve = accelerating, -ve = decelerating
+        c_oi_velocity = round(c_oi_5m - c_oi_prev5m, 2)
         p_oi_velocity = round(p_oi_5m - p_oi_prev5m, 2)
         
         c_oi_d = call_oi - base_v.get("call_oi", call_oi)
@@ -899,7 +894,8 @@ def get_activity(atm_strikes, idx):
     acts = []
     thresh = 20000 if idx == "NIFTY" else 10000 if idx == "BANKNIFTY" else 5000
     
-    for s, v in atm_strikes.items():
+    for s_str, v in atm_strikes.items():
+        s = float(s_str)
         if v["call_oi_chg"] > thresh:
             acts.append({"strike": s, "type": "CE", "trend": "BEAR", "ltp": v["call_ltp"], "oi_chg": v["call_oi_chg"], "note": "Heavy Resistance Added"})
         elif v["call_oi_chg"] < -thresh:
@@ -929,7 +925,8 @@ def get_migrations(atm_strikes):
 def get_pin_risk(chain, atm):
     closest = None
     max_oi = 0
-    for s, v in chain.items():
+    for s_str, v in chain.items():
+        s = float(s_str)
         if abs(s - atm) <= 150:
             tot = v["call_oi"] + v["put_oi"]
             if tot > max_oi:
@@ -988,7 +985,7 @@ def refresh(idx):
         if not chain: return
 
         max_pain = compute_max_pain(chain)
-        atm_strikes = {str(s):v for s,v in chain.items() if abs(s-atm) <= ATM_RANGE * step}
+        atm_strikes = {str(s):v for s,v in chain.items() if abs(float(s)-atm) <= ATM_RANGE * step}
         
         total_call  = sum(v["call_oi"] for v in chain.values())
         total_put   = sum(v["put_oi"]  for v in chain.values())
@@ -1027,7 +1024,8 @@ def refresh(idx):
         straddle_decay = ((current_straddle - morning_straddle) / morning_straddle * 100) if morning_straddle and morning_straddle > 0 else 0
 
         alerts = []
-        for s,v in chain.items():
+        for s_str,v in chain.items():
+            s = float(s_str)
             dist = s - spot
             if 0 < dist <= (step*3) and v["call_oi_chg"] < 0 and abs(v["call_oi_chg"]) > v["call_oi"]*0.05: alerts.append({"type":"BREAKOUT UP","icon":"⚡","message":f"Res OI dropping"})
             if -(step*3) <= dist < 0 and v["put_oi_chg"] < 0 and abs(v["put_oi_chg"]) > v["put_oi"]*0.05: alerts.append({"type":"BREAKOUT DOWN","icon":"⚡","message":f"Sup OI dropping"})
@@ -1053,10 +1051,9 @@ def refresh(idx):
         
         mkt_state = market_state(pcr, ind_data.get("adx"), oi_signal, alerts, vix)
         
-        gex_data = [{"strike":s,"net_gex":v["call_gex"] - v["put_gex"]} for s,v in sorted(chain.items()) if abs(s-atm) <= 10*step]
+        gex_data = [{"strike":float(s),"net_gex":v.get("call_gex",0) - v.get("put_gex",0)} for s,v in sorted(chain.items(), key=lambda x:float(x[0])) if abs(float(s)-atm) <= 10*step]
         gex_flip = min(gex_data, key=lambda x:abs(x["net_gex"])) if gex_data else None
 
-        # ── Wall Shift Detection ───────────────────────────────────────────────
         wall_shifts = []
         if chain:
             max_ce_strike = max(chain.items(), key=lambda x: x[1]["call_oi"])[0]
@@ -1078,7 +1075,6 @@ def refresh(idx):
         store["prev_max_ce_strike"] = max_ce_strike
         store["prev_max_pe_strike"] = max_pe_strike
 
-        # ── Alert Log ─────────────────────────────────────────────────────────
         ist_ts = (datetime.utcnow() + timedelta(hours=5, minutes=30)).strftime("%H:%M:%S")
         for a in alerts:
             store["alert_log"].append({
@@ -1089,12 +1085,10 @@ def refresh(idx):
             })
         store["alert_log"] = store["alert_log"][-100:]
 
-        # ── PCR History ───────────────────────────────────────────────────────
         ist_hm = (datetime.utcnow() + timedelta(hours=5, minutes=30)).strftime("%H:%M")
         store["pcr_history"].append({"time": ist_hm, "pcr": pcr})
         store["pcr_history"] = store["pcr_history"][-40:]
 
-        # ── Straddle History ──────────────────────────────────────────────────
         if current_straddle > 0:
             store["straddle_history"].append({"time": ist_hm, "value": round(current_straddle, 1)})
             store["straddle_history"] = store["straddle_history"][-40:]
@@ -1102,7 +1096,7 @@ def refresh(idx):
         skew_data=[]
         for dist in [1,2,3]:
             c_strike, p_strike = atm+dist*step, atm-dist*step
-            ce, pe = chain.get(c_strike,{}), chain.get(p_strike,{})
+            ce, pe = chain.get(str(c_strike),{}), chain.get(str(p_strike),{})
             if ce.get("call_iv") and pe.get("put_iv"): skew_data.append({"dist":dist,"strike":c_strike,"call_iv":ce["call_iv"],"put_iv":pe["put_iv"],"skew":round(pe["put_iv"]-ce["call_iv"],2)})
         avg_skew=round(sum(x["skew"] for x in skew_data)/len(skew_data),2) if skew_data else 0
         iv_skew = {"data":skew_data,"avg_skew":avg_skew,"signal":"BEARISH SKEW — put IV elevated" if avg_skew>3 else "BULLISH SKEW — call IV elevated" if avg_skew<-3 else "NEUTRAL SKEW — balanced"}
@@ -1144,7 +1138,6 @@ def refresh(idx):
             "activity": get_activity(atm_strikes, idx),
             "analysis": get_analysis(mkt_state, pcr, vix, round(cum_net_flow / 100000, 2)),
             "pin_risk": get_pin_risk(chain, atm),
-            # ── NEW fields ────────────────────────────────────────────────────
             "wall_shifts": wall_shifts,
             "max_ce_strike": max_ce_strike,
             "max_pe_strike": max_pe_strike,
@@ -1159,6 +1152,7 @@ def refresh(idx):
             "vega": {"val": atm_v.get("call_vega", 0), "desc": "Call Vega"}
         }
 
+        # 🚨 FIX 3: Clear the backend_error immediately if successful!
         data = {
             "backend_error": None, 
             "spot": spot, "futures": futures, "premium": round(futures-spot,2),
@@ -1210,10 +1204,6 @@ def loop():
 
 threading.Thread(target=loop, daemon=True).start()
 
-# ══════════════════════════════════════════════════
-#  ROUTES
-# ══════════════════════════════════════════════════
-
 @app.route("/")
 def dashboard(): return send_file("dashboard.html")
 
@@ -1262,7 +1252,8 @@ def histogram():
     chain = d["chain"]
     atm = d["atm"]
     step = INDICES[idx]["step"]
-    return jsonify(sorted([v for s,v in chain.items() if abs(s-atm) <= ATM_RANGE * step], key=lambda x:x["strike"]))
+    # 🚨 FIX 4: Convert strike to float so it never crashes on JSON math
+    return jsonify(sorted([v for s,v in chain.items() if abs(float(s)-atm) <= ATM_RANGE * step], key=lambda x:float(x["strike"])))
 
 @app.route("/telegram/force_summary")
 def force_telegram_summary():
@@ -1275,14 +1266,12 @@ def force_telegram_summary():
 
 @app.route("/oi/alert_log")
 def alert_log_route():
-    """Returns today's alert timeline for the requested index."""
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
     return jsonify(list(reversed(STORE[idx].get("alert_log", []))))
 
 @app.route("/oi/pcr_history")
 def pcr_history_route():
-    """Returns intraday PCR history for sparkline rendering."""
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
     return jsonify(STORE[idx].get("pcr_history", []))
