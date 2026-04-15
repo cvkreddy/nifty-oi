@@ -1,3 +1,4 @@
+
 """
 ====================================================
   MULTI-ASSET OI SERVER — Triple Engine Architecture
@@ -28,6 +29,7 @@ API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
+# Kept empty so the LOGIN button works!
 MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWRmMGY0ZmVkZGEzNzdjMjFiMDYyZTYiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc2MjI2MTI3LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzYyOTA0MDB9.ls9bSqrQ1Yk6ivXjrJ83KdbM5t9a6R0qoEqGsTdPG40"
 
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
@@ -245,7 +247,6 @@ def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
                 store["sent_alerts"][msg] = current_time
         store["sent_alerts"] = {k: v for k, v in store["sent_alerts"].items() if current_time - v < 3600}
         
-        # 🔥 Firing the Telegram message every 4.5 minutes safely
         if current_time - store["last_summary"] >= 270: 
             summary = generate_5min_summary(idx, data, atm_strikes, atm)
             send_telegram_alert(summary)
@@ -278,6 +279,9 @@ def hdrs():
     load_token()
     return {"Authorization": f"Bearer {token_store['access_token']}", "Accept": "application/json", "Api-Version": "2.0"}
 
+# ---------------------------------------------------------
+# AUTH ROUTES - ONLY APPEAR ONCE!
+# ---------------------------------------------------------
 @app.route("/login")
 def login(): 
     return redirect(f"https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id={API_KEY}&redirect_uri={REDIRECT_URI}")
@@ -290,6 +294,7 @@ def callback():
     if "access_token" not in data:
         debug_status["last_error"] = f"Upstox Auth Rejected"
         return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
+    
     save_token(data.get("access_token"))
     send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
     
@@ -297,18 +302,21 @@ def callback():
         for idx in INDICES: 
             refresh(idx)
             time.sleep(2)
+            
     threading.Thread(target=run_init, daemon=True).start()
-    
     return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p><script>setTimeout(()=>window.location.href="/",2000)</script></body></html>"""
+# ---------------------------------------------------------
 
 def fetch_spot(idx):
     sym = INDICES[idx]["key"]
     try:
         r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": sym}, headers=hdrs(), timeout=10)
         d = r.json().get("data", {})
+        
         if not d and idx == "NIFTY":
             r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": "NSE_INDEX|NIFTY 50"}, headers=hdrs(), timeout=10)
             d = r.json().get("data", {})
+            
         key = list(d.keys())[0] if d else None
         return float(d[key].get("last_price", 0)) if key else 0
     except Exception: 
@@ -1132,8 +1140,7 @@ def refresh(idx):
         skew_data=[]
         for dist in [1,2,3]:
             c_strike, p_strike = atm+dist*step, atm-dist*step
-            # 🔥 SKEW BUG FIX: We now use float format for dict keys
-            ce, pe = chain.get(float(c_strike),{}), chain.get(float(p_strike),{})
+            ce, pe = chain.get(str(c_strike),{}), chain.get(str(p_strike),{})
             if ce.get("call_iv") and pe.get("put_iv"): skew_data.append({"dist":dist,"strike":c_strike,"call_iv":ce["call_iv"],"put_iv":pe["put_iv"],"skew":round(pe["put_iv"]-ce["call_iv"],2)})
         avg_skew=round(sum(x["skew"] for x in skew_data)/len(skew_data),2) if skew_data else 0
         iv_skew = {"data":skew_data,"avg_skew":avg_skew,"signal":"BEARISH SKEW — put IV elevated" if avg_skew>3 else "BULLISH SKEW — call IV elevated" if avg_skew<-3 else "NEUTRAL SKEW — balanced"}
