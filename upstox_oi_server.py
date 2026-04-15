@@ -1,4 +1,3 @@
-
 """
 ====================================================
   MULTI-ASSET OI SERVER — Triple Engine Architecture
@@ -29,6 +28,7 @@ API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
+# Kept empty so the LOGIN button works!
 # Kept empty so the LOGIN button works!
 MANUAL_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJrZXlfaWQiOiJza192MS4wIiwiYWxnIjoiSFMyNTYifQ.eyJzdWIiOiIxOTI5MDEiLCJqdGkiOiI2OWRmMGY0ZmVkZGEzNzdjMjFiMDYyZTYiLCJpc011bHRpQ2xpZW50IjpmYWxzZSwiaXNQbHVzUGxhbiI6dHJ1ZSwiaWF0IjoxNzc2MjI2MTI3LCJpc3MiOiJ1ZGFwaS1nYXRld2F5LXNlcnZpY2UiLCJleHAiOjE3NzYyOTA0MDB9.ls9bSqrQ1Yk6ivXjrJ83KdbM5t9a6R0qoEqGsTdPG40"
 
@@ -123,7 +123,7 @@ def save_server_state():
         with open(STATE_FILE, "w") as f: 
             json.dump(st, f)
     except Exception as e: 
-        pass
+        print("State save failed safely:", e)
 
 load_server_state()
 
@@ -158,7 +158,9 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
     s_curr = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
     s_decay = intel.get("straddle_decay", 0)
     
+    t5 = intel.get("index_technicals", {}).get("5m", {})
     vix_mat = intel.get("vix_matrix", {})
+    
     boot_note = "<i>(Building baseline...)</i>" if is_boot else ""
     
     msg = (
@@ -278,34 +280,6 @@ load_token()
 def hdrs():
     load_token()
     return {"Authorization": f"Bearer {token_store['access_token']}", "Accept": "application/json", "Api-Version": "2.0"}
-
-# ---------------------------------------------------------
-# AUTH ROUTES - ONLY APPEAR ONCE!
-# ---------------------------------------------------------
-@app.route("/login")
-def login(): 
-    return redirect(f"https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id={API_KEY}&redirect_uri={REDIRECT_URI}")
-
-@app.route("/callback")
-def callback():
-    code = request.args.get("code")
-    resp = requests.post("https://api.upstox.com/v2/login/authorization/token", data={"code": code, "client_id": API_KEY, "client_secret": API_SECRET, "redirect_uri": REDIRECT_URI, "grant_type": "authorization_code"}, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
-    data = resp.json()
-    if "access_token" not in data:
-        debug_status["last_error"] = f"Upstox Auth Rejected"
-        return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
-    
-    save_token(data.get("access_token"))
-    send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
-    
-    def run_init():
-        for idx in INDICES: 
-            refresh(idx)
-            time.sleep(2)
-            
-    threading.Thread(target=run_init, daemon=True).start()
-    return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p><script>setTimeout(()=>window.location.href="/",2000)</script></body></html>"""
-# ---------------------------------------------------------
 
 def fetch_spot(idx):
     sym = INDICES[idx]["key"]
