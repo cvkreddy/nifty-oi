@@ -280,36 +280,6 @@ def hdrs():
     load_token()
     return {"Authorization": f"Bearer {token_store['access_token']}", "Accept": "application/json", "Api-Version": "2.0"}
 
-@app.route("/login")
-def login(): 
-    return redirect(f"https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id={API_KEY}&redirect_uri={REDIRECT_URI}")
-
-@app.route("/callback")
-def callback():
-    code = request.args.get("code")
-    resp = requests.post("https://api.upstox.com/v2/login/authorization/token", data={"code": code, "client_id": API_KEY, "client_secret": API_SECRET, "redirect_uri": REDIRECT_URI, "grant_type": "authorization_code"}, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
-    data = resp.json()
-    if "access_token" not in data:
-        debug_status["last_error"] = f"Upstox Auth Rejected"
-        return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
-    
-    save_token(data.get("access_token"))
-    send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
-    
-    def run_init():
-        threads = []
-        for idx in INDICES: 
-            t = threading.Thread(target=refresh, args=(idx,), daemon=True)
-            t.start()
-            threads.append(t)
-            time.sleep(1)
-        for t in threads:
-            t.join(timeout=60)
-            
-    threading.Thread(target=run_init, daemon=True).start()
-    
-    return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p><script>setTimeout(()=>window.location.href="/",2000)</script></body></html>"""
-
 def fetch_spot(idx):
     sym = INDICES[idx]["key"]
     try:
@@ -1254,6 +1224,11 @@ def loop():
         time.sleep(CACHE_TTL)
 
 threading.Thread(target=loop, daemon=True).start()
+
+
+# ==========================================
+# ROUTES
+# ==========================================
 
 @app.route("/")
 def dashboard(): return send_file("dashboard.html")
