@@ -28,7 +28,6 @@ API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
-# Kept empty so the LOGIN button works!
 MANUAL_ACCESS_TOKEN = ""
 
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
@@ -122,7 +121,7 @@ def save_server_state():
         with open(STATE_FILE, "w") as f: 
             json.dump(st, f)
     except Exception as e: 
-        pass
+        print("State save failed safely:", e)
 
 load_server_state()
 
@@ -157,7 +156,9 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
     s_curr = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
     s_decay = intel.get("straddle_decay", 0)
     
+    t5 = intel.get("index_technicals", {}).get("5m", {})
     vix_mat = intel.get("vix_matrix", {})
+    
     boot_note = "<i>(Building baseline...)</i>" if is_boot else ""
     
     msg = (
@@ -1068,7 +1069,7 @@ def refresh(idx):
         baseline_trend_val = vwap_val if vwap_val else ind_data["tech"]["15m"].get("ema15")
         vix_matrix = analyze_vix_price(spot, baseline_trend_val, vix, store["baseline_vix"])
         
-        # Add the line back
+        # 🚨 THE MISSING CALCULATION HAS BEEN RESTORED
         mkt_state = market_state(pcr, ind_data.get("adx"), oi_signal, alerts, vix)
         
         gex_data = [{"strike":float(s),"net_gex":v.get("call_gex",0) - v.get("put_gex",0)} for s,v in sorted(chain.items(), key=lambda x:float(x[0])) if abs(float(s)-atm) <= 10*step]
