@@ -122,7 +122,7 @@ def save_server_state():
         with open(STATE_FILE, "w") as f: 
             json.dump(st, f)
     except Exception as e: 
-        print("State save failed safely:", e)
+        pass
 
 load_server_state()
 
@@ -1068,6 +1068,9 @@ def refresh(idx):
         baseline_trend_val = vwap_val if vwap_val else ind_data["tech"]["15m"].get("ema15")
         vix_matrix = analyze_vix_price(spot, baseline_trend_val, vix, store["baseline_vix"])
         
+        # Add the line back
+        mkt_state = market_state(pcr, ind_data.get("adx"), oi_signal, alerts, vix)
+        
         gex_data = [{"strike":float(s),"net_gex":v.get("call_gex",0) - v.get("put_gex",0)} for s,v in sorted(chain.items(), key=lambda x:float(x[0])) if abs(float(s)-atm) <= 10*step]
         gex_flip = min(gex_data, key=lambda x:abs(x["net_gex"])) if gex_data else None
 
@@ -1224,11 +1227,6 @@ def loop():
         time.sleep(CACHE_TTL)
 
 threading.Thread(target=loop, daemon=True).start()
-
-
-# ==========================================
-# ROUTES
-# ==========================================
 
 @app.route("/")
 def dashboard(): return send_file("dashboard.html")
