@@ -617,10 +617,11 @@ def extract_levels(candles, spot):
     }
 
 def compute_tf_signals(idx, candles, label, st_period=7, st_multiplier=3.0):
-    """EMA trend, Supertrend, RSI, ADX. MACD removed. Crossover times today-only."""
+    """EMA trend, Supertrend, RSI, ADX. Crossover times recorded for ALL days."""
     if not candles or len(candles) < 15:
         return {"label": label, "candle_count": len(candles) if candles else 0,
-                "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-"}
+                "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-",
+                "ema_crossovers": []}
 
     store  = STORE[idx]
     vwap   = get_vwap(candles)
@@ -637,6 +638,9 @@ def compute_tf_signals(idx, candles, label, st_period=7, st_multiplier=3.0):
     is_bull = None
     await_pull_b = await_pull_s = False
     curr_st = None
+
+    # Collect ALL EMA crossover events across all available candle history
+    ema_crossovers = []  # list of {"time": "...", "dir": "BULL"/"BEAR", "close": ...}
 
     for i in range(15, len(candles)):
         e7, e15 = ema7_arr[i], ema15_arr[i]
@@ -657,41 +661,58 @@ def compute_tf_signals(idx, candles, label, st_period=7, st_multiplier=3.0):
 
         if is_bull is None:
             is_bull = curr_bull
-            if is_today:
-                trend_start = c_time
+            # Record first candle as initial trend direction (always)
+            trend_start = c_time
+            ema_crossovers.append({
+                "time": c_time, "raw_time": raw_t[:16],
+                "dir": "BULL" if curr_bull else "BEAR",
+                "close": round(c_close, 2),
+                "ema7": round(e7, 2), "ema15": round(e15, 2),
+                "is_today": is_today, "label": "Initial"
+            })
             if curr_bull: await_pull_b = True
             else:         await_pull_s = True
         elif is_bull != curr_bull:
-            if is_today:
-                trend_start = c_time
-                pull_time   = "-"
-                cont_time   = "-"
+            # EMA 7 crossed EMA 15 — record for ALL days
+            trend_start = c_time
+            pull_time   = "-"
+            cont_time   = "-"
+            ema_crossovers.append({
+                "time": c_time, "raw_time": raw_t[:16],
+                "dir": "BULL" if curr_bull else "BEAR",
+                "close": round(c_close, 2),
+                "ema7": round(e7, 2), "ema15": round(e15, 2),
+                "is_today": is_today, "label": "Cross ▲" if curr_bull else "Cross ▼"
+            })
             is_bull = curr_bull
             if curr_bull: await_pull_b = True
             else:         await_pull_s = True
 
         if is_bull:
             if await_pull_b and (c_close < e7 or c_close < e15):
-                if is_today: pull_time = c_time; cont_time = "..."
+                pull_time = c_time; cont_time = "..."
                 await_pull_b = False
             elif not await_pull_b and c_close > e7:
-                if is_today: cont_time = c_time
+                cont_time = c_time
                 await_pull_b = True
         else:
             if await_pull_s and (c_close > e7 or c_close > e15):
-                if is_today: pull_time = c_time; cont_time = "..."
+                pull_time = c_time; cont_time = "..."
                 await_pull_s = False
             elif not await_pull_s and c_close < e7:
-                if is_today: cont_time = c_time
+                cont_time = c_time
                 await_pull_s = True
 
         s_dir, _ = calc_supertrend(candles[:i+1], st_period, st_multiplier)
         if curr_st is None:
             curr_st = s_dir
-            if is_today: st_time = c_time
+            st_time = c_time
         elif curr_st != s_dir:
-            if is_today: st_time = c_time
+            st_time = c_time
             curr_st = s_dir
+
+    # Keep last 20 crossovers, most recent first
+    ema_crossovers = list(reversed(ema_crossovers[-20:]))
 
     ema7  = ema7_arr[-1]
     ema15 = ema15_arr[-1]
@@ -738,6 +759,7 @@ def compute_tf_signals(idx, candles, label, st_period=7, st_multiplier=3.0):
         "adx": adx_val, "pdi": pdi, "ndi": ndi, "adx_signal": adx_sig,
         "ts_start": trend_start, "ts_pull": pull_time,
         "ts_cont": cont_time,    "ts_st":   st_time,
+        "ema_crossovers": ema_crossovers,
     }
 
 def price_oi_matrix(spot, prev_spot, chain, atm, idx):

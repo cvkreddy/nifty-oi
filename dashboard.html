@@ -628,7 +628,7 @@ async function doFetchCore() {
             sStyle('err', 'display', 'block');
             sHTML('err', `⚠ BACKEND DATA FROZEN: ${raw.backend_error} <a href="/login" style="color:#fff; text-decoration:underline; margin-left:10px">Try Re-Login</a>`);
             sStyle('dot', 'background', 'var(--bear)');
-            return; 
+            // ✅ NO return here — fall through and render whatever cached data exists
         } else {
             sStyle('err', 'display', 'none');
         }
@@ -868,6 +868,48 @@ function render(d, hist) {
     });
 }
 
+// ✅ EMA Crossover History Table — shows ALL crossovers across all days, most recent first
+function buildEmaCrossoverTable(crossovers) {
+    if (!crossovers || crossovers.length === 0) {
+        return '<div style="margin-top:6px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:4px;font-size:10px;color:var(--text2)">EMA 7/15 crossover history: Building...</div>';
+    }
+    // Only show actual crosses (exclude "Initial" label unless there are no real crosses)
+    const realCrosses = crossovers.filter(c => c.label !== 'Initial');
+    const toShow = realCrosses.length > 0 ? realCrosses : crossovers.slice(0, 1);
+
+    let rows = toShow.map(c => {
+        const isBull = c.dir === 'BULL';
+        const col   = isBull ? 'var(--bull)' : 'var(--bear)';
+        const bg    = isBull ? 'rgba(0,255,136,0.08)' : 'rgba(255,59,87,0.08)';
+        const arrow = isBull ? '▲' : '▼';
+        const todayBadge = c.is_today ? '<span style="background:rgba(0,184,255,0.15);color:var(--info);font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px">TODAY</span>' : '';
+        return `<tr style="background:${bg}">
+            <td style="padding:3px 6px;font-size:11px;color:${col};font-weight:700;white-space:nowrap">${arrow} ${c.label}</td>
+            <td style="padding:3px 6px;font-size:11px;color:var(--info);font-weight:700;white-space:nowrap">${c.time}${todayBadge}</td>
+            <td style="padding:3px 6px;font-size:11px;color:var(--text2);text-align:right">Close: <span style="color:var(--text);font-weight:700">₹${c.close}</span></td>
+            <td style="padding:3px 6px;font-size:10px;color:var(--text2);text-align:right">E7: ${c.ema7} | E15: ${c.ema15}</td>
+        </tr>`;
+    }).join('');
+
+    return `<div style="margin-top:7px;border-top:1px solid rgba(255,255,255,0.05);padding-top:6px">
+        <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:5px">
+            EMA 7/15 CROSSOVER HISTORY
+        </div>
+        <table style="width:100%;border-collapse:collapse;border:1px solid rgba(255,255,255,0.06);border-radius:4px;overflow:hidden">
+            <thead>
+                <tr style="background:rgba(255,255,255,0.04)">
+                    <th style="padding:3px 6px;font-size:10px;color:var(--text2);text-align:left;font-weight:700;font-family:var(--ui)">Direction</th>
+                    <th style="padding:3px 6px;font-size:10px;color:var(--text2);text-align:left;font-weight:700;font-family:var(--ui)">Candle Time</th>
+                    <th style="padding:3px 6px;font-size:10px;color:var(--text2);text-align:right;font-weight:700;font-family:var(--ui)">Price</th>
+                    <th style="padding:3px 6px;font-size:10px;color:var(--text2);text-align:right;font-weight:700;font-family:var(--ui)">Values</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+        <div style="font-size:10px;color:var(--text2);margin-top:3px;font-style:italic">Candle close time when EMA 7 crossed EMA 15</div>
+    </div>`;
+}
+
 function renderTech(tech) {
     if (!tech) return;
     sText('tech-bias-lbl', 'Bias: ' + (tech.overall_bias || '—'));
@@ -932,7 +974,9 @@ function renderTech(tech) {
             row('EMA Cross', d.ts_start || '—', 'var(--info)', '') +
             row('Pullback to', d.ts_pull  || '—', 'var(--warn)', '') +
             row('SuperTrend',  d.ts_st    || '—', stCol, '') +
-            '</div>';
+            '</div>' +
+            // ✅ EMA 7/15 Crossover History — shows ALL crossovers across all days
+            buildEmaCrossoverTable(d.ema_crossovers);
 
         el.innerHTML = html;
     });
@@ -1387,6 +1431,15 @@ window.onload = () => {
         console.error("Initialization failed: ", e);
     }
 };
+
+// ✅ AUTO-REFRESH every 5 minutes — independent of snap cycle
+// This is the MAIN fix — without this, the page never updates on its own
+setInterval(() => {
+    if (!isSnapping) {
+        console.log('[AutoPoll] Fetching fresh data...');
+        doFetch();
+    }
+}, 300000); // 300000ms = 5 minutes, matches server CACHE_TTL
 </script>
 </body>
 </html>
