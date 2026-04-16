@@ -281,36 +281,6 @@ def hdrs():
     load_token()
     return {"Authorization": f"Bearer {token_store['access_token']}", "Accept": "application/json", "Api-Version": "2.0"}
 
-@app.route("/login")
-def login(): 
-    return redirect(f"https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id={API_KEY}&redirect_uri={REDIRECT_URI}")
-
-@app.route("/callback")
-def callback():
-    code = request.args.get("code")
-    resp = requests.post("https://api.upstox.com/v2/login/authorization/token", data={"code": code, "client_id": API_KEY, "client_secret": API_SECRET, "redirect_uri": REDIRECT_URI, "grant_type": "authorization_code"}, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
-    data = resp.json()
-    if "access_token" not in data:
-        debug_status["last_error"] = f"Upstox Auth Rejected"
-        return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
-    
-    save_token(data.get("access_token"))
-    send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
-    
-    def run_init():
-        threads = []
-        for idx in INDICES: 
-            t = threading.Thread(target=refresh, args=(idx,), daemon=True)
-            t.start()
-            threads.append(t)
-            time.sleep(1)
-        for t in threads:
-            t.join(timeout=60)
-            
-    threading.Thread(target=run_init, daemon=True).start()
-    
-    return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p></body></html>"""
-
 def fetch_spot(idx):
     sym = INDICES[idx]["key"]
     try:
@@ -672,7 +642,6 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
         c_close = closes[i]
         
         try:
-            # FIX: Robust timestamp parsing for EMA Cross display
             if "T" in times[i]:
                 ts_parts = times[i].replace("T", " ").split(" ")
                 d_parts = ts_parts[0].split("-")
@@ -823,7 +792,6 @@ def process_chain(idx, raw, spot):
             "put_ltp": float(item.get("put_options", {}).get("market_data", {}).get("ltp", 0) or 0)
         } for item in raw if item.get("strike_price")}
 
-    # FIX: Bulletproof 5m and 10m historical memory selection
     target_5m = now - 300
     target_10m = now - 600
 
@@ -831,17 +799,14 @@ def process_chain(idx, raw, spot):
     prev2_chain = {}
 
     if store["history"]:
-        # Find the oldest record that is at least 4.5 minutes old, but not older than 7 minutes
-        valid_5m = [h for h in store["history"] if 270 <= (now - h["ts"]) <= 420]
+        valid_5m = [h for h in store["history"] if 240 <= (now - h["ts"]) <= 420]
         if valid_5m:
             prev_record = min(valid_5m, key=lambda x: abs(x["ts"] - target_5m))
             prev_chain = prev_record.get("chain", {})
         elif len(store["history"]) > 0:
-            # If no perfect 5m record exists, just take the oldest one we have
             prev_chain = store["history"][0].get("chain", {})
 
-        # Find the record closest to 10m
-        valid_10m = [h for h in store["history"] if 570 <= (now - h["ts"]) <= 720]
+        valid_10m = [h for h in store["history"] if 540 <= (now - h["ts"]) <= 720]
         if valid_10m:
             prev2_record = min(valid_10m, key=lambda x: abs(x["ts"] - target_10m))
             prev2_chain = prev2_record.get("chain", {})
