@@ -28,7 +28,6 @@ API_KEY      = "48131639-7647-4f99-84e2-6113734955ce"
 API_SECRET   = "0j2fmzd437"
 REDIRECT_URI = "https://nifty-oi.onrender.com/callback"
 
-# Kept empty so the LOGIN button works!
 MANUAL_ACCESS_TOKEN = ""
 
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
@@ -248,7 +247,7 @@ def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
                 store["sent_alerts"][msg] = current_time
         store["sent_alerts"] = {k: v for k, v in store["sent_alerts"].items() if current_time - v < 3600}
         
-        if current_time - store["last_summary"] >= 290: 
+        if current_time - store["last_summary"] >= 270: 
             summary = generate_5min_summary(idx, data, atm_strikes, atm)
             send_telegram_alert(summary)
             store["last_summary"] = current_time
@@ -270,7 +269,9 @@ def load_token():
     if os.path.exists(TOKEN_FILE):
         try:
             with open(TOKEN_FILE, "r") as f: 
-                token_store["access_token"] = json.load(f).get("access_token")
+                saved = json.load(f).get("access_token")
+                if saved:
+                    token_store["access_token"] = saved
         except Exception: 
             pass
 
@@ -280,29 +281,16 @@ def hdrs():
     load_token()
     return {"Authorization": f"Bearer {token_store['access_token']}", "Accept": "application/json", "Api-Version": "2.0"}
 
-@app.route("/login")
-def login(): 
-    return redirect(f"https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id={API_KEY}&redirect_uri={REDIRECT_URI}")
-
-@app.route("/callback")
-def callback():
-    code = request.args.get("code")
-    resp = requests.post("https://api.upstox.com/v2/login/authorization/token", data={"code": code, "client_id": API_KEY, "client_secret": API_SECRET, "redirect_uri": REDIRECT_URI, "grant_type": "authorization_code"}, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
-    data = resp.json()
-    if "access_token" not in data:
-        debug_status["last_error"] = f"Upstox Auth Rejected"
-        return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
-    save_token(data.get("access_token"))
-    send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
-    for idx in INDICES: 
-        refresh(idx)
-    return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p></body></html>"""
-
 def fetch_spot(idx):
     sym = INDICES[idx]["key"]
     try:
         r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": sym}, headers=hdrs(), timeout=10)
         d = r.json().get("data", {})
+        
+        if not d and idx == "NIFTY":
+            r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": "NSE_INDEX|NIFTY 50"}, headers=hdrs(), timeout=10)
+            d = r.json().get("data", {})
+            
         key = list(d.keys())[0] if d else None
         return float(d[key].get("last_price", 0)) if key else 0
     except Exception: 
@@ -383,31 +371,60 @@ def resample_candles(candles_1m, tf):
         res.append({"time": ct.isoformat(), "open": cg[0]["open"], "high": max(x["high"] for x in cg), "low": min(x["low"] for x in cg), "close": cg[-1]["close"], "vol": sum(x.get("vol", 0) for x in cg)})
     return res
 
-def get_expiry(idx):
+def get_valid_expiry_list(idx):
     sym = INDICES[idx]["key"]
     try:
-        r = requests.get("https://api.upstox.com/v2/option/contract", params={"instrument_key": sym}, headers=hdrs(), timeout=10)
+        r = requests.get("https://api.upstox.com/v2/option/contract", params={"instrument_key": sym}, headers=hdrs(), timeout=5)
         if r.status_code == 200:
-            items = r.json().get("data", [])
-            exps = sorted([i if isinstance(i, str) else i.get("expiry") for i in items if i])
-            today = datetime.today().strftime("%Y-%m-%d")
-            for e in exps:
-                if e and e >= today: return e
-    except Exception: 
-        pass
+            data = r.json().get("data", [])
+            exps = set()
+            for i in data:
+                if isinstance(i, str): exps.add(i)
+                elif isinstance(i, dict) and i.get("expiry"): exps.add(i.get("expiry"))
+            today_str = date.today().strftime("%Y-%m-%d")
+            valid = sorted([e for e in exps if e >= today_str])
+            if valid: return valid
+    except: pass
     today = date.today()
-    days = (3 - today.weekday()) % 7
-    if days == 0: 
-        days = 7
-    return (today + timedelta(days=days)).strftime("%Y-%m-%d")
+    return [(today + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(8)]
+
+def find_valid_expiry(idx):
+    if EXPIRY_CACHE[idx] and EXPIRY_CACHE[idx] >= date.today().strftime("%Y-%m-%d"):
+        raw = fetch_chain(idx, EXPIRY_CACHE[idx])
+        if raw: return EXPIRY_CACHE[idx], raw
+        
+    dates_to_test = get_valid_expiry_list(idx)
+    for test_date in dates_to_test[:4]: 
+        time.sleep(0.4) 
+        raw = fetch_chain(idx, test_date)
+        if raw:
+            EXPIRY_CACHE[idx] = test_date
+            return test_date, raw
+    return None, []
 
 def fetch_chain(idx, expiry):
     sym = INDICES[idx]["key"]
-    try:
-        r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": sym, "expiry_date": expiry}, headers=hdrs(), timeout=15)
-        return r.json().get("data", []) if r.status_code == 200 else []
-    except Exception: 
-        return []
+    for attempt in range(3): 
+        try:
+            r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": sym, "expiry_date": expiry}, headers=hdrs(), timeout=5)
+            if r.status_code == 429: 
+                time.sleep(1) 
+                continue
+            if r.status_code == 200 and r.json().get("data"):
+                return r.json().get("data", [])
+                
+            if idx == "NIFTY":
+                r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": "NSE_INDEX|NIFTY 50", "expiry_date": expiry}, headers=hdrs(), timeout=5)
+                if r.status_code == 429:
+                    time.sleep(1)
+                    continue
+                if r.status_code == 200 and r.json().get("data"):
+                    INDICES["NIFTY"]["key"] = "NSE_INDEX|NIFTY 50"
+                    return r.json().get("data", [])
+            break
+        except: 
+            time.sleep(1)
+    return []
 
 def compute_max_pain(chain):
     strikes = sorted([float(k) for k in chain.keys()])
@@ -545,7 +562,6 @@ def calc_adx(candles, p=14):
     if not dxl: return None
     return round(sum(x[0] for x in dxl[-p:]) / min(p, len(dxl)), 2)
 
-# 🚨 THE MISSING FUNCTION IS RESTORED HERE
 def get_indicators(candles):
     if not candles or len(candles) < 16: 
         return {"rsi": None, "adx": None, "candle_count": len(candles) if candles else 0}
@@ -961,8 +977,8 @@ def refresh(idx):
 
     try:
         spot   = fetch_spot(idx)
-        expiry = get_expiry(idx)
-        raw    = fetch_chain(idx, expiry)
+        time.sleep(0.4) 
+        expiry, raw = find_valid_expiry(idx)
         
         if not raw:
             if os.path.exists(DATA_FILE):
@@ -994,11 +1010,14 @@ def refresh(idx):
         
         prev_pcr = store["history"][-1]["pcr"] if store["history"] else pcr
         pcr_chg  = round(pcr - prev_pcr, 3)
+        time.sleep(0.4)
         futures  = fetch_futures(spot, idx)
+        time.sleep(0.4)
         vix      = fetch_vix()
         
         if store["baseline_vix"] is None and vix > 0: store["baseline_vix"] = vix
 
+        time.sleep(0.4)
         candles_1m  = fetch_base_1m_candles(idx)
         levels_data = extract_levels(candles_1m, spot)
         
@@ -1050,6 +1069,7 @@ def refresh(idx):
         baseline_trend_val = vwap_val if vwap_val else ind_data["tech"]["15m"].get("ema15")
         vix_matrix = analyze_vix_price(spot, baseline_trend_val, vix, store["baseline_vix"])
         
+        # 🚨 THE MISSING CALCULATION HAS BEEN RESTORED
         mkt_state = market_state(pcr, ind_data.get("adx"), oi_signal, alerts, vix)
         
         gex_data = [{"strike":float(s),"net_gex":v.get("call_gex",0) - v.get("put_gex",0)} for s,v in sorted(chain.items(), key=lambda x:float(x[0])) if abs(float(s)-atm) <= 10*step]
@@ -1197,9 +1217,14 @@ def refresh(idx):
 def loop():
     time.sleep(5) 
     while True:
+        threads = []
         for idx in INDICES.keys():
-            refresh(idx)
-            time.sleep(2) 
+            t = threading.Thread(target=refresh, args=(idx,), daemon=True)
+            t.start()
+            threads.append(t)
+            time.sleep(1) 
+        for t in threads:
+            t.join(timeout=60) 
         time.sleep(CACHE_TTL)
 
 threading.Thread(target=loop, daemon=True).start()
@@ -1249,11 +1274,21 @@ def histogram():
             with open(DATA_FILE, "r") as f: d = json.load(f).get(idx)
         except: pass
     if not d or not d.get("chain"): return jsonify([])
+    
     chain = d["chain"]
     atm = float(d["atm"])
     step = float(INDICES[idx]["step"])
-    # 🚨 BULLETPROOF FIX: Forces strike to float so abs() math NEVER fails!
-    return jsonify(sorted([v for s,v in chain.items() if abs(float(s)-atm) <= ATM_RANGE * step], key=lambda x:float(x.get("strike", 0))))
+    
+    safe_list = []
+    for s_str, v in chain.items():
+        try:
+            s_float = float(s_str)
+            if abs(s_float - atm) <= ATM_RANGE * step:
+                safe_list.append(v)
+        except Exception:
+            pass
+            
+    return jsonify(sorted(safe_list, key=lambda x: float(x.get("strike", 0))))
 
 @app.route("/telegram/force_summary")
 def force_telegram_summary():
@@ -1275,6 +1310,36 @@ def pcr_history_route():
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
     return jsonify(STORE[idx].get("pcr_history", []))
+
+@app.route("/login")
+def login(): 
+    return redirect(f"https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id={API_KEY}&redirect_uri={REDIRECT_URI}")
+
+@app.route("/callback")
+def callback():
+    code = request.args.get("code")
+    resp = requests.post("https://api.upstox.com/v2/login/authorization/token", data={"code": code, "client_id": API_KEY, "client_secret": API_SECRET, "redirect_uri": REDIRECT_URI, "grant_type": "authorization_code"}, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
+    data = resp.json()
+    if "access_token" not in data:
+        debug_status["last_error"] = f"Upstox Auth Rejected"
+        return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
+    
+    save_token(data.get("access_token"))
+    send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
+    
+    def run_init():
+        threads = []
+        for idx in INDICES: 
+            t = threading.Thread(target=refresh, args=(idx,), daemon=True)
+            t.start()
+            threads.append(t)
+            time.sleep(1)
+        for t in threads:
+            t.join(timeout=60)
+            
+    threading.Thread(target=run_init, daemon=True).start()
+    
+    return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p><script>setTimeout(()=>window.location.href="/",2000)</script></body></html>"""
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
