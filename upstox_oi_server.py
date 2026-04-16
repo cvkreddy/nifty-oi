@@ -48,8 +48,6 @@ INDICES = {
     "SENSEX": {"key": "BSE_INDEX|SENSEX", "step": 100}
 }
 
-EXPIRY_CACHE = {"NIFTY": None, "BANKNIFTY": None, "SENSEX": None}
-
 STORE = {idx: {
     "baseline_oi": {}, "baseline_vix": None, "baseline_rsi": {},
     "history": [], 
@@ -65,25 +63,8 @@ STORE = {idx: {
 oi_cache = {idx: {"data": None} for idx in INDICES}
 candle_cache_store = {idx: {"1m": [], "3m": [], "15m": []} for idx in INDICES}
 
-def reverse_engineer_baseline(idx):
-    if len(STORE[idx]["baseline_oi"]) > 0: 
-        return
-    try:
-        if os.path.exists(DATA_FILE):
-            with open(DATA_FILE, "r") as f:
-                d_all = json.load(f)
-                d = d_all.get(idx, {})
-                if d.get("timestamp") and d["timestamp"].startswith(date.today().isoformat()):
-                    chain = d.get("chain", {})
-                    if chain:
-                        for s, v in chain.items():
-                            b_coi = v["call_oi"] - v.get("call_oi_chg_day", 0)
-                            b_poi = v["put_oi"] - v.get("put_oi_chg_day", 0)
-                            b_cltp = v["call_ltp"] - v.get("call_ltp_chg_day", 0)
-                            b_pltp = v["put_ltp"] - v.get("put_ltp_chg_day", 0)
-                            STORE[idx]["baseline_oi"][str(s)] = {"call_oi": b_coi, "put_oi": b_poi, "call_ltp": b_cltp, "put_ltp": b_pltp}
-    except Exception: 
-        pass
+# 🔥 NEW CACHE: Prevents Upstox Rate-Limit Freezes
+HIST_CANDLE_CACHE = {"date": None, "NIFTY": [], "BANKNIFTY": [], "SENSEX": []}
 
 def load_server_state():
     if os.path.exists(STATE_FILE):
@@ -102,8 +83,6 @@ def load_server_state():
                         STORE[idx]["history"] = saved_idx.get("history", [])
         except Exception: 
             pass
-    for idx in INDICES: 
-        reverse_engineer_baseline(idx)
 
 def save_server_state():
     try:
@@ -126,14 +105,11 @@ def save_server_state():
 load_server_state()
 
 def send_telegram_alert(message):
-    if not TELEGRAM_BOT_TOKEN: 
-        return
+    if not TELEGRAM_BOT_TOKEN: return
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
-    try: 
-        requests.post(url, json=payload, timeout=5)
-    except Exception: 
-        pass
+    try: requests.post(url, json=payload, timeout=5)
+    except Exception: pass
 
 def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
     spot = data.get("spot", 0)
@@ -155,10 +131,7 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
 
     s_curr = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
     s_decay = intel.get("straddle_decay", 0)
-    
-    t5 = intel.get("index_technicals", {}).get("5m", {})
     vix_mat = intel.get("vix_matrix", {})
-    
     boot_note = "<i>(Building baseline...)</i>" if is_boot else ""
     
     msg = (
@@ -188,8 +161,7 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
 
     strikes_to_show = [float(k) for k in atm_strikes.keys()]
     for s in sorted(strikes_to_show, reverse=True):
-        if abs(s - atm) > 2 * INDICES[idx]["step"]: 
-            continue
+        if abs(s - atm) > 2 * INDICES[idx]["step"]: continue
         v = {}
         for k_str, val in atm_strikes.items():
             if abs(float(k_str) - s) < 0.1:
@@ -227,8 +199,7 @@ def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
         "2026-10-20", "2026-11-10", "2026-11-24", "2026-12-25"
     ]
     
-    if ist_now.weekday() >= 5 or today_str in holidays or not (540 <= current_mins <= 935):
-        return
+    if ist_now.weekday() >= 5 or today_str in holidays or not (540 <= current_mins <= 935): return
         
     current_time = time.time()
     store = STORE[idx]
@@ -247,7 +218,7 @@ def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
                 store["sent_alerts"][msg] = current_time
         store["sent_alerts"] = {k: v for k, v in store["sent_alerts"].items() if current_time - v < 3600}
         
-        if current_time - store["last_summary"] >= 270: 
+        if current_time - store["last_summary"] >= 290: 
             summary = generate_5min_summary(idx, data, atm_strikes, atm)
             send_telegram_alert(summary)
             store["last_summary"] = current_time
@@ -257,10 +228,8 @@ def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
 def save_token(token):
     token_store["access_token"] = token
     try:
-        with open(TOKEN_FILE, "w") as f: 
-            json.dump({"access_token": token}, f)
-    except Exception: 
-        pass
+        with open(TOKEN_FILE, "w") as f: json.dump({"access_token": token}, f)
+    except: pass
 
 def load_token():
     if MANUAL_ACCESS_TOKEN and len(MANUAL_ACCESS_TOKEN) > 50:
@@ -269,11 +238,8 @@ def load_token():
     if os.path.exists(TOKEN_FILE):
         try:
             with open(TOKEN_FILE, "r") as f: 
-                saved = json.load(f).get("access_token")
-                if saved:
-                    token_store["access_token"] = saved
-        except Exception: 
-            pass
+                token_store["access_token"] = json.load(f).get("access_token")
+        except: pass
 
 load_token()
 
@@ -281,20 +247,31 @@ def hdrs():
     load_token()
     return {"Authorization": f"Bearer {token_store['access_token']}", "Accept": "application/json", "Api-Version": "2.0"}
 
+@app.route("/login")
+def login(): 
+    return redirect(f"https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id={API_KEY}&redirect_uri={REDIRECT_URI}")
+
+@app.route("/callback")
+def callback():
+    code = request.args.get("code")
+    resp = requests.post("https://api.upstox.com/v2/login/authorization/token", data={"code": code, "client_id": API_KEY, "client_secret": API_SECRET, "redirect_uri": REDIRECT_URI, "grant_type": "authorization_code"}, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
+    data = resp.json()
+    if "access_token" not in data:
+        debug_status["last_error"] = f"Upstox Auth Rejected"
+        return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
+    save_token(data.get("access_token"))
+    send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
+    for idx in INDICES: refresh(idx)
+    return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p></body></html>"""
+
 def fetch_spot(idx):
     sym = INDICES[idx]["key"]
     try:
         r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": sym}, headers=hdrs(), timeout=10)
         d = r.json().get("data", {})
-        
-        if not d and idx == "NIFTY":
-            r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": "NSE_INDEX|NIFTY 50"}, headers=hdrs(), timeout=10)
-            d = r.json().get("data", {})
-            
         key = list(d.keys())[0] if d else None
         return float(d[key].get("last_price", 0)) if key else 0
-    except Exception: 
-        return 0
+    except: return 0
 
 def fetch_futures(spot, idx):
     now = date.today()
@@ -311,8 +288,7 @@ def fetch_futures(spot, idx):
                 key = list(d.keys())[0]
                 p = d[key].get("last_price") or d[key].get("ltp") or 0
                 if p: return float(p)
-        except Exception: 
-            pass
+        except: pass
     return round(spot * 1.005, 2)
 
 def fetch_vix():
@@ -322,33 +298,47 @@ def fetch_vix():
             d = r.json()["data"]
             key = list(d.keys())[0]
             return float(d[key].get("last_price") or d[key].get("ltp") or 0)
-    except Exception: 
-        pass
+    except: pass
     return 0
 
+# 🔥 FIXED CACHE LOGIC: Reduces API calls drastically to prevent freezing
 def fetch_base_1m_candles(idx):
-    try:
-        safe_key = urllib.parse.quote(INDICES[idx]["key"])
-        to_date = date.today().strftime("%Y-%m-%d")
+    today_str = date.today().strftime("%Y-%m-%d")
+    
+    if HIST_CANDLE_CACHE["date"] != today_str:
+        HIST_CANDLE_CACHE["date"] = today_str
+        HIST_CANDLE_CACHE["NIFTY"] = []
+        HIST_CANDLE_CACHE["BANKNIFTY"] = []
+        HIST_CANDLE_CACHE["SENSEX"] = []
+
+    safe_key = urllib.parse.quote(INDICES[idx]["key"])
+    candles = []
+    
+    if not HIST_CANDLE_CACHE[idx]:
         from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
-        url_hist = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_date}/{from_date}"
-        r_hist = requests.get(url_hist, headers=hdrs(), timeout=10)
-        url_intra = f"https://api.upstox.com/v2/historical-candle/intraday/{safe_key}/1minute"
-        r_intra = requests.get(url_intra, headers=hdrs(), timeout=10)
-        candles = []
-        if r_hist.status_code == 200: 
-            candles += r_hist.json().get("data", {}).get("candles", [])
-        if r_intra.status_code == 200: 
+        url_hist = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{today_str}/{from_date}"
+        try:
+            r_hist = requests.get(url_hist, headers=hdrs(), timeout=5)
+            if r_hist.status_code == 200:
+                HIST_CANDLE_CACHE[idx] = r_hist.json().get("data", {}).get("candles", [])
+        except: pass
+        
+    candles += HIST_CANDLE_CACHE[idx]
+
+    url_intra = f"https://api.upstox.com/v2/historical-candle/intraday/{safe_key}/1minute"
+    try:
+        r_intra = requests.get(url_intra, headers=hdrs(), timeout=5)
+        if r_intra.status_code == 200:
             candles += r_intra.json().get("data", {}).get("candles", [])
-        unique = {}
-        for c in candles:
-            if len(c) >= 5: 
-                unique[c[0]] = {"time": c[0], "open": float(c[1]), "high": float(c[2]), "low": float(c[3]), "close": float(c[4]), "vol": float(c[5]) if len(c)>5 else 0}
-        res = list(unique.values())
-        res.sort(key=lambda x: x["time"])
-        return res
-    except Exception: 
-        return []
+    except: pass
+
+    unique = {}
+    for c in candles:
+        if len(c) >= 5: 
+            unique[c[0]] = {"time": c[0], "open": float(c[1]), "high": float(c[2]), "low": float(c[3]), "close": float(c[4]), "vol": float(c[5]) if len(c)>5 else 0}
+    res = list(unique.values())
+    res.sort(key=lambda x: x["time"])
+    return res
 
 def resample_candles(candles_1m, tf):
     if not candles_1m: return []
@@ -357,74 +347,39 @@ def resample_candles(candles_1m, tf):
         try:
             dt = datetime.strptime(c["time"][:16], "%Y-%m-%dT%H:%M")
             gt = dt.replace(minute=(dt.minute // tf) * tf, second=0, microsecond=0)
-            if ct is None: 
-                ct = gt
-            if gt == ct: 
-                cg.append(c)
+            if ct is None: ct = gt
+            if gt == ct: cg.append(c)
             else:
                 res.append({"time": ct.isoformat(), "open": cg[0]["open"], "high": max(x["high"] for x in cg), "low": min(x["low"] for x in cg), "close": cg[-1]["close"], "vol": sum(x.get("vol", 0) for x in cg)})
                 cg = [c]
                 ct = gt
-        except Exception: 
-            pass
+        except: pass
     if cg: 
         res.append({"time": ct.isoformat(), "open": cg[0]["open"], "high": max(x["high"] for x in cg), "low": min(x["low"] for x in cg), "close": cg[-1]["close"], "vol": sum(x.get("vol", 0) for x in cg)})
     return res
 
-def get_valid_expiry_list(idx):
+def get_expiry(idx):
     sym = INDICES[idx]["key"]
     try:
         r = requests.get("https://api.upstox.com/v2/option/contract", params={"instrument_key": sym}, headers=hdrs(), timeout=5)
         if r.status_code == 200:
-            data = r.json().get("data", [])
-            exps = set()
-            for i in data:
-                if isinstance(i, str): exps.add(i)
-                elif isinstance(i, dict) and i.get("expiry"): exps.add(i.get("expiry"))
-            today_str = date.today().strftime("%Y-%m-%d")
-            valid = sorted([e for e in exps if e >= today_str])
-            if valid: return valid
+            items = r.json().get("data", [])
+            exps = sorted([i if isinstance(i, str) else i.get("expiry") for i in items if i])
+            today = datetime.today().strftime("%Y-%m-%d")
+            for e in exps:
+                if e and e >= today: return e
     except: pass
     today = date.today()
-    return [(today + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(8)]
-
-def find_valid_expiry(idx):
-    if EXPIRY_CACHE[idx] and EXPIRY_CACHE[idx] >= date.today().strftime("%Y-%m-%d"):
-        raw = fetch_chain(idx, EXPIRY_CACHE[idx])
-        if raw: return EXPIRY_CACHE[idx], raw
-        
-    dates_to_test = get_valid_expiry_list(idx)
-    for test_date in dates_to_test[:4]: 
-        time.sleep(0.4) 
-        raw = fetch_chain(idx, test_date)
-        if raw:
-            EXPIRY_CACHE[idx] = test_date
-            return test_date, raw
-    return None, []
+    days = (3 - today.weekday()) % 7
+    if days == 0: days = 7
+    return (today + timedelta(days=days)).strftime("%Y-%m-%d")
 
 def fetch_chain(idx, expiry):
     sym = INDICES[idx]["key"]
-    for attempt in range(3): 
-        try:
-            r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": sym, "expiry_date": expiry}, headers=hdrs(), timeout=5)
-            if r.status_code == 429: 
-                time.sleep(1) 
-                continue
-            if r.status_code == 200 and r.json().get("data"):
-                return r.json().get("data", [])
-                
-            if idx == "NIFTY":
-                r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": "NSE_INDEX|NIFTY 50", "expiry_date": expiry}, headers=hdrs(), timeout=5)
-                if r.status_code == 429:
-                    time.sleep(1)
-                    continue
-                if r.status_code == 200 and r.json().get("data"):
-                    INDICES["NIFTY"]["key"] = "NSE_INDEX|NIFTY 50"
-                    return r.json().get("data", [])
-            break
-        except: 
-            time.sleep(1)
-    return []
+    try:
+        r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": sym, "expiry_date": expiry}, headers=hdrs(), timeout=5)
+        return r.json().get("data", []) if r.status_code == 200 else []
+    except: return []
 
 def compute_max_pain(chain):
     strikes = sorted([float(k) for k in chain.keys()])
@@ -448,16 +403,6 @@ def get_vwap(candles):
             cum_vol += v
             cum_pv += ((c['high'] + c['low'] + c['close']) / 3) * v
     return round(cum_pv / cum_vol, 2) if cum_vol > 0 else None
-
-def calc_ema(prices, period):
-    if not prices: return None
-    if len(prices) < period: 
-        return round(sum(prices) / len(prices), 2)
-    k = 2.0 / (period + 1)
-    ema = sum(prices[:period]) / period
-    for p in prices[period:]: 
-        ema = p * k + ema * (1 - k)
-    return round(ema, 2)
 
 def calc_ema_array(prices, period):
     if not prices: return []
@@ -483,51 +428,6 @@ def calc_supertrend(candles, period=7, multiplier=3.0):
     direction = "BULLISH" if closes[-1] > (hl2 - multiplier * atr) else "BEARISH"
     st_val = round((hl2 - multiplier * atr) if direction == "BULLISH" else (hl2 + multiplier * atr), 2)
     return direction, st_val
-
-def calc_rsi(closes, p=14):
-    if len(closes) < p+1: return None
-    gains = [max(closes[i]-closes[i-1],0) for i in range(1,len(closes))]
-    losses = [max(closes[i-1]-closes[i],0) for i in range(1,len(closes))]
-    ag = sum(gains[:p])/p
-    al = sum(losses[:p])/p
-    for i in range(p, len(gains)):
-        ag = (ag*(p-1)+gains[i])/p
-        al = (al*(p-1)+losses[i])/p
-    return 100.0 if al==0 else round(100-100/(1+ag/al), 2)
-
-def calc_rsi_array(closes, p=14):
-    if len(closes) < p+1: return []
-    gains = [max(closes[i]-closes[i-1], 0) for i in range(1, len(closes))]
-    losses = [max(closes[i-1]-closes[i], 0) for i in range(1, len(closes))]
-    if sum(losses[:p]) == 0: 
-        return [None]*p + [100.0] * (len(gains) - p + 1)
-    ag = sum(gains[:p])/p
-    al = sum(losses[:p])/p
-    rsis = [None]*p
-    rsis.append(100.0 if al==0 else 100 - (100/(1+ag/al)))
-    for i in range(p, len(gains)):
-        ag = (ag*(p-1) + gains[i])/p
-        al = (al*(p-1) + losses[i])/p
-        rsis.append(100.0 if al==0 else 100 - (100/(1+ag/al)))
-    return rsis
-
-def calc_macd(prices, fast=12, slow=26, signal=9):
-    if len(prices) < slow + signal:
-        return None, None, None
-    ema_fast = calc_ema_array(prices, fast)
-    ema_slow = calc_ema_array(prices, slow)
-    macd_line = [
-        round(f - s, 4) if f is not None and s is not None else None
-        for f, s in zip(ema_fast, ema_slow)
-    ]
-    valid_macd = [x for x in macd_line if x is not None]
-    if len(valid_macd) < signal:
-        return None, None, None
-    sig_arr = calc_ema_array(valid_macd, signal)
-    macd_val = valid_macd[-1]
-    sig_val  = sig_arr[-1] if sig_arr else None
-    hist_val = round(macd_val - sig_val, 4) if sig_val is not None else None
-    return round(macd_val, 2), round(sig_val, 2) if sig_val is not None else None, round(hist_val, 2) if hist_val is not None else None
 
 def calc_adx(candles, p=14):
     if not candles or len(candles) < p + 2: return None
@@ -561,14 +461,6 @@ def calc_adx(candles, p=14):
         dxl.append((dx, pdi, ndi))
     if not dxl: return None
     return round(sum(x[0] for x in dxl[-p:]) / min(p, len(dxl)), 2)
-
-def get_indicators(candles):
-    if not candles or len(candles) < 16: 
-        return {"rsi": None, "adx": None, "candle_count": len(candles) if candles else 0}
-    closes = [c["close"] for c in candles]
-    rsi_val = calc_rsi(closes, 14)
-    adx_val = calc_adx(candles, 14)
-    return {"rsi": rsi_val, "adx": adx_val, "candle_count": len(candles)}
 
 def extract_levels(candles, spot):
     if not candles: return {}
@@ -631,12 +523,11 @@ def extract_levels(candles, spot):
         "yest_status": yest_status, "yest_time": yest_time
     }
 
+# 🔥 FIXED: Perfect calculation of E7/E15 and SuperTrend strictly for the table format
 def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
     if not candles or len(candles) < 15: 
-        return {"label": label, "candle_count": len(candles) if candles else 0, "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-"}
+        return {"label": label, "ts_start": "-", "trend": "-", "ts_pull": "-", "ts_cont": "-", "adx": 0, "st_signal": "-", "ts_st": "-"}
     
-    store = STORE[idx]
-    vwap = get_vwap(candles)
     closes = [c["close"] for c in candles]
     times = [c["time"] for c in candles]
     
@@ -650,34 +541,28 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
     
     for i in range(15, len(candles)):
         e7, e15 = ema7_arr[i], ema15_arr[i]
-        if e7 is None or e15 is None: 
-            continue
+        if e7 is None or e15 is None: continue
         c_close = closes[i]
-        
+        c_time = "-"
         try:
             d_str = times[i][:10]
             t_str = times[i][11:16]
             c_time = f"{d_str[8:10]}-{d_str[5:7]} {t_str}" 
-        except Exception: 
-            c_time = "-"
+        except Exception: pass
 
         curr_bull = e7 > e15
         
         if is_bull is None:
             is_bull = curr_bull
             trend_start = c_time
-            if curr_bull: 
-                await_pull_b = True
-            else: 
-                await_pull_s = True
+            if curr_bull: await_pull_b = True
+            else: await_pull_s = True
         elif is_bull != curr_bull:
             trend_start = c_time
             pull_time, cont_time = "-", "-"
             is_bull = curr_bull
-            if curr_bull: 
-                await_pull_b = True
-            else: 
-                await_pull_s = True
+            if curr_bull: await_pull_b = True
+            else: await_pull_s = True
                 
         if is_bull:
             if await_pull_b and (c_close < e7 or c_close < e15):
@@ -704,45 +589,22 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
             st_time = c_time
             curr_st = s_dir
 
-    ema7, ema15, price = ema7_arr[-1], ema15_arr[-1], closes[-1]
+    ema7, ema15 = ema7_arr[-1], ema15_arr[-1]
     st_dir, st_val = calc_supertrend(candles, st_period, st_multiplier)
     
-    trend = "N/A"
-    if ema7 and ema15:
-        if price > ema7 and ema7 > ema15: 
-            trend = "STRONG BULLISH"
-        elif price > ema7 and ema7 < ema15: 
-            trend = "RECOVERING"
-        elif price < ema7 and ema7 > ema15: 
-            trend = "MILD BEARISH"
-        else: 
-            trend = "STRONG BEARISH"
-
-    rsis = calc_rsi_array(closes, 14)
-    curr_rsi = round(rsis[-1], 2) if rsis and rsis[-1] is not None else 0
-    prev_rsi = round(rsis[-2], 2) if rsis and len(rsis) > 1 and rsis[-2] is not None else curr_rsi
+    trend_str = "E7>E15" if ema7 > ema15 else "E15>E7"
+    st_signal = "▲ BUY" if st_dir == "BULLISH" else "▼ SELL"
+    adx_val = calc_adx(candles, 14)
     
-    base_r = store["baseline_rsi"].get(label)
-    if not base_r and curr_rsi > 0:
-        store["baseline_rsi"][label] = curr_rsi
-        base_r = curr_rsi
-        
-    rsi_5m_chg = round(curr_rsi - prev_rsi, 2) if curr_rsi else 0
-    rsi_day_chg = round(curr_rsi - base_r, 2) if curr_rsi and base_r else 0
-
-    macd_val, macd_sig, macd_hist = calc_macd(closes)
-
     return {
-        "label": label, "candle_count": len(candles), "current_price": round(price, 2) if price else None, 
-        "ema7": ema7, "ema15": ema15, "vwap": vwap, 
-        "price_above_ema7": price > ema7 if ema7 else None, "price_above_ema15": price > ema15 if ema15 else None, 
-        "ema7_above_ema15": ema7 > ema15 if ema7 and ema15 else None, "price_above_vwap": price > vwap if vwap else None,
-        "trend": trend, "supertrend": st_dir, "supertrend_val": st_val, 
-        "rsi": curr_rsi if curr_rsi > 0 else None,
-        "rsi_5m_chg": rsi_5m_chg,
-        "rsi_day_chg": rsi_day_chg,
-        "macd": macd_val, "macd_signal": macd_sig, "macd_hist": macd_hist,
-        "ts_start": trend_start, "ts_pull": pull_time, "ts_cont": cont_time, "ts_st": st_time
+        "label": label, 
+        "ts_start": trend_start, 
+        "trend": trend_str, 
+        "ts_pull": pull_time, 
+        "ts_cont": cont_time, 
+        "adx": adx_val if adx_val else 0,
+        "st_signal": st_signal, 
+        "ts_st": st_time
     }
 
 def price_oi_matrix(spot, prev_spot, chain, atm, idx):
@@ -977,8 +839,8 @@ def refresh(idx):
 
     try:
         spot   = fetch_spot(idx)
-        time.sleep(0.4) 
-        expiry, raw = find_valid_expiry(idx)
+        expiry = get_expiry(idx)
+        raw    = fetch_chain(idx, expiry)
         
         if not raw:
             if os.path.exists(DATA_FILE):
@@ -1010,14 +872,11 @@ def refresh(idx):
         
         prev_pcr = store["history"][-1]["pcr"] if store["history"] else pcr
         pcr_chg  = round(pcr - prev_pcr, 3)
-        time.sleep(0.4)
         futures  = fetch_futures(spot, idx)
-        time.sleep(0.4)
         vix      = fetch_vix()
         
         if store["baseline_vix"] is None and vix > 0: store["baseline_vix"] = vix
 
-        time.sleep(0.4)
         candles_1m  = fetch_base_1m_candles(idx)
         levels_data = extract_levels(candles_1m, spot)
         
@@ -1069,7 +928,6 @@ def refresh(idx):
         baseline_trend_val = vwap_val if vwap_val else ind_data["tech"]["15m"].get("ema15")
         vix_matrix = analyze_vix_price(spot, baseline_trend_val, vix, store["baseline_vix"])
         
-        # 🚨 THE MISSING CALCULATION HAS BEEN RESTORED
         mkt_state = market_state(pcr, ind_data.get("adx"), oi_signal, alerts, vix)
         
         gex_data = [{"strike":float(s),"net_gex":v.get("call_gex",0) - v.get("put_gex",0)} for s,v in sorted(chain.items(), key=lambda x:float(x[0])) if abs(float(s)-atm) <= 10*step]
@@ -1274,21 +1132,10 @@ def histogram():
             with open(DATA_FILE, "r") as f: d = json.load(f).get(idx)
         except: pass
     if not d or not d.get("chain"): return jsonify([])
-    
     chain = d["chain"]
     atm = float(d["atm"])
     step = float(INDICES[idx]["step"])
-    
-    safe_list = []
-    for s_str, v in chain.items():
-        try:
-            s_float = float(s_str)
-            if abs(s_float - atm) <= ATM_RANGE * step:
-                safe_list.append(v)
-        except Exception:
-            pass
-            
-    return jsonify(sorted(safe_list, key=lambda x: float(x.get("strike", 0))))
+    return jsonify(sorted([v for s,v in chain.items() if abs(float(s)-atm) <= ATM_RANGE * step], key=lambda x:float(x.get("strike", 0))))
 
 @app.route("/telegram/force_summary")
 def force_telegram_summary():
@@ -1310,36 +1157,6 @@ def pcr_history_route():
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
     return jsonify(STORE[idx].get("pcr_history", []))
-
-@app.route("/login")
-def login(): 
-    return redirect(f"https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id={API_KEY}&redirect_uri={REDIRECT_URI}")
-
-@app.route("/callback")
-def callback():
-    code = request.args.get("code")
-    resp = requests.post("https://api.upstox.com/v2/login/authorization/token", data={"code": code, "client_id": API_KEY, "client_secret": API_SECRET, "redirect_uri": REDIRECT_URI, "grant_type": "authorization_code"}, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
-    data = resp.json()
-    if "access_token" not in data:
-        debug_status["last_error"] = f"Upstox Auth Rejected"
-        return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
-    
-    save_token(data.get("access_token"))
-    send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
-    
-    def run_init():
-        threads = []
-        for idx in INDICES: 
-            t = threading.Thread(target=refresh, args=(idx,), daemon=True)
-            t.start()
-            threads.append(t)
-            time.sleep(1)
-        for t in threads:
-            t.join(timeout=60)
-            
-    threading.Thread(target=run_init, daemon=True).start()
-    
-    return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p><script>setTimeout(()=>window.location.href="/",2000)</script></body></html>"""
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
