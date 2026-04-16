@@ -784,13 +784,22 @@ def process_chain(idx, raw, spot):
     store = STORE[idx]
     now = time.time()
     
+    # --- CRITICAL FIX: Safe OI extraction ---
     if not store["baseline_oi"] and raw:
-        store["baseline_oi"] = {str(item.get("strike_price")): {
-            "call_oi": float(item.get("call_options", {}).get("market_data", {}).get("oi", 0) or 0),
-            "put_oi": float(item.get("put_options", {}).get("market_data", {}).get("oi", 0) or 0),
-            "call_ltp": float(item.get("call_options", {}).get("market_data", {}).get("ltp", 0) or 0),
-            "put_ltp": float(item.get("put_options", {}).get("market_data", {}).get("ltp", 0) or 0)
-        } for item in raw if item.get("strike_price")}
+        store["baseline_oi"] = {}
+        for item in raw:
+            s = str(item.get("strike_price"))
+            if s and s != "None":
+                co = item.get("call_options") or {}
+                po = item.get("put_options") or {}
+                cmd = co.get("market_data") or {}
+                pmd = po.get("market_data") or {}
+                store["baseline_oi"][s] = {
+                    "call_oi": float(cmd.get("oi") or 0),
+                    "put_oi": float(pmd.get("oi") or 0),
+                    "call_ltp": float(cmd.get("ltp") or 0),
+                    "put_ltp": float(pmd.get("ltp") or 0)
+                }
 
     target_5m = now - 300
     target_10m = now - 600
@@ -819,18 +828,23 @@ def process_chain(idx, raw, spot):
     for item in raw:
         strike = float(item.get("strike_price", 0))
         if not strike: continue
-        ce, pe = item.get("call_options",{}), item.get("put_options",{})
-        ce_md, pe_md = ce.get("market_data",{}), pe.get("market_data",{})
-        ce_gk, pe_gk = ce.get("option_greeks",{}), pe.get("option_greeks",{})
         
-        call_oi = float(ce_md.get("oi",0) or 0)
-        put_oi = float(pe_md.get("oi",0) or 0)
-        call_vol = float(ce_md.get("volume",0) or 0)
-        put_vol = float(pe_md.get("volume",0) or 0)
-        call_ltp = float(ce_md.get("ltp",0) or ce_md.get("last_price",0) or 0)
-        put_ltp = float(pe_md.get("ltp",0) or pe_md.get("last_price",0) or 0)
-        call_open = float(ce_md.get("open_price", 0))
-        put_open  = float(pe_md.get("open_price", 0))
+        # --- CRITICAL FIX: Safe OI extraction ---
+        ce = item.get("call_options") or {}
+        pe = item.get("put_options") or {}
+        ce_md = ce.get("market_data") or {}
+        pe_md = pe.get("market_data") or {}
+        ce_gk = ce.get("option_greeks") or {}
+        pe_gk = pe.get("option_greeks") or {}
+        
+        call_oi = float(ce_md.get("oi") or 0)
+        put_oi = float(pe_md.get("oi") or 0)
+        call_vol = float(ce_md.get("volume") or 0)
+        put_vol = float(pe_md.get("volume") or 0)
+        call_ltp = float(ce_md.get("ltp") or ce_md.get("last_price") or 0)
+        put_ltp = float(pe_md.get("ltp") or pe_md.get("last_price") or 0)
+        call_open = float(ce_md.get("open_price") or 0)
+        put_open  = float(pe_md.get("open_price") or 0)
         
         s_str = str(strike)
         prev_v = prev_chain.get(s_str, {})
@@ -864,20 +878,20 @@ def process_chain(idx, raw, spot):
             "call_oi_velocity": c_oi_velocity,
             "call_vol": call_vol, "put_vol": put_vol,
             "call_vol_oi": round(call_vol/call_oi, 2) if call_oi else 0,
-            "call_iv": round(float(ce_gk.get("iv",0) or 0)*100,2), 
+            "call_iv": round(float(ce_gk.get("iv") or 0)*100,2), 
             "call_ltp": call_ltp, "call_ltp_chg": round(c_ltp_5m, 2), "call_ltp_chg_day": round(c_ltp_d, 2),
-            "call_delta": float(ce_gk.get("delta",0) or 0), "call_gamma": float(ce_gk.get("gamma",0) or 0), 
-            "call_theta": float(ce_gk.get("theta",0) or 0), "call_vega": float(ce_gk.get("vega",0) or 0),
-            "call_gex": float(ce_gk.get("gamma",0) or 0) * call_oi * 25,
+            "call_delta": float(ce_gk.get("delta") or 0), "call_gamma": float(ce_gk.get("gamma") or 0), 
+            "call_theta": float(ce_gk.get("theta") or 0), "call_vega": float(ce_gk.get("vega") or 0),
+            "call_gex": float(ce_gk.get("gamma") or 0) * call_oi * 25,
             
             "put_oi": put_oi, "put_oi_chg": round(p_oi_5m, 2), "put_oi_chg_day": round(p_oi_d, 2),
             "put_oi_velocity": p_oi_velocity,
             "put_vol_oi": round(put_vol/put_oi, 2) if put_oi else 0,
-            "put_iv": round(float(pe_gk.get("iv",0) or 0)*100,2), 
+            "put_iv": round(float(pe_gk.get("iv") or 0)*100,2), 
             "put_ltp": put_ltp, "put_ltp_chg": round(p_ltp_5m, 2), "put_ltp_chg_day": round(p_ltp_d, 2),
-            "put_delta": float(pe_gk.get("delta",0) or 0), "put_gamma": float(pe_gk.get("gamma",0) or 0), 
-            "put_theta": float(pe_gk.get("theta",0) or 0), "put_vega": float(pe_gk.get("vega",0) or 0),
-            "put_gex": float(pe_gk.get("gamma",0) or 0) * put_oi * 25
+            "put_delta": float(pe_gk.get("delta") or 0), "put_gamma": float(pe_gk.get("gamma") or 0), 
+            "put_theta": float(pe_gk.get("theta") or 0), "put_vega": float(pe_gk.get("vega") or 0),
+            "put_gex": float(pe_gk.get("gamma") or 0) * put_oi * 25
         }
         
     return result
