@@ -281,6 +281,36 @@ def hdrs():
     load_token()
     return {"Authorization": f"Bearer {token_store['access_token']}", "Accept": "application/json", "Api-Version": "2.0"}
 
+@app.route("/login")
+def login(): 
+    return redirect(f"https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id={API_KEY}&redirect_uri={REDIRECT_URI}")
+
+@app.route("/callback")
+def callback():
+    code = request.args.get("code")
+    resp = requests.post("https://api.upstox.com/v2/login/authorization/token", data={"code": code, "client_id": API_KEY, "client_secret": API_SECRET, "redirect_uri": REDIRECT_URI, "grant_type": "authorization_code"}, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
+    data = resp.json()
+    if "access_token" not in data:
+        debug_status["last_error"] = f"Upstox Auth Rejected"
+        return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
+    
+    save_token(data.get("access_token"))
+    send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
+    
+    def run_init():
+        threads = []
+        for idx in INDICES: 
+            t = threading.Thread(target=refresh, args=(idx,), daemon=True)
+            t.start()
+            threads.append(t)
+            time.sleep(1)
+        for t in threads:
+            t.join(timeout=60)
+            
+    threading.Thread(target=run_init, daemon=True).start()
+    
+    return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p><script>setTimeout(()=>window.location.href="/",2000)</script></body></html>"""
+
 def fetch_spot(idx):
     sym = INDICES[idx]["key"]
     try:
@@ -371,60 +401,31 @@ def resample_candles(candles_1m, tf):
         res.append({"time": ct.isoformat(), "open": cg[0]["open"], "high": max(x["high"] for x in cg), "low": min(x["low"] for x in cg), "close": cg[-1]["close"], "vol": sum(x.get("vol", 0) for x in cg)})
     return res
 
-def get_valid_expiry_list(idx):
+def get_expiry(idx):
     sym = INDICES[idx]["key"]
     try:
-        r = requests.get("https://api.upstox.com/v2/option/contract", params={"instrument_key": sym}, headers=hdrs(), timeout=5)
+        r = requests.get("https://api.upstox.com/v2/option/contract", params={"instrument_key": sym}, headers=hdrs(), timeout=10)
         if r.status_code == 200:
-            data = r.json().get("data", [])
-            exps = set()
-            for i in data:
-                if isinstance(i, str): exps.add(i)
-                elif isinstance(i, dict) and i.get("expiry"): exps.add(i.get("expiry"))
-            today_str = date.today().strftime("%Y-%m-%d")
-            valid = sorted([e for e in exps if e >= today_str])
-            if valid: return valid
-    except: pass
+            items = r.json().get("data", [])
+            exps = sorted([i if isinstance(i, str) else i.get("expiry") for i in items if i])
+            today = datetime.today().strftime("%Y-%m-%d")
+            for e in exps:
+                if e and e >= today: return e
+    except Exception: 
+        pass
     today = date.today()
-    return [(today + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(8)]
-
-def find_valid_expiry(idx):
-    if EXPIRY_CACHE[idx] and EXPIRY_CACHE[idx] >= date.today().strftime("%Y-%m-%d"):
-        raw = fetch_chain(idx, EXPIRY_CACHE[idx])
-        if raw: return EXPIRY_CACHE[idx], raw
-        
-    dates_to_test = get_valid_expiry_list(idx)
-    for test_date in dates_to_test[:4]: 
-        time.sleep(0.4) 
-        raw = fetch_chain(idx, test_date)
-        if raw:
-            EXPIRY_CACHE[idx] = test_date
-            return test_date, raw
-    return None, []
+    days = (3 - today.weekday()) % 7
+    if days == 0: 
+        days = 7
+    return (today + timedelta(days=days)).strftime("%Y-%m-%d")
 
 def fetch_chain(idx, expiry):
     sym = INDICES[idx]["key"]
-    for attempt in range(3): 
-        try:
-            r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": sym, "expiry_date": expiry}, headers=hdrs(), timeout=5)
-            if r.status_code == 429: 
-                time.sleep(1) 
-                continue
-            if r.status_code == 200 and r.json().get("data"):
-                return r.json().get("data", [])
-                
-            if idx == "NIFTY":
-                r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": "NSE_INDEX|NIFTY 50", "expiry_date": expiry}, headers=hdrs(), timeout=5)
-                if r.status_code == 429:
-                    time.sleep(1)
-                    continue
-                if r.status_code == 200 and r.json().get("data"):
-                    INDICES["NIFTY"]["key"] = "NSE_INDEX|NIFTY 50"
-                    return r.json().get("data", [])
-            break
-        except: 
-            time.sleep(1)
-    return []
+    try:
+        r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": sym, "expiry_date": expiry}, headers=hdrs(), timeout=15)
+        return r.json().get("data", []) if r.status_code == 200 else []
+    except Exception: 
+        return []
 
 def compute_max_pain(chain):
     strikes = sorted([float(k) for k in chain.keys()])
@@ -789,53 +790,75 @@ def analyze_vix_price(spot, baseline_trend_val, vix, base_vix):
     elif not price_up and not vix_up: return {"signal": "WEAK BEARISH", "desc": "Price ↓ + VIX ↓ | Normal correction = Support might hold."}
     return {"signal": "NEUTRAL", "desc": "Market flat"}
 
+# 🚨 THE SILENT MEMORY BUG IS FIXED HERE
 def process_chain(idx, raw, spot):
     store = STORE[idx]
-    history = store.setdefault("history", [])
     now = time.time()
     
-    target_ts = now - 300
-    prev_record = None
-    if history:
-        prev_record = min(history, key=lambda x: abs(x["ts"] - target_ts))
-        if now - history[0]["ts"] < 240: 
-            prev_record = history[0]
+    # Update baseline if needed
+    if not store["baseline_oi"] and raw:
+        store["baseline_oi"] = {str(item.get("strike_price")): {
+            "call_oi": float(item.get("call_options", {}).get("market_data", {}).get("oi", 0) or 0),
+            "put_oi": float(item.get("put_options", {}).get("market_data", {}).get("oi", 0) or 0),
+            "call_ltp": float(item.get("call_options", {}).get("market_data", {}).get("ltp", 0) or 0),
+            "put_ltp": float(item.get("put_options", {}).get("market_data", {}).get("ltp", 0) or 0)
+        } for item in raw if item.get("strike_price")}
 
-    target_ts_v = now - 600
-    prev2_record = None
-    if len(history) >= 2:
-        prev2_record = min(history, key=lambda x: abs(x["ts"] - target_ts_v))
-        if prev2_record is prev_record:
-            others = [h for h in history if h is not prev_record]
-            prev2_record = min(others, key=lambda x: abs(x["ts"] - target_ts_v)) if others else None
+    # Define exact target timestamps for memory
+    target_5m = now - 300
+    target_10m = now - 600
 
-    prev_chain = prev_record["chain"] if prev_record else {}
-    prev2_chain = prev2_record["chain"] if prev2_record else {}
+    prev_chain = {}
+    prev2_chain = {}
+
+    if store["history"]:
+        # Find the snapshot closest to 5 minutes ago
+        valid_5m_records = [h for h in store["history"] if abs(h["ts"] - target_5m) < 120] 
+        if valid_5m_records:
+            prev_record = min(valid_5m_records, key=lambda x: abs(x["ts"] - target_5m))
+            prev_chain = prev_record.get("chain", {})
+        elif now - store["history"][0]["ts"] < 240:
+            # Fallback to the oldest record if we haven't hit 5m yet
+            prev_chain = store["history"][0].get("chain", {})
+
+        # Find the snapshot closest to 10 minutes ago
+        valid_10m_records = [h for h in store["history"] if abs(h["ts"] - target_10m) < 120]
+        if valid_10m_records:
+            prev2_record = min(valid_10m_records, key=lambda x: abs(x["ts"] - target_10m))
+            prev2_chain = prev2_record.get("chain", {})
+        elif len(store["history"]) >= 2 and not valid_5m_records:
+            prev2_chain = store["history"][0].get("chain", {})
+
     base_chain = store["baseline_oi"]
-
     result = {}
+
     for item in raw:
-        strike = float(item.get("strike_price",0))
+        strike = float(item.get("strike_price", 0))
         if not strike: continue
         ce, pe = item.get("call_options",{}), item.get("put_options",{})
         ce_md, pe_md = ce.get("market_data",{}), pe.get("market_data",{})
         ce_gk, pe_gk = ce.get("option_greeks",{}), pe.get("option_greeks",{})
         
-        call_oi, put_oi = float(ce_md.get("oi",0) or 0), float(pe_md.get("oi",0) or 0)
-        call_vol, put_vol = float(ce_md.get("volume",0) or 0), float(pe_md.get("volume",0) or 0)
-        call_ltp, put_ltp = float(ce_md.get("ltp",0) or ce_md.get("last_price",0) or 0), float(pe_md.get("ltp",0) or pe_md.get("last_price",0) or 0)
+        call_oi = float(ce_md.get("oi",0) or 0)
+        put_oi = float(pe_md.get("oi",0) or 0)
+        call_vol = float(ce_md.get("volume",0) or 0)
+        put_vol = float(pe_md.get("volume",0) or 0)
+        call_ltp = float(ce_md.get("ltp",0) or ce_md.get("last_price",0) or 0)
+        put_ltp = float(pe_md.get("ltp",0) or pe_md.get("last_price",0) or 0)
         call_open = float(ce_md.get("open_price", 0))
         put_open  = float(pe_md.get("open_price", 0))
         
-        prev_v = prev_chain.get(str(strike), {})
-        base_v = base_chain.get(str(strike), {})
+        s_str = str(strike)
+        prev_v = prev_chain.get(s_str, {})
+        base_v = base_chain.get(s_str, {})
+        prev2_v = prev2_chain.get(s_str, {})
 
         c_oi_5m = call_oi - prev_v.get("call_oi", call_oi)
         p_oi_5m = put_oi - prev_v.get("put_oi", put_oi)
 
-        prev2_v = prev2_chain.get(str(strike), {})
         c_oi_prev5m = prev_v.get("call_oi", call_oi) - prev2_v.get("call_oi", prev_v.get("call_oi", call_oi))
-        p_oi_prev5m = prev_v.get("put_oi", put_oi)   - prev2_v.get("put_oi", prev_v.get("put_oi", put_oi))
+        p_oi_prev5m = prev_v.get("put_oi", put_oi) - prev2_v.get("put_oi", prev_v.get("put_oi", put_oi))
+        
         c_oi_velocity = round(c_oi_5m - c_oi_prev5m, 2)
         p_oi_velocity = round(p_oi_5m - p_oi_prev5m, 2)
         
@@ -873,8 +896,6 @@ def process_chain(idx, raw, spot):
             "put_gex": float(pe_gk.get("gamma",0) or 0) * put_oi * 25
         }
         
-    if len(store["baseline_oi"]) == 0 and result: 
-        store["baseline_oi"] = {str(s): {"call_oi": v["call_oi"], "put_oi": v["put_oi"], "call_ltp": v["call_ltp"], "put_ltp": v["put_ltp"]} for s,v in result.items()}
     return result
 
 def classify_strike_oi_flow(v, prev_spot, spot):
@@ -977,8 +998,8 @@ def refresh(idx):
 
     try:
         spot   = fetch_spot(idx)
-        time.sleep(0.4) 
-        expiry, raw = find_valid_expiry(idx)
+        expiry = get_expiry(idx)
+        raw    = fetch_chain(idx, expiry)
         
         if not raw:
             if os.path.exists(DATA_FILE):
@@ -1010,14 +1031,11 @@ def refresh(idx):
         
         prev_pcr = store["history"][-1]["pcr"] if store["history"] else pcr
         pcr_chg  = round(pcr - prev_pcr, 3)
-        time.sleep(0.4)
         futures  = fetch_futures(spot, idx)
-        time.sleep(0.4)
         vix      = fetch_vix()
         
         if store["baseline_vix"] is None and vix > 0: store["baseline_vix"] = vix
 
-        time.sleep(0.4)
         candles_1m  = fetch_base_1m_candles(idx)
         levels_data = extract_levels(candles_1m, spot)
         
@@ -1069,7 +1087,6 @@ def refresh(idx):
         baseline_trend_val = vwap_val if vwap_val else ind_data["tech"]["15m"].get("ema15")
         vix_matrix = analyze_vix_price(spot, baseline_trend_val, vix, store["baseline_vix"])
         
-        # 🚨 THE MISSING CALCULATION HAS BEEN RESTORED
         mkt_state = market_state(pcr, ind_data.get("adx"), oi_signal, alerts, vix)
         
         gex_data = [{"strike":float(s),"net_gex":v.get("call_gex",0) - v.get("put_gex",0)} for s,v in sorted(chain.items(), key=lambda x:float(x[0])) if abs(float(s)-atm) <= 10*step]
@@ -1187,6 +1204,7 @@ def refresh(idx):
 
         oi_cache[idx]["data"] = data
         
+        # APPEND TO HISTORY BEFORE WRITING CACHE
         chain_snapshot = {str(s): {"call_oi": v["call_oi"], "put_oi": v["put_oi"], "call_ltp": v["call_ltp"], "put_ltp": v["put_ltp"]} for s,v in chain.items()}
         store["history"].append({"ts": time.time(), "chain": chain_snapshot, "spot": spot, "pcr": pcr})
         store["history"] = [x for x in store["history"] if time.time() - x["ts"] <= 900]
