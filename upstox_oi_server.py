@@ -9,13 +9,11 @@ import os, csv, time, math, threading, json, urllib.parse, traceback, glob
 from datetime import datetime, date, timedelta
 from flask import Flask, jsonify, request, redirect, send_file, send_from_directory
 from flask_cors import CORS
-from autosnap import start_auto_snapper
 import requests
 
 app = Flask(__name__)
 CORS(app)
 
-start_auto_snapper()
 
 @app.after_request
 def add_header(response):
@@ -33,7 +31,7 @@ MANUAL_ACCESS_TOKEN = ""
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
 
-CACHE_TTL    = 120  
+CACHE_TTL    = 300  # 5-minute refresh
 ATM_RANGE    = 5
 TOKEN_FILE   = "token_data.json"
 DATA_FILE    = "data_cache.json"  
@@ -498,26 +496,12 @@ def calc_rsi_array(closes, p=14):
         rsis.append(100.0 if al==0 else 100 - (100/(1+ag/al)))
     return rsis
 
-def calc_macd(prices, fast=12, slow=26, signal=9):
-    if len(prices) < slow + signal:
-        return None, None, None
-    ema_fast = calc_ema_array(prices, fast)
-    ema_slow = calc_ema_array(prices, slow)
-    macd_line = [
-        round(f - s, 4) if f is not None and s is not None else None
-        for f, s in zip(ema_fast, ema_slow)
-    ]
-    valid_macd = [x for x in macd_line if x is not None]
-    if len(valid_macd) < signal:
-        return None, None, None
-    sig_arr = calc_ema_array(valid_macd, signal)
-    macd_val = valid_macd[-1]
-    sig_val  = sig_arr[-1] if sig_arr else None
-    hist_val = round(macd_val - sig_val, 4) if sig_val is not None else None
-    return round(macd_val, 2), round(sig_val, 2) if sig_val is not None else None, round(hist_val, 2) if hist_val is not None else None
 
-def calc_adx(candles, p=14):
-    if not candles or len(candles) < p + 2: return None
+
+def calc_adx_full(candles, p=14):
+    """Returns (adx, +DI, -DI) — all three values for display."""
+    if not candles or len(candles) < p + 2:
+        return None, None, None
     trl, pdml, ndml = [], [], []
     for i in range(1, len(candles)):
         h, l, pc = candles[i]["high"], candles[i]["low"], candles[i-1]["close"]
@@ -525,37 +509,51 @@ def calc_adx(candles, p=14):
         trl.append(max(h-l, abs(h-pc), abs(l-pc)))
         pdml.append(max(h-ph, 0) if (h-ph) > (pl-l) else 0)
         ndml.append(max(pl-l, 0) if (pl-l) > (h-ph) else 0)
-    
-    def sm(lst, p):
-        if sum(lst[:p]) == 0: return [0]*len(lst)
-        s = sum(lst[:p])
-        r = [s]
-        for i in range(p, len(lst)): 
-            s = s - s/p + lst[i]
-            r.append(s)
+
+    def sm(lst, n):
+        if not lst or sum(lst[:n]) == 0: return [0]*len(lst)
+        sv = sum(lst[:n]); r = [sv]
+        for i in range(n, len(lst)): sv = sv - sv/n + lst[i]; r.append(sv)
         return r
-        
-    atr = sm(trl, p)
-    pDM = sm(pdml, p)
-    nDM = sm(ndml, p)
+
+    atr = sm(trl, p); pDM = sm(pdml, p); nDM = sm(ndml, p)
     dxl = []
-    
     for i in range(len(atr)):
         if atr[i] == 0: continue
         pdi = 100 * pDM[i] / atr[i]
         ndi = 100 * nDM[i] / atr[i]
-        dx = 100 * abs(pdi-ndi) / (pdi+ndi) if (pdi+ndi) else 0
+        dx  = 100 * abs(pdi-ndi) / (pdi+ndi) if (pdi+ndi) else 0
         dxl.append((dx, pdi, ndi))
-    if not dxl: return None
-    return round(sum(x[0] for x in dxl[-p:]) / min(p, len(dxl)), 2)
+    if not dxl: return None, None, None
+    last_pdi = round(dxl[-1][1], 1)
+    last_ndi = round(dxl[-1][2], 1)
+    adx_val  = round(sum(x[0] for x in dxl[-p:]) / min(p, len(dxl)), 2)
+    return adx_val, last_pdi, last_ndi
+
+def calc_adx(candles, p=14):
+    """Backwards compatible — returns just ADX."""
+    adx, _, _ = calc_adx_full(candles, p)
+    return adx
 
 def get_indicators(candles):
-    if not candles or len(candles) < 16: 
-        return {"rsi": None, "adx": None, "candle_count": len(candles) if candles else 0}
-    closes = [c["close"] for c in candles]
+    if not candles or len(candles) < 16:
+        return {"rsi": None, "adx": None, "pdi": None, "ndi": None, "candle_count": len(candles) if candles else 0}
+    closes  = [c["close"] for c in candles]
     rsi_val = calc_rsi(closes, 14)
-    adx_val = calc_adx(candles, 14)
-    return {"rsi": rsi_val, "adx": adx_val, "candle_count": len(candles)}
+    adx_val, pdi, ndi = calc_adx_full(candles, 14)
+    # ADX signal
+    if adx_val is None:
+        adx_sig = "N/A"
+    elif adx_val >= 25 and pdi and ndi:
+        adx_sig = "STRONG BULL" if pdi > ndi else "STRONG BEAR"
+    elif adx_val >= 20:
+        adx_sig = "DEVELOPING"
+    else:
+        adx_sig = "WEAK/RANGING"
+    return {
+        "rsi": rsi_val, "adx": adx_val, "pdi": pdi, "ndi": ndi,
+        "adx_signal": adx_sig, "candle_count": len(candles)
+    }
 
 def extract_levels(candles, spot):
     if not candles: return {}
@@ -618,122 +616,128 @@ def extract_levels(candles, spot):
         "yest_status": yest_status, "yest_time": yest_time
     }
 
-def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
-    if not candles or len(candles) < 15: 
-        return {"label": label, "candle_count": len(candles) if candles else 0, "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-"}
-    
-    store = STORE[idx]
-    vwap = get_vwap(candles)
+def compute_tf_signals(idx, candles, label, st_period=7, st_multiplier=3.0):
+    """EMA trend, Supertrend, RSI, ADX. MACD removed. Crossover times today-only."""
+    if not candles or len(candles) < 15:
+        return {"label": label, "candle_count": len(candles) if candles else 0,
+                "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-"}
+
+    store  = STORE[idx]
+    vwap   = get_vwap(candles)
     closes = [c["close"] for c in candles]
-    times = [c["time"] for c in candles]
-    
-    ema7_arr = calc_ema_array(closes, 7)
+    times  = [c["time"]  for c in candles]
+
+    ema7_arr  = calc_ema_array(closes, 7)
     ema15_arr = calc_ema_array(closes, 15)
-    
-    trend_start, pull_time, cont_time, st_time = "-", "-", "-", "-"
+    ema21_arr = calc_ema_array(closes, 21)
+
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
+    trend_start = pull_time = cont_time = st_time = "-"
     is_bull = None
     await_pull_b = await_pull_s = False
     curr_st = None
-    
+
     for i in range(15, len(candles)):
         e7, e15 = ema7_arr[i], ema15_arr[i]
-        if e7 is None or e15 is None: 
+        if e7 is None or e15 is None:
             continue
         c_close = closes[i]
-        
+        raw_t   = times[i]
         try:
-            if "T" in times[i]:
-                ts_parts = times[i].replace("T", " ").split(" ")
-                d_parts = ts_parts[0].split("-")
-                t_parts = ts_parts[1][:5]
-                c_time = f"{d_parts[2]}-{d_parts[1]} {t_parts}"
-            else:
-                c_time = times[i][:16]
-        except Exception: 
-            c_time = "-"
+            date_part = raw_t[:10]
+            time_part = raw_t[11:16]
+            is_today  = (date_part == today_str)
+            c_time    = ("Today " + time_part) if is_today else (date_part[8:10] + "-" + date_part[5:7] + " " + time_part)
+        except Exception:
+            is_today = False
+            c_time   = "-"
 
         curr_bull = e7 > e15
-        
+
         if is_bull is None:
             is_bull = curr_bull
-            trend_start = c_time
-            if curr_bull: 
-                await_pull_b = True
-            else: 
-                await_pull_s = True
+            if is_today:
+                trend_start = c_time
+            if curr_bull: await_pull_b = True
+            else:         await_pull_s = True
         elif is_bull != curr_bull:
-            trend_start = c_time
-            pull_time, cont_time = "-", "-"
+            if is_today:
+                trend_start = c_time
+                pull_time   = "-"
+                cont_time   = "-"
             is_bull = curr_bull
-            if curr_bull: 
-                await_pull_b = True
-            else: 
-                await_pull_s = True
-                
+            if curr_bull: await_pull_b = True
+            else:         await_pull_s = True
+
         if is_bull:
             if await_pull_b and (c_close < e7 or c_close < e15):
-                pull_time = c_time
-                cont_time = "..."
+                if is_today: pull_time = c_time; cont_time = "..."
                 await_pull_b = False
             elif not await_pull_b and c_close > e7:
-                cont_time = c_time
+                if is_today: cont_time = c_time
                 await_pull_b = True
         else:
             if await_pull_s and (c_close > e7 or c_close > e15):
-                pull_time = c_time
-                cont_time = "..."
+                if is_today: pull_time = c_time; cont_time = "..."
                 await_pull_s = False
             elif not await_pull_s and c_close < e7:
-                cont_time = c_time
+                if is_today: cont_time = c_time
                 await_pull_s = True
-                
+
         s_dir, _ = calc_supertrend(candles[:i+1], st_period, st_multiplier)
-        if curr_st is None: 
+        if curr_st is None:
             curr_st = s_dir
-            st_time = c_time
+            if is_today: st_time = c_time
         elif curr_st != s_dir:
-            st_time = c_time
+            if is_today: st_time = c_time
             curr_st = s_dir
 
-    ema7, ema15, price = ema7_arr[-1], ema15_arr[-1], closes[-1]
+    ema7  = ema7_arr[-1]
+    ema15 = ema15_arr[-1]
+    ema21 = ema21_arr[-1] if ema21_arr else None
+    price = closes[-1]
     st_dir, st_val = calc_supertrend(candles, st_period, st_multiplier)
-    
+
     trend = "N/A"
     if ema7 and ema15:
-        if price > ema7 and ema7 > ema15: 
-            trend = "STRONG BULLISH"
-        elif price > ema7 and ema7 < ema15: 
-            trend = "RECOVERING"
-        elif price < ema7 and ema7 > ema15: 
-            trend = "MILD BEARISH"
-        else: 
-            trend = "STRONG BEARISH"
+        if price > ema7 and ema7 > ema15:   trend = "STRONG BULLISH"
+        elif price > ema7 and ema7 < ema15: trend = "RECOVERING"
+        elif price < ema7 and ema7 > ema15: trend = "MILD BEARISH"
+        else:                                trend = "STRONG BEARISH"
 
-    rsis = calc_rsi_array(closes, 14)
-    curr_rsi = round(rsis[-1], 2) if rsis and rsis[-1] is not None else 0
-    prev_rsi = round(rsis[-2], 2) if rsis and len(rsis) > 1 and rsis[-2] is not None else curr_rsi
-    
-    base_r = store["baseline_rsi"].get(label)
+    rsis      = calc_rsi_array(closes, 14)
+    curr_rsi  = round(rsis[-1], 2) if rsis and rsis[-1] is not None else 0
+    prev_rsi  = round(rsis[-2], 2) if rsis and len(rsis) > 1 and rsis[-2] is not None else curr_rsi
+    base_r    = store["baseline_rsi"].get(label)
     if not base_r and curr_rsi > 0:
         store["baseline_rsi"][label] = curr_rsi
         base_r = curr_rsi
-        
-    rsi_5m_chg = round(curr_rsi - prev_rsi, 2) if curr_rsi else 0
-    rsi_day_chg = round(curr_rsi - base_r, 2) if curr_rsi and base_r else 0
+    rsi_5m_chg  = round(curr_rsi - prev_rsi, 2) if curr_rsi else 0
+    rsi_day_chg = round(curr_rsi - base_r,   2) if curr_rsi and base_r else 0
+    rsi_sig = ("OVERBOUGHT" if curr_rsi >= 70 else "OVERSOLD" if curr_rsi <= 30 else
+               "BULLISH" if curr_rsi >= 55 else "BEARISH" if curr_rsi <= 45 else "NEUTRAL") if curr_rsi else None
 
-    macd_val, macd_sig, macd_hist = calc_macd(closes)
+    adx_val, pdi, ndi = calc_adx_full(candles, 14)
+    adx_sig = ("STRONG BULL" if (pdi or 0) > (ndi or 0) else "STRONG BEAR") if adx_val and adx_val >= 25 else (
+              "DEVELOPING" if adx_val and adx_val >= 20 else "RANGING")
 
     return {
-        "label": label, "candle_count": len(candles), "current_price": round(price, 2) if price else None, 
-        "ema7": ema7, "ema15": ema15, "vwap": vwap, 
-        "price_above_ema7": price > ema7 if ema7 else None, "price_above_ema15": price > ema15 if ema15 else None, 
-        "ema7_above_ema15": ema7 > ema15 if ema7 and ema15 else None, "price_above_vwap": price > vwap if vwap else None,
-        "trend": trend, "supertrend": st_dir, "supertrend_val": st_val, 
+        "label": label, "candle_count": len(candles),
+        "current_price": round(price, 2) if price else None,
+        "ema7": ema7, "ema15": ema15, "ema21": ema21, "vwap": vwap,
+        "price_above_ema7":  (price > ema7)  if ema7  else None,
+        "price_above_ema15": (price > ema15) if ema15 else None,
+        "ema7_above_ema15":  (ema7 > ema15)  if (ema7 and ema15) else None,
+        "price_above_vwap":  (price > vwap)  if vwap  else None,
+        "trend": trend,
+        "supertrend": st_dir, "supertrend_val": st_val,
         "rsi": curr_rsi if curr_rsi > 0 else None,
-        "rsi_5m_chg": rsi_5m_chg,
-        "rsi_day_chg": rsi_day_chg,
-        "macd": macd_val, "macd_signal": macd_sig, "macd_hist": macd_hist,
-        "ts_start": trend_start, "ts_pull": pull_time, "ts_cont": cont_time, "ts_st": st_time
+        "rsi_signal": rsi_sig,
+        "rsi_5m_chg": rsi_5m_chg, "rsi_day_chg": rsi_day_chg,
+        "adx": adx_val, "pdi": pdi, "ndi": ndi, "adx_signal": adx_sig,
+        "ts_start": trend_start, "ts_pull": pull_time,
+        "ts_cont": cont_time,    "ts_st":   st_time,
     }
 
 def price_oi_matrix(spot, prev_spot, chain, atm, idx):
@@ -1076,9 +1080,9 @@ def refresh(idx):
 
         ind_data = get_indicators(candle_cache_store[idx]["5m"])
         ind_data["tech"] = {
-            "3m": compute_tf_signals(idx, candle_cache_store[idx]["3m"], "3min", 1, 1.0),
-            "5m": compute_tf_signals(idx, candle_cache_store[idx]["5m"], "5min", 1, 1.0),
-            "15m": compute_tf_signals(idx, candle_cache_store[idx]["15m"], "15min", 1, 1.0)
+            "3m": compute_tf_signals(idx, candle_cache_store[idx]["3m"],  "3min"),
+            "5m": compute_tf_signals(idx, candle_cache_store[idx]["5m"],  "5min"),
+            "15m": compute_tf_signals(idx, candle_cache_store[idx]["15m"], "15min")
         }
 
         vwap_val = get_vwap(candle_cache_store[idx]["5m"])
@@ -1137,6 +1141,54 @@ def refresh(idx):
         avg_skew=round(sum(x["skew"] for x in skew_data)/len(skew_data),2) if skew_data else 0
         iv_skew = {"data":skew_data,"avg_skew":avg_skew,"signal":"BEARISH SKEW — put IV elevated" if avg_skew>3 else "BULLISH SKEW — call IV elevated" if avg_skew<-3 else "NEUTRAL SKEW — balanced"}
 
+        # OI Analytics
+        ce_by_oi = sorted(chain.items(), key=lambda x: x[1]["call_oi"], reverse=True)
+        pe_by_oi = sorted(chain.items(), key=lambda x: x[1]["put_oi"],  reverse=True)
+        top3_ce = sum(v["call_oi"] for _,v in ce_by_oi[:3])
+        top3_pe = sum(v["put_oi"]  for _,v in pe_by_oi[:3])
+        ce_conc = round(top3_ce/total_call*100,1) if total_call else 0
+        pe_conc = round(top3_pe/total_put*100,1)  if total_put  else 0
+        top_ce_s = float(ce_by_oi[0][0]) if ce_by_oi else 0
+        top_pe_s = float(pe_by_oi[0][0]) if pe_by_oi else 0
+        ce_wall_pct = round(chain.get(str(int(top_ce_s)),{}).get("call_oi",0)/total_call*100,1) if total_call else 0
+        pe_wall_pct = round(chain.get(str(int(top_pe_s)),{}).get("put_oi",0)/total_put*100,1)  if total_put  else 0
+        tot_c_delta = sum(v.get("call_delta",0)*v["call_oi"]*25 for v in chain.values())
+        tot_p_delta = sum(abs(v.get("put_delta",0))*v["put_oi"]*25 for v in chain.values())
+        net_delta = round(tot_c_delta - tot_p_delta, 0)
+        delta_bias = "BULLISH" if net_delta > 0 else "BEARISH"
+        atm_zone  = [v for sk,v in chain.items() if abs(float(sk)-atm)<=2*step]
+        ce_vel    = sum(v.get("call_oi_velocity",0) for v in atm_zone)
+        pe_vel    = sum(v.get("put_oi_velocity",0)  for v in atm_zone)
+        oi_accel  = "ACCELERATING" if (ce_vel+pe_vel)>0 else "DECELERATING"
+        tot_ce_vol = sum(v.get("call_vol",0) for v in chain.values())
+        tot_pe_vol = sum(v.get("put_vol",0)  for v in chain.values())
+        voi_ce = round(tot_ce_vol/total_call,3) if total_call else 0
+        voi_pe = round(tot_pe_vol/total_put,3)  if total_put  else 0
+        ph_vals = [x["pcr"] for x in store["pcr_history"][-6:]]
+        if len(ph_vals) >= 3:
+            pt = ph_vals[-1]-ph_vals[0]
+            pcr_trend = "RISING" if pt>0.03 else "FALLING" if pt<-0.03 else "FLAT"
+        else:
+            pcr_trend = "BUILDING"
+        sm_bull = sum(v.get("put_oi_chg_day",0) for v in chain.values() if v.get("put_oi_chg_day",0)>0)
+        sm_bear = sum(abs(v.get("call_oi_chg_day",0)) for v in chain.values() if v.get("call_oi_chg_day",0)>0)
+        sm_bias = "BULLISH" if sm_bull>sm_bear else "BEARISH" if sm_bear>sm_bull else "NEUTRAL"
+        oi_analytics = {
+            "ce_concentration_pct": ce_conc, "pe_concentration_pct": pe_conc,
+            "top_ce_strike": top_ce_s,       "top_pe_strike": top_pe_s,
+            "ce_wall_pct": ce_wall_pct,       "pe_wall_pct": pe_wall_pct,
+            "net_delta": net_delta,           "delta_bias": delta_bias,
+            "oi_accel_signal": oi_accel,
+            "total_ce_chg_atm": round(sum(v.get("call_oi_chg",0) for v in atm_zone)/100000,2),
+            "total_pe_chg_atm": round(sum(v.get("put_oi_chg",0)  for v in atm_zone)/100000,2),
+            "mkt_vol_oi_ce": voi_ce, "mkt_vol_oi_pe": voi_pe,
+            "pcr_trend": pcr_trend,
+            "straddle_vs_open": round(current_straddle-(morning_straddle or current_straddle),1),
+            "sm_flow_bias": sm_bias,
+            "sm_bull_flow_l": round(sm_bull/100000,1),
+            "sm_bear_flow_l": round(sm_bear/100000,1),
+        }
+
         ind_data["tech"]["overall_bias"] = mkt_state
         ind_data["tech"]["confluence"] = "Aligned" if mkt_state.startswith("BULL") or mkt_state.startswith("BEAR") else "Mixed"
         
@@ -1179,6 +1231,7 @@ def refresh(idx):
             "max_pe_strike": max_pe_strike,
             "pcr_history": store["pcr_history"][-20:],
             "straddle_history": store["straddle_history"][-20:],
+            "oi_analytics": oi_analytics,
         }
         
         greeks = {
@@ -1188,8 +1241,11 @@ def refresh(idx):
             "vega": {"val": atm_v.get("call_vega", 0), "desc": "Call Vega"}
         }
 
+        adx_top, pdi_top, ndi_top = calc_adx_full(candle_cache_store[idx]["5m"], 14)
+        ind_data["adx"] = adx_top; ind_data["pdi"] = pdi_top; ind_data["ndi"] = ndi_top
+
         data = {
-            "backend_error": None, 
+            "backend_error": None,
             "spot": spot, "futures": futures, "premium": round(futures-spot,2),
             "atm": atm, "pcr": pcr, "pcr_chg": pcr_chg, "vix": vix,
             "max_pain": max_pain, "expiry": expiry, 
@@ -1219,7 +1275,8 @@ def refresh(idx):
         except Exception as e:
             print("Save state failed:", e)
 
-        debug_status["last_error"] = f"[{idx}] Data fetched successfully."
+        debug_status["last_error"] = f"[{idx}] OK {datetime.now().strftime('%H:%M:%S')} Spot={spot} PCR={pcr}"
+        print(debug_status["last_error"])
         process_telegram_alerts(idx, alerts, data, atm_strikes, atm)
         
     except Exception as e:

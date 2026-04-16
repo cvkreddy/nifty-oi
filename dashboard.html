@@ -197,7 +197,7 @@
 <div class="card" style="border-radius:0; border-left:none; border-right:none; margin-bottom:14px;">
   <div class="ch">
     <span class="ct info">📊 TECHNICALS & LEVELS (3m, 5m, 15m)</span>
-    <span class="cs" id="tech-bias-lbl" style="font-weight:700;font-size:13px">Bias: —</span>
+    <span id="tech-overall-bias" style="font-weight:700;font-size:14px;color:var(--text2)">—</span><span class="cs" id="tech-bias-lbl" style="font-weight:700;font-size:13px">Bias: —</span>
   </div>
   
   <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); background:rgba(0,184,255,0.02)">
@@ -385,6 +385,18 @@
     <div style="padding:12px 16px;">
       <svg id="straddle-hist-chart" width="100%" height="80" viewBox="0 0 400 80" preserveAspectRatio="none" style="display:block;"></svg>
       <div id="straddle-hist-labels" style="display:flex;justify-content:space-between;font-size:9px;color:var(--text2);font-family:var(--ui);margin-top:4px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid" style="padding-top:0">
+  <div class="card full" id="oi-analytics-card">
+    <div class="ch">
+      <span class="ct" style="color:var(--bull)">🔬 OI ANALYTICS — SMART MONEY SIGNALS</span>
+      <span class="cs" id="oi-analytics-time">—</span>
+    </div>
+    <div id="oi-analytics-body" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0">
+      <div class="loading" style="grid-column:1/-1">Waiting for data...</div>
     </div>
   </div>
 </div>
@@ -849,6 +861,7 @@ function render(d, hist) {
     if (intel.pcr_history) renderPCRHistory(intel.pcr_history);
     if (intel.straddle_history) renderStraddleHistory(intel.straddle_history);
     renderWallShifts(intel.wall_shifts || [], intel.max_ce_strike, intel.max_pe_strike);
+    if (intel.oi_analytics) renderOIAnalytics(intel.oi_analytics, d.indicators || {});
 
     Object.keys(d.chain).forEach(k => {
         mem.prevOIChg[k] = { call_chg: d.chain[k].call_oi_chg, put_chg: d.chain[k].put_oi_chg };
@@ -857,45 +870,71 @@ function render(d, hist) {
 
 function renderTech(tech) {
     if (!tech) return;
-    sText('tech-bias-lbl', `Bias: ${tech.overall_bias || '—'}`);
-    sText('tech-overall-bias', tech.overall_bias || '—');
-    sStyle('tech-overall-bias', 'color', msColor(tech.overall_bias));
+    sText('tech-bias-lbl', 'Bias: ' + (tech.overall_bias || '—'));
+    const biasEl = g('tech-overall-bias');
+    if (biasEl) { biasEl.textContent = tech.overall_bias || '—'; biasEl.style.color = msColor(tech.overall_bias); }
     sText('tech-confluence', tech.confluence || '—');
-    
-    ['3m', '5m', '15m'].forEach(tf => {
-        let d = tech[tf];
-        if (d) {
-            // MACD display
-            const macdVal  = d.macd     !== undefined && d.macd     !== null ? d.macd     : null;
-            const macdSig  = d.macd_signal !== undefined && d.macd_signal !== null ? d.macd_signal : null;
-            const macdHist = d.macd_hist   !== undefined && d.macd_hist   !== null ? d.macd_hist   : null;
-            let macdHtml = '';
-            if (macdVal !== null) {
-                const histColor = macdHist >= 0 ? 'var(--bull)' : 'var(--bear)';
-                const histW = Math.min(40, Math.abs(macdHist || 0) * 20);
-                macdHtml = `<div class="macd-row">
-                    <span style="color:var(--text2)">MACD</span>
-                    <span style="font-weight:700;color:${macdVal >= 0 ? 'var(--bull)' : 'var(--bear)'}">${macdVal}</span>
-                </div>
-                <div class="macd-row">
-                    <span style="color:var(--text2)">Signal</span>
-                    <span>${macdSig !== null ? macdSig : '—'}</span>
-                </div>
-                <div class="macd-row">
-                    <span style="color:var(--text2)">Hist</span>
-                    <span style="color:${histColor};font-weight:700">${macdHist !== null ? (macdHist >= 0 ? '+' : '') + macdHist : '—'}<span class="macd-hist-bar" style="width:${histW}px;background:${histColor};opacity:0.7"></span></span>
-                </div>`;
-            }
 
-            let html = `<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">Trend</span><span style="color:${msColor(d.trend)};font-weight:700">${d.trend || '—'}</span></div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--text2)">RSI</span><span>${d.rsi || '—'}</span></div>
-            ${macdHtml}
-            <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:6px; margin-top:4px;"></div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">Cross</span><span style="font-size:11px">${d.ts_start || '—'}</span></div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">Pullback</span><span style="font-size:11px">${d.ts_pull || '—'}</span></div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--text2)">SuperTrend</span><span style="font-size:11px">${d.ts_st || '—'}</span></div>`;
-            sHTML(`tech-${tf}-full`, html);
-        }
+    ['3m', '5m', '15m'].forEach(tf => {
+        const d = tech[tf];
+        const el = g('tech-' + tf + '-full');
+        if (!d || !el) return;
+
+        const rsiCol   = !d.rsi ? 'var(--text2)' : d.rsi >= 70 ? 'var(--bear)' : d.rsi <= 30 ? 'var(--bull)' : d.rsi >= 55 ? 'var(--bull)' : d.rsi <= 45 ? 'var(--bear)' : 'var(--warn)';
+        const adxCol   = !d.adx ? 'var(--text2)' : d.adx >= 25 ? 'var(--bull)' : d.adx >= 20 ? 'var(--warn)' : 'var(--text2)';
+        const pdiCol   = 'var(--bull)';
+        const ndiCol   = 'var(--bear)';
+        const trendCol = msColor(d.trend);
+        const stCol    = d.supertrend === 'BULLISH' ? 'var(--bull)' : d.supertrend === 'BEARISH' ? 'var(--bear)' : 'var(--text2)';
+
+        const row = (label, val, col, note) =>
+            '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
+            '<span style="color:var(--text2);font-size:11px">' + label + '</span>' +
+            '<span style="font-weight:700;color:' + (col||'var(--text)') + '">' + val + (note ? ' <span style="font-size:10px;color:var(--text2)">' + note + '</span>' : '') + '</span>' +
+            '</div>';
+
+        const pill = (label, col, bg) =>
+            '<span style="background:' + bg + ';color:' + col + ';font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;font-family:var(--ui)">' + label + '</span>';
+
+        // ADX strength bar
+        const adxW  = d.adx ? Math.min(100, d.adx * 2) : 0;
+        const adxBar = '<div style="width:60px;height:4px;background:var(--bg3);border-radius:2px;display:inline-block;vertical-align:middle;margin-left:4px;overflow:hidden">' +
+                       '<div style="width:' + adxW + '%;height:100%;background:' + adxCol + ';border-radius:2px"></div></div>';
+
+        const html =
+            // Status pills row
+            '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' +
+            pill(d.trend || 'N/A', trendCol, trendCol.replace(')', ',0.12)').replace('var','rgba').replace('(--','(').replace('(','(0,0,0,')) +
+            pill(d.supertrend || 'ST N/A', stCol, stCol.replace(')', ',0.12)').replace('var','rgba').replace('(--','(').replace('(','(0,0,0,')) +
+            '</div>' +
+            // EMA values
+            row('EMA 7', d.ema7 || '—', d.price_above_ema7 ? 'var(--bull)' : 'var(--bear)',
+                d.ema7 ? (d.price_above_ema7 ? '▲ Price above' : '▼ Price below') : '') +
+            row('EMA 15', d.ema15 || '—', d.ema7_above_ema15 ? 'var(--bull)' : 'var(--bear)',
+                d.ema15 ? (d.ema7_above_ema15 ? 'EMA7 above' : 'EMA7 below') : '') +
+            // RSI
+            row('RSI (14)',
+                (d.rsi || '—') + (d.rsi_5m_chg ? ' <span style="font-size:10px">(' + (d.rsi_5m_chg > 0 ? '+' : '') + d.rsi_5m_chg + ')</span>' : ''),
+                rsiCol, d.rsi_signal || '') +
+            // ADX — replaces MACD
+            '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
+            '<span style="color:var(--text2);font-size:11px">ADX (14)</span>' +
+            '<span style="font-weight:700;color:' + adxCol + '">' + (d.adx || '—') + adxBar + ' ' + (d.adx_signal || '') + '</span>' +
+            '</div>' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
+            '<span style="color:var(--text2);font-size:11px">+DI / −DI</span>' +
+            '<span><span style="color:var(--bull);font-weight:700">' + (d.pdi || '—') + '</span>' +
+            ' <span style="color:var(--text2)"> / </span>' +
+            '<span style="color:var(--bear);font-weight:700">' + (d.ndi || '—') + '</span></span>' +
+            '</div>' +
+            // Timestamps
+            '<div style="border-top:1px solid rgba(255,255,255,0.05);margin-top:5px;padding-top:5px">' +
+            row('EMA Cross', d.ts_start || '—', 'var(--info)', '') +
+            row('Pullback to', d.ts_pull  || '—', 'var(--warn)', '') +
+            row('SuperTrend',  d.ts_st    || '—', stCol, '') +
+            '</div>';
+
+        el.innerHTML = html;
     });
 }
 
@@ -1222,6 +1261,82 @@ function renderWallShifts(wallShifts, maxCeStrike, maxPeStrike) {
             ? `Max CE Wall: <span style="color:var(--bear);font-weight:700">${maxCeStrike}</span>&nbsp;&nbsp;Max PE Wall: <span style="color:var(--bull);font-weight:700">${maxPeStrike}</span>`
             : '';
     }
+}
+
+function renderOIAnalytics(oa, ind) {
+    const el = g('oi-analytics-body');
+    if (!el) return;
+    sText('oi-analytics-time', new Date().toLocaleTimeString('en-IN'));
+
+    const cell = (lbl, val, col, desc) =>
+        '<div style="padding:12px 14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)">' +
+        '<div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:5px">' + lbl + '</div>' +
+        '<div style="font-size:15px;font-weight:700;color:' + (col||'var(--text)') + ';margin-bottom:3px">' + val + '</div>' +
+        '<div style="font-size:11px;color:var(--text2);line-height:1.4">' + desc + '</div>' +
+        '</div>';
+
+    const bull = 'var(--bull)', bear = 'var(--bear)', warn = 'var(--warn)', info = 'var(--info)', text2 = 'var(--text2)';
+    const concCol = v => v > 60 ? bull : v > 40 ? warn : text2;
+    const biasCol = v => v === 'BULLISH' ? bull : v === 'BEARISH' ? bear : warn;
+
+    // ADX from indicators (top-level)
+    const adxVal = ind.adx;
+    const pdi    = ind.pdi;
+    const ndi    = ind.ndi;
+    const adxSig = !adxVal ? 'N/A' : adxVal >= 25 ? ((pdi||0) > (ndi||0) ? 'STRONG BULL' : 'STRONG BEAR') : adxVal >= 20 ? 'DEVELOPING' : 'RANGING';
+    const adxCol = !adxVal ? text2 : adxVal >= 25 ? bull : adxVal >= 20 ? warn : text2;
+    const adxW   = adxVal ? Math.min(100, adxVal * 2) : 0;
+    const adxBar = '<div style="width:50px;height:4px;background:var(--bg3);border-radius:2px;display:inline-block;vertical-align:middle;margin:0 4px;overflow:hidden"><div style="width:' + adxW + '%;height:100%;background:' + adxCol + ';border-radius:2px"></div></div>';
+
+    el.innerHTML =
+        cell('CE CONCENTRATION',
+            (oa.ce_concentration_pct || 0) + '%',
+            concCol(oa.ce_concentration_pct || 0),
+            'Top 3 CE strikes hold this % of total CE OI. High = market has a strong wall at specific levels.') +
+        cell('PE CONCENTRATION',
+            (oa.pe_concentration_pct || 0) + '%',
+            concCol(oa.pe_concentration_pct || 0),
+            'Top 3 PE strikes hold this % of total PE OI. High = strong support concentration.') +
+        cell('CE WALL STRENGTH',
+            'Strike ' + (oa.top_ce_strike || '—') + ' → ' + (oa.ce_wall_pct || 0) + '%',
+            oa.ce_wall_pct > 20 ? bear : text2,
+            'Single biggest resistance. If >20% — very strong wall, break is rare.') +
+        cell('PE WALL STRENGTH',
+            'Strike ' + (oa.top_pe_strike || '—') + ' → ' + (oa.pe_wall_pct || 0) + '%',
+            oa.pe_wall_pct > 20 ? bull : text2,
+            'Single biggest support. If >20% — very strong floor, breakdown is rare.') +
+        cell('NET DELTA EXPOSURE',
+            (oa.net_delta > 0 ? '+' : '') + (oa.net_delta || 0).toFixed(0) + ' → ' + (oa.delta_bias || '—'),
+            biasCol(oa.delta_bias || ''),
+            '+ve = Call writers dominate → bullish bias. −ve = Put writers dominate → bearish bias.') +
+        cell('OI VELOCITY',
+            oa.oi_accel_signal || '—',
+            oa.oi_accel_signal === 'ACCELERATING' ? warn : text2,
+            'Is OI being added faster or slower vs last cycle? Accelerating = bigger move likely.') +
+        cell('ADX STRENGTH',
+            (adxVal ? adxVal.toFixed(1) : '—') + adxBar + adxSig,
+            adxCol,
+            '+DI <span style="color:var(--bull);font-weight:700">' + (pdi||'—') + '</span>  −DI <span style="color:var(--bear);font-weight:700">' + (ndi||'—') + '</span>  |  ≥25=strong trend, <20=ranging') +
+        cell('PCR TREND',
+            (oa.pcr_trend || '—') + (oa.pcr_trend === 'RISING' ? ' ▲' : oa.pcr_trend === 'FALLING' ? ' ▼' : ' →'),
+            oa.pcr_trend === 'RISING' ? bull : oa.pcr_trend === 'FALLING' ? bear : text2,
+            'PCR direction over last 6 cycles. Rising PCR = more put writing = bullish.') +
+        cell('SMART MONEY FLOW',
+            (oa.sm_flow_bias || '—') + ' | Bulls +' + (oa.sm_bull_flow_l || 0) + 'L Bears +' + (oa.sm_bear_flow_l || 0) + 'L',
+            biasCol(oa.sm_flow_bias || ''),
+            'Who is writing more OI today? Bull = PE writers adding → support. Bear = CE writers adding → resistance.') +
+        cell('STRADDLE vs OPEN',
+            (oa.straddle_vs_open >= 0 ? '+' : '') + (oa.straddle_vs_open || 0) + ' pts',
+            oa.straddle_vs_open > 0 ? bear : oa.straddle_vs_open < 0 ? bull : text2,
+            '+ve = Premium expanded (fear rising). −ve = Premium decayed (calm market, theta burning).') +
+        cell('VOL/OI RATIO',
+            'CE ' + (oa.mkt_vol_oi_ce || 0).toFixed(2) + ' · PE ' + (oa.mkt_vol_oi_pe || 0).toFixed(2),
+            oa.mkt_vol_oi_ce > 1 ? warn : text2,
+            '>1.0 = High retail intraday activity. <0.5 = Positional/institutional. Low = Smart money.') +
+        cell('ATM ZONE OI CHANGE',
+            'CE ' + (oa.total_ce_chg_atm >= 0 ? '+' : '') + (oa.total_ce_chg_atm || 0) + 'L · PE ' + (oa.total_pe_chg_atm >= 0 ? '+' : '') + (oa.total_pe_chg_atm || 0) + 'L',
+            (oa.total_pe_chg_atm || 0) > (oa.total_ce_chg_atm || 0) ? bull : bear,
+            'Net OI change in ATM ±2 strikes this 5-min cycle. PE > CE adding = bullish pressure.');
 }
 
 setInterval(() => {
