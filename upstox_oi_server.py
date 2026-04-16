@@ -156,9 +156,7 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
     s_curr = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
     s_decay = intel.get("straddle_decay", 0)
     
-    t5 = intel.get("index_technicals", {}).get("5m", {})
     vix_mat = intel.get("vix_matrix", {})
-    
     boot_note = "<i>(Building baseline...)</i>" if is_boot else ""
     
     msg = (
@@ -280,36 +278,6 @@ load_token()
 def hdrs():
     load_token()
     return {"Authorization": f"Bearer {token_store['access_token']}", "Accept": "application/json", "Api-Version": "2.0"}
-
-@app.route("/login")
-def login(): 
-    return redirect(f"https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id={API_KEY}&redirect_uri={REDIRECT_URI}")
-
-@app.route("/callback")
-def callback():
-    code = request.args.get("code")
-    resp = requests.post("https://api.upstox.com/v2/login/authorization/token", data={"code": code, "client_id": API_KEY, "client_secret": API_SECRET, "redirect_uri": REDIRECT_URI, "grant_type": "authorization_code"}, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
-    data = resp.json()
-    if "access_token" not in data:
-        debug_status["last_error"] = f"Upstox Auth Rejected"
-        return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
-    
-    save_token(data.get("access_token"))
-    send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
-    
-    def run_init():
-        threads = []
-        for idx in INDICES: 
-            t = threading.Thread(target=refresh, args=(idx,), daemon=True)
-            t.start()
-            threads.append(t)
-            time.sleep(1)
-        for t in threads:
-            t.join(timeout=60)
-            
-    threading.Thread(target=run_init, daemon=True).start()
-    
-    return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p><script>setTimeout(()=>window.location.href="/",2000)</script></body></html>"""
 
 def fetch_spot(idx):
     sym = INDICES[idx]["key"]
@@ -656,9 +624,11 @@ def compute_tf_signals(idx, candles, label, st_period, st_multiplier):
         c_close = closes[i]
         
         try:
-            d_str = times[i][:10]
-            t_str = times[i][11:16]
-            c_time = f"{d_str[8:10]}-{d_str[5:7]} {t_str}" 
+            # FIX: More robust timestamp parsing
+            ts_parts = times[i].replace("T", " ").split(" ")
+            d_parts = ts_parts[0].split("-")
+            t_parts = ts_parts[1][:5]
+            c_time = f"{d_parts[2]}-{d_parts[1]} {t_parts}"
         except Exception: 
             c_time = "-"
 
@@ -790,12 +760,10 @@ def analyze_vix_price(spot, baseline_trend_val, vix, base_vix):
     elif not price_up and not vix_up: return {"signal": "WEAK BEARISH", "desc": "Price ↓ + VIX ↓ | Normal correction = Support might hold."}
     return {"signal": "NEUTRAL", "desc": "Market flat"}
 
-# 🚨 THE SILENT MEMORY BUG IS FIXED HERE
 def process_chain(idx, raw, spot):
     store = STORE[idx]
     now = time.time()
     
-    # Update baseline if needed
     if not store["baseline_oi"] and raw:
         store["baseline_oi"] = {str(item.get("strike_price")): {
             "call_oi": float(item.get("call_options", {}).get("market_data", {}).get("oi", 0) or 0),
@@ -804,7 +772,7 @@ def process_chain(idx, raw, spot):
             "put_ltp": float(item.get("put_options", {}).get("market_data", {}).get("ltp", 0) or 0)
         } for item in raw if item.get("strike_price")}
 
-    # Define exact target timestamps for memory
+    # FIX: Robust 5m and 10m lookbacks
     target_5m = now - 300
     target_10m = now - 600
 
@@ -812,21 +780,18 @@ def process_chain(idx, raw, spot):
     prev2_chain = {}
 
     if store["history"]:
-        # Find the snapshot closest to 5 minutes ago
-        valid_5m_records = [h for h in store["history"] if abs(h["ts"] - target_5m) < 120] 
-        if valid_5m_records:
-            prev_record = min(valid_5m_records, key=lambda x: abs(x["ts"] - target_5m))
+        valid_5m = [h for h in store["history"] if abs(h["ts"] - target_5m) <= 180] 
+        if valid_5m:
+            prev_record = min(valid_5m, key=lambda x: abs(x["ts"] - target_5m))
             prev_chain = prev_record.get("chain", {})
-        elif now - store["history"][0]["ts"] < 240:
-            # Fallback to the oldest record if we haven't hit 5m yet
+        elif len(store["history"]) > 0:
             prev_chain = store["history"][0].get("chain", {})
 
-        # Find the snapshot closest to 10 minutes ago
-        valid_10m_records = [h for h in store["history"] if abs(h["ts"] - target_10m) < 120]
-        if valid_10m_records:
-            prev2_record = min(valid_10m_records, key=lambda x: abs(x["ts"] - target_10m))
+        valid_10m = [h for h in store["history"] if abs(h["ts"] - target_10m) <= 180]
+        if valid_10m:
+            prev2_record = min(valid_10m, key=lambda x: abs(x["ts"] - target_10m))
             prev2_chain = prev2_record.get("chain", {})
-        elif len(store["history"]) >= 2 and not valid_5m_records:
+        elif len(store["history"]) >= 2 and not valid_5m:
             prev2_chain = store["history"][0].get("chain", {})
 
     base_chain = store["baseline_oi"]
@@ -1204,7 +1169,6 @@ def refresh(idx):
 
         oi_cache[idx]["data"] = data
         
-        # APPEND TO HISTORY BEFORE WRITING CACHE
         chain_snapshot = {str(s): {"call_oi": v["call_oi"], "put_oi": v["put_oi"], "call_ltp": v["call_ltp"], "put_ltp": v["put_ltp"]} for s,v in chain.items()}
         store["history"].append({"ts": time.time(), "chain": chain_snapshot, "spot": spot, "pcr": pcr})
         store["history"] = [x for x in store["history"] if time.time() - x["ts"] <= 900]
