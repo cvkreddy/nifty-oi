@@ -31,7 +31,7 @@ MANUAL_ACCESS_TOKEN = ""
 TELEGRAM_BOT_TOKEN = "8709594892:AAGcSqRJLvSr-gX405Nbp3LQ0kJPghYPax4"  
 TELEGRAM_CHAT_ID   = "7851805837"     
 
-CACHE_TTL    = 300  # 5-minute refresh
+CACHE_TTL    = 300  
 ATM_RANGE    = 5
 TOKEN_FILE   = "token_data.json"
 DATA_FILE    = "data_cache.json"  
@@ -46,7 +46,7 @@ INDICES = {
     "SENSEX": {"key": "BSE_INDEX|SENSEX", "step": 100}
 }
 
-EXPIRY_CACHE = {"NIFTY": None, "BANKNIFTY": None, "SENSEX": None}
+_EXPIRY_DAY_CACHE = {}
 
 STORE = {idx: {
     "baseline_oi": {}, "baseline_vix": None, "baseline_rsi": {},
@@ -60,8 +60,21 @@ STORE = {idx: {
     "straddle_history": [],   
 } for idx in INDICES}
 
-oi_cache = {idx: {"data": None} for idx in INDICES}
+oi_cache = {idx: {"data": None, "last_fetch": 0} for idx in INDICES}
 candle_cache_store = {idx: {"1m": [], "3m": [], "5m": [], "15m": [], "last_full_fetch": 0, "last_fetch_day": ""} for idx in INDICES}
+
+fetch_locks = {idx: threading.Lock() for idx in INDICES}
+background_started = False
+background_lock = threading.Lock()
+
+# 🚨 THE FIX: Gunicorn-safe background thread initialization
+@app.before_request
+def init_background():
+    global background_started
+    with background_lock:
+        if not background_started:
+            threading.Thread(target=loop, daemon=True).start()
+            background_started = True
 
 def reverse_engineer_baseline(idx):
     if len(STORE[idx]["baseline_oi"]) > 0: 
@@ -119,7 +132,7 @@ def save_server_state():
         with open(STATE_FILE, "w") as f: 
             json.dump(st, f)
     except Exception as e: 
-        print("State save failed safely:", e)
+        pass
 
 load_server_state()
 
@@ -153,10 +166,7 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
 
     s_curr = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
     s_decay = intel.get("straddle_decay", 0)
-    
-    t5 = intel.get("index_technicals", {}).get("5m", {})
     vix_mat = intel.get("vix_matrix", {})
-    
     boot_note = "<i>(Building baseline...)</i>" if is_boot else ""
     
     msg = (
@@ -186,8 +196,7 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
 
     strikes_to_show = [float(k) for k in atm_strikes.keys()]
     for s in sorted(strikes_to_show, reverse=True):
-        if abs(s - atm) > 2 * INDICES[idx]["step"]: 
-            continue
+        if abs(s - atm) > 2 * INDICES[idx]["step"]: continue
         v = {}
         for k_str, val in atm_strikes.items():
             if abs(float(k_str) - s) < 0.1:
@@ -218,15 +227,8 @@ def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
     current_mins = ist_now.hour * 60 + ist_now.minute
     today_str = ist_now.strftime("%Y-%m-%d")
     
-    holidays = [
-        "2026-01-15", "2026-01-26", "2026-03-03", "2026-03-26", 
-        "2026-03-31", "2026-04-03", "2026-04-14", "2026-05-01", 
-        "2026-05-28", "2026-06-26", "2026-09-14", "2026-10-02", 
-        "2026-10-20", "2026-11-10", "2026-11-24", "2026-12-25"
-    ]
-    
-    if ist_now.weekday() >= 5 or today_str in holidays or not (540 <= current_mins <= 935):
-        return
+    holidays = ["2026-01-15", "2026-01-26", "2026-03-03", "2026-03-26", "2026-03-31", "2026-04-03", "2026-04-14", "2026-05-01", "2026-05-28", "2026-06-26", "2026-09-14", "2026-10-02", "2026-10-20", "2026-11-10", "2026-11-24", "2026-12-25"]
+    if ist_now.weekday() >= 5 or today_str in holidays or not (540 <= current_mins <= 935): return
         
     current_time = time.time()
     store = STORE[idx]
@@ -249,16 +251,13 @@ def process_telegram_alerts(idx, alerts, data, atm_strikes, atm):
             summary = generate_5min_summary(idx, data, atm_strikes, atm)
             send_telegram_alert(summary)
             store["last_summary"] = current_time
-    except Exception: 
-        pass
+    except Exception: pass
 
 def save_token(token):
     token_store["access_token"] = token
     try:
-        with open(TOKEN_FILE, "w") as f: 
-            json.dump({"access_token": token}, f)
-    except Exception: 
-        pass
+        with open(TOKEN_FILE, "w") as f: json.dump({"access_token": token}, f)
+    except Exception: pass
 
 def load_token():
     if MANUAL_ACCESS_TOKEN and len(MANUAL_ACCESS_TOKEN) > 50:
@@ -268,10 +267,8 @@ def load_token():
         try:
             with open(TOKEN_FILE, "r") as f: 
                 saved = json.load(f).get("access_token")
-                if saved:
-                    token_store["access_token"] = saved
-        except Exception: 
-            pass
+                if saved: token_store["access_token"] = saved
+        except Exception: pass
 
 load_token()
 
@@ -284,15 +281,12 @@ def fetch_spot(idx):
     try:
         r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": sym}, headers=hdrs(), timeout=10)
         d = r.json().get("data", {})
-        
         if not d and idx == "NIFTY":
             r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": "NSE_INDEX|NIFTY 50"}, headers=hdrs(), timeout=10)
             d = r.json().get("data", {})
-            
         key = list(d.keys())[0] if d else None
         return float(d[key].get("last_price", 0)) if key else 0
-    except Exception: 
-        return 0
+    except Exception: return 0
 
 def fetch_futures(spot, idx):
     now = date.today()
@@ -309,8 +303,7 @@ def fetch_futures(spot, idx):
                 key = list(d.keys())[0]
                 p = d[key].get("last_price") or d[key].get("ltp") or 0
                 if p: return float(p)
-        except Exception: 
-            pass
+        except Exception: pass
     return round(spot * 1.005, 2)
 
 def fetch_vix():
@@ -320,8 +313,7 @@ def fetch_vix():
             d = r.json()["data"]
             key = list(d.keys())[0]
             return float(d[key].get("last_price") or d[key].get("ltp") or 0)
-    except Exception: 
-        pass
+    except Exception: pass
     return 0
 
 def _parse_candles(raw_list):
@@ -336,64 +328,37 @@ def _parse_candles(raw_list):
     return res
 
 def fetch_base_1m_candles(idx):
-    """
-    Smart fetch: full historical on first call, then only intraday on subsequent calls.
-    This reduces per-cycle API time from 30-80s down to 3-5s.
-    """
     safe_key = urllib.parse.quote(INDICES[idx]["key"])
     store    = candle_cache_store[idx]
     now_ts   = time.time()
-
-    # ── Intraday-only fetch (fast, ~2s) ────────────────────────────
     try:
         url_intra = f"https://api.upstox.com/v2/historical-candle/intraday/{safe_key}/1minute"
         r = requests.get(url_intra, headers=hdrs(), timeout=15)
-        if r.status_code == 200:
-            today_candles = _parse_candles(r.json().get("data", {}).get("candles", []))
-        else:
-            today_candles = []
-    except Exception as e:
-        print(f"[{idx}] Intraday candle fetch failed: {e}")
-        today_candles = []
+        today_candles = _parse_candles(r.json().get("data", {}).get("candles", [])) if r.status_code == 200 else []
+    except Exception: today_candles = []
 
-    # ── Merge today's candles with cached historical ─────────────────
     existing = store.get("1m", [])
     today_str = date.today().isoformat()
-
-    # Remove today's old entries from cache, replace with fresh intraday
     historical = [c for c in existing if c["time"][:10] != today_str]
-
-    # Full historical fetch only once per calendar day
-    # Mark attempted even if it fails, so we don't retry every 5 minutes
-    last_fetch_day = store.get("last_fetch_day", "")
-    today_str_plain = date.today().isoformat()
-    should_fetch_hist = (last_fetch_day != today_str_plain) and not historical
+    should_fetch_hist = (store.get("last_fetch_day", "") != today_str) and not historical
 
     if should_fetch_hist:
-        store["last_fetch_day"] = today_str_plain  # Mark attempted immediately
+        store["last_fetch_day"] = today_str
         try:
             to_dt   = date.today().strftime("%Y-%m-%d")
             from_dt = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
             url_h   = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_dt}/{from_dt}"
-            rh = requests.get(url_h, headers=hdrs(), timeout=25)
+            rh = requests.get(url_h, headers=hdrs(), timeout=15)
             if rh.status_code == 200:
                 hist_raw = _parse_candles(rh.json().get("data",{}).get("candles",[]))
                 historical = [c for c in hist_raw if c["time"][:10] != today_str]
                 store["last_full_fetch"] = now_ts
-                print(f"[{idx}] Historical candles: {len(historical)} candles (past days)")
-            else:
-                print(f"[{idx}] Historical candle HTTP {rh.status_code} — using intraday only")
-        except Exception as e:
-            print(f"[{idx}] Historical candle fetch failed: {e} — using intraday only")
+        except Exception: pass
 
-    # Combine historical + fresh intraday
     all_candles = historical + today_candles
     all_candles.sort(key=lambda x: x["time"])
-
-    # Keep last 5 days only
     cutoff = (datetime.now() - timedelta(days=5)).isoformat()
     all_candles = [c for c in all_candles if c["time"] >= cutoff]
-
     store["1m"] = all_candles
     return all_candles
 
@@ -404,130 +369,39 @@ def resample_candles(candles_1m, tf):
         try:
             dt = datetime.strptime(c["time"][:16], "%Y-%m-%dT%H:%M")
             gt = dt.replace(minute=(dt.minute // tf) * tf, second=0, microsecond=0)
-            if ct is None: 
-                ct = gt
-            if gt == ct: 
-                cg.append(c)
+            if ct is None: ct = gt
+            if gt == ct: cg.append(c)
             else:
                 res.append({"time": ct.isoformat(), "open": cg[0]["open"], "high": max(x["high"] for x in cg), "low": min(x["low"] for x in cg), "close": cg[-1]["close"], "vol": sum(x.get("vol", 0) for x in cg)})
-                cg = [c]
-                ct = gt
-        except Exception: 
-            pass
-    if cg: 
-        res.append({"time": ct.isoformat(), "open": cg[0]["open"], "high": max(x["high"] for x in cg), "low": min(x["low"] for x in cg), "close": cg[-1]["close"], "vol": sum(x.get("vol", 0) for x in cg)})
+                cg = [c]; ct = gt
+        except Exception: pass
+    if cg: res.append({"time": ct.isoformat(), "open": cg[0]["open"], "high": max(x["high"] for x in cg), "low": min(x["low"] for x in cg), "close": cg[-1]["close"], "vol": sum(x.get("vol", 0) for x in cg)})
     return res
 
-# Per-day expiry cache — avoids repeated API calls for same data
-_EXPIRY_DAY_CACHE = {}
-
-def get_expiry(idx):
-    """Get nearest valid expiry. Cached per-day to avoid repeated API calls.
-    Fallback: if today is Thu/Fri/Sat/Sun, use nearest upcoming Thursday.
-    If the API fails and it's expiry day, return TODAY (not next week).
-    """
-    today_str = date.today().isoformat()
-    cache_key = f"{idx}_{today_str}"
-    if cache_key in _EXPIRY_DAY_CACHE:
-        return _EXPIRY_DAY_CACHE[cache_key]
-
-    sym = INDICES[idx]["key"]
-    result = None
-
-    # Try Upstox API for accurate expiry list
-    for attempt in range(2):
-        try:
-            r = requests.get("https://api.upstox.com/v2/option/contract",
-                             params={"instrument_key": sym}, headers=hdrs(), timeout=8)
-            if r.status_code == 200:
-                items = r.json().get("data", [])
-                exps = []
-                for i in items:
-                    if isinstance(i, str) and i: exps.append(i)
-                    elif isinstance(i, dict) and i.get("expiry"): exps.append(i["expiry"])
-                exps = sorted(set(e for e in exps if e))
-                today = date.today().isoformat()
-                valid = [e for e in exps if e >= today]
-                if valid:
-                    result = valid[0]
-                    break
-            elif r.status_code == 429:
-                time.sleep(2)
-        except Exception as e:
-            print(f"[{idx}] get_expiry attempt {attempt+1} failed: {e}")
-            time.sleep(1)
-
-    if not result:
-        # Smart fallback: find nearest Thursday >= today
-        # CRITICAL: on Thursday itself (expiry day), return TODAY, not next week
-        today_dt  = date.today()
-        weekday   = today_dt.weekday()   # Monday=0 ... Thursday=3 ... Sunday=6
-        ist_hour  = (datetime.utcnow() + timedelta(hours=5, minutes=30)).hour
-        ist_min   = (datetime.utcnow() + timedelta(hours=5, minutes=30)).minute
-
-        if weekday == 3:  # Thursday
-            if ist_hour < 15 or (ist_hour == 15 and ist_min < 30):
-                # Before 3:30 PM IST — current week still active
-                result = today_dt.isoformat()
-            else:
-                # After 3:30 PM IST — move to next Thursday
-                result = (today_dt + timedelta(days=7)).isoformat()
-        else:
-            # Find next Thursday
-            days_until_thu = (3 - weekday) % 7
-            if days_until_thu == 0: days_until_thu = 7
-            result = (today_dt + timedelta(days=days_until_thu)).isoformat()
-
-        print(f"[{idx}] get_expiry fallback used: {result}")
-
-    _EXPIRY_DAY_CACHE[cache_key] = result
-    print(f"[{idx}] Expiry: {result}")
-    return result
-
-def fetch_chain(idx, expiry):
+# 🚨 THE FIX: Bulletproof Expiry scanning
+def fetch_chain_raw(idx, expiry):
     sym = INDICES[idx]["key"]
     keys_to_try = [sym]
     if idx == "NIFTY" and sym != "NSE_INDEX|NIFTY 50":
         keys_to_try.append("NSE_INDEX|NIFTY 50")
-
-    for attempt in range(2):
-        for key in keys_to_try:
-            try:
-                r = requests.get("https://api.upstox.com/v2/option/chain",
-                                 params={"instrument_key": key, "expiry_date": expiry},
-                                 headers=hdrs(), timeout=12)
-                if r.status_code == 429:
-                    print(f"[{idx}] Chain 429 rate limit, waiting 3s")
-                    time.sleep(3)
-                    continue
-                if r.status_code == 200:
-                    data = r.json().get("data", [])
-                    if data:
-                        if key != sym:
-                            INDICES[idx]["key"] = key
-                        print(f"[{idx}] Chain OK: {len(data)} strikes for {expiry}")
-                        return data
-                    else:
-                        print(f"[{idx}] Chain empty for expiry {expiry} (key={key}) status={r.status_code}")
-                else:
-                    print(f"[{idx}] Chain HTTP {r.status_code} for expiry {expiry}")
-            except Exception as e:
-                print(f"[{idx}] Chain attempt {attempt+1} failed: {e}")
-                time.sleep(1)
-        if attempt == 0:
-            time.sleep(2)
+    for key in keys_to_try:
+        try:
+            r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": key, "expiry_date": expiry}, headers=hdrs(), timeout=5)
+            if r.status_code == 200:
+                data = r.json().get("data", [])
+                if data:
+                    INDICES[idx]["key"] = key
+                    return data
+        except Exception: pass
     return []
 
 def compute_max_pain(chain):
     strikes = sorted([float(k) for k in chain.keys()])
     if not strikes: return 0
-    min_loss = float("inf")
-    mp = strikes[0]
+    min_loss, mp = float("inf"), strikes[0]
     for s in strikes:
         loss = sum(v["call_oi"]*(s-float(k)) if float(k)<s else v["put_oi"]*(float(k)-s) if float(k)>s else 0 for k,v in chain.items())
-        if loss < min_loss: 
-            min_loss = loss
-            mp = s
+        if loss < min_loss: min_loss, mp = loss, s
     return mp
 
 def get_vwap(candles):
@@ -541,20 +415,9 @@ def get_vwap(candles):
             cum_pv += ((c['high'] + c['low'] + c['close']) / 3) * v
     return round(cum_pv / cum_vol, 2) if cum_vol > 0 else None
 
-def calc_ema(prices, period):
-    if not prices: return None
-    if len(prices) < period: 
-        return round(sum(prices) / len(prices), 2)
-    k = 2.0 / (period + 1)
-    ema = sum(prices[:period]) / period
-    for p in prices[period:]: 
-        ema = p * k + ema * (1 - k)
-    return round(ema, 2)
-
 def calc_ema_array(prices, period):
     if not prices: return []
-    if len(prices) < period: 
-        return [round(sum(prices[:i+1])/(i+1), 2) for i in range(len(prices))]
+    if len(prices) < period: return [round(sum(prices[:i+1])/(i+1), 2) for i in range(len(prices))]
     emas = [None] * (period - 1)
     k = 2.0 / (period + 1)
     ema = sum(prices[:period]) / period
@@ -573,28 +436,14 @@ def calc_supertrend(candles, period=7, multiplier=3.0):
     atr = sum(trs[-period:]) / period
     hl2 = (highs[-1] + lows[-1]) / 2
     direction = "BULLISH" if closes[-1] > (hl2 - multiplier * atr) else "BEARISH"
-    st_val = round((hl2 - multiplier * atr) if direction == "BULLISH" else (hl2 + multiplier * atr), 2)
-    return direction, st_val
-
-def calc_rsi(closes, p=14):
-    if len(closes) < p+1: return None
-    gains = [max(closes[i]-closes[i-1],0) for i in range(1,len(closes))]
-    losses = [max(closes[i-1]-closes[i],0) for i in range(1,len(closes))]
-    ag = sum(gains[:p])/p
-    al = sum(losses[:p])/p
-    for i in range(p, len(gains)):
-        ag = (ag*(p-1)+gains[i])/p
-        al = (al*(p-1)+losses[i])/p
-    return 100.0 if al==0 else round(100-100/(1+ag/al), 2)
+    return direction, round((hl2 - multiplier * atr) if direction == "BULLISH" else (hl2 + multiplier * atr), 2)
 
 def calc_rsi_array(closes, p=14):
     if len(closes) < p+1: return []
     gains = [max(closes[i]-closes[i-1], 0) for i in range(1, len(closes))]
     losses = [max(closes[i-1]-closes[i], 0) for i in range(1, len(closes))]
-    if sum(losses[:p]) == 0: 
-        return [None]*p + [100.0] * (len(gains) - p + 1)
-    ag = sum(gains[:p])/p
-    al = sum(losses[:p])/p
+    if sum(losses[:p]) == 0: return [None]*p + [100.0] * (len(gains) - p + 1)
+    ag, al = sum(gains[:p])/p, sum(losses[:p])/p
     rsis = [None]*p
     rsis.append(100.0 if al==0 else 100 - (100/(1+ag/al)))
     for i in range(p, len(gains)):
@@ -603,12 +452,20 @@ def calc_rsi_array(closes, p=14):
         rsis.append(100.0 if al==0 else 100 - (100/(1+ag/al)))
     return rsis
 
-
+def calc_macd(prices, fast=12, slow=26, signal=9):
+    if len(prices) < slow + signal: return None, None, None
+    ema_fast, ema_slow = calc_ema_array(prices, fast), calc_ema_array(prices, slow)
+    macd_line = [round(f - s, 4) if f is not None and s is not None else None for f, s in zip(ema_fast, ema_slow)]
+    valid_macd = [x for x in macd_line if x is not None]
+    if len(valid_macd) < signal: return None, None, None
+    sig_arr = calc_ema_array(valid_macd, signal)
+    macd_val = valid_macd[-1]
+    sig_val  = sig_arr[-1] if sig_arr else None
+    hist_val = round(macd_val - sig_val, 4) if sig_val is not None else None
+    return round(macd_val, 2), round(sig_val, 2) if sig_val is not None else None, round(hist_val, 2) if hist_val is not None else None
 
 def calc_adx_full(candles, p=14):
-    """Returns (adx, +DI, -DI) — all three values for display."""
-    if not candles or len(candles) < p + 2:
-        return None, None, None
+    if not candles or len(candles) < p + 2: return None, None, None
     trl, pdml, ndml = [], [], []
     for i in range(1, len(candles)):
         h, l, pc = candles[i]["high"], candles[i]["low"], candles[i-1]["close"]
@@ -623,250 +480,145 @@ def calc_adx_full(candles, p=14):
         for i in range(n, len(lst)): sv = sv - sv/n + lst[i]; r.append(sv)
         return r
 
-    atr = sm(trl, p); pDM = sm(pdml, p); nDM = sm(ndml, p)
+    atr, pDM, nDM = sm(trl, p), sm(pdml, p), sm(ndml, p)
     dxl = []
     for i in range(len(atr)):
         if atr[i] == 0: continue
-        pdi = 100 * pDM[i] / atr[i]
-        ndi = 100 * nDM[i] / atr[i]
-        dx  = 100 * abs(pdi-ndi) / (pdi+ndi) if (pdi+ndi) else 0
-        dxl.append((dx, pdi, ndi))
+        pdi, ndi = 100 * pDM[i] / atr[i], 100 * nDM[i] / atr[i]
+        dxl.append((100 * abs(pdi-ndi) / (pdi+ndi) if (pdi+ndi) else 0, pdi, ndi))
     if not dxl: return None, None, None
-    last_pdi = round(dxl[-1][1], 1)
-    last_ndi = round(dxl[-1][2], 1)
-    adx_val  = round(sum(x[0] for x in dxl[-p:]) / min(p, len(dxl)), 2)
-    return adx_val, last_pdi, last_ndi
-
-def calc_adx(candles, p=14):
-    """Backwards compatible — returns just ADX."""
-    adx, _, _ = calc_adx_full(candles, p)
-    return adx
+    return round(sum(x[0] for x in dxl[-p:]) / min(p, len(dxl)), 2), round(dxl[-1][1], 1), round(dxl[-1][2], 1)
 
 def get_indicators(candles):
     if not candles or len(candles) < 16:
         return {"rsi": None, "adx": None, "pdi": None, "ndi": None, "candle_count": len(candles) if candles else 0}
     closes  = [c["close"] for c in candles]
-    rsi_val = calc_rsi(closes, 14)
+    rsis = calc_rsi_array(closes, 14)
     adx_val, pdi, ndi = calc_adx_full(candles, 14)
-    # ADX signal
-    if adx_val is None:
-        adx_sig = "N/A"
-    elif adx_val >= 25 and pdi and ndi:
-        adx_sig = "STRONG BULL" if pdi > ndi else "STRONG BEAR"
-    elif adx_val >= 20:
-        adx_sig = "DEVELOPING"
-    else:
-        adx_sig = "WEAK/RANGING"
-    return {
-        "rsi": rsi_val, "adx": adx_val, "pdi": pdi, "ndi": ndi,
-        "adx_signal": adx_sig, "candle_count": len(candles)
-    }
+    adx_sig = "N/A"
+    if adx_val is not None:
+        adx_sig = ("STRONG BULL" if (pdi or 0) > (ndi or 0) else "STRONG BEAR") if adx_val >= 25 else "DEVELOPING" if adx_val >= 20 else "WEAK/RANGING"
+    return {"rsi": rsis[-1] if rsis else None, "adx": adx_val, "pdi": pdi, "ndi": ndi, "adx_signal": adx_sig, "candle_count": len(candles)}
 
 def extract_levels(candles, spot):
     if not candles: return {}
     dates = sorted(list(set([c["time"][:10] for c in candles])))
     if not dates: return {}
-    
-    today_str = dates[-1]
-    yest_str = dates[-2] if len(dates) > 1 else None
-    
-    today_candles = [c for c in candles if c["time"][:10] == today_str]
-    yest_candles = [c for c in candles if c["time"][:10] == yest_str] if yest_str else []
+    today_candles = [c for c in candles if c["time"][:10] == dates[-1]]
+    yest_candles = [c for c in candles if c["time"][:10] == dates[-2]] if len(dates) > 1 else []
     
     yest_high = max([c["high"] for c in yest_candles]) if yest_candles else None
     yest_low = min([c["low"] for c in yest_candles]) if yest_candles else None
-    
     today_open = today_candles[0]["open"] if today_candles else None
     
-    orb_high, orb_low = None, None
     orb_candles = [c for c in today_candles if "09:15" <= c["time"][11:16] <= "09:29"]
-    if len(orb_candles) >= 1:
-        orb_high = max([c["high"] for c in orb_candles])
-        orb_low = min([c["low"] for c in orb_candles])
+    orb_high = max([c["high"] for c in orb_candles]) if orb_candles else None
+    orb_low = min([c["low"] for c in orb_candles]) if orb_candles else None
         
-    orb_status = "IN ORB RANGE"
-    orb_time = "-"
+    orb_status, orb_time = "IN ORB RANGE", "-"
     if orb_high and orb_low:
-        if spot > orb_high: orb_status = "ABOVE ORB (BULLISH)"
-        elif spot < orb_low: orb_status = "BELOW ORB (BEARISH)"
-        
+        orb_status = "ABOVE ORB (BULLISH)" if spot > orb_high else "BELOW ORB (BEARISH)" if spot < orb_low else orb_status
         for c in today_candles:
-            t = c["time"][11:16]
-            if t > "09:29":
-                if c["high"] > orb_high and orb_status.startswith("ABOVE"):
-                    orb_time = t
-                    break
-                elif c["low"] < orb_low and orb_status.startswith("BELOW"):
-                    orb_time = t
-                    break
+            if c["time"][11:16] > "09:29":
+                if c["high"] > orb_high and "ABOVE" in orb_status: orb_time = c["time"][11:16]; break
+                elif c["low"] < orb_low and "BELOW" in orb_status: orb_time = c["time"][11:16]; break
 
-    yest_status = "INSIDE YEST RANGE"
-    yest_time = "-"
+    yest_status, yest_time = "INSIDE YEST RANGE", "-"
     if yest_high and yest_low:
-        if spot > yest_high: yest_status = "ABOVE YEST HIGH"
-        elif spot < yest_low: yest_status = "BELOW YEST LOW"
-        
+        yest_status = "ABOVE YEST HIGH" if spot > yest_high else "BELOW YEST LOW" if spot < yest_low else yest_status
         for c in today_candles:
-            t = c["time"][11:16]
-            if c["high"] > yest_high and yest_status.startswith("ABOVE"):
-                yest_time = t
-                break
-            elif c["low"] < yest_low and yest_status.startswith("BELOW"):
-                yest_time = t
-                break
+            if c["high"] > yest_high and "ABOVE" in yest_status: yest_time = c["time"][11:16]; break
+            elif c["low"] < yest_low and "BELOW" in yest_status: yest_time = c["time"][11:16]; break
                 
-    return {
-        "today_open": today_open,
-        "yest_high": yest_high, "yest_low": yest_low,
-        "orb_high": orb_high, "orb_low": orb_low,
-        "orb_status": orb_status, "orb_time": orb_time,
-        "yest_status": yest_status, "yest_time": yest_time
-    }
+    return {"today_open": today_open, "yest_high": yest_high, "yest_low": yest_low, "orb_high": orb_high, "orb_low": orb_low, "orb_status": orb_status, "orb_time": orb_time, "yest_status": yest_status, "yest_time": yest_time}
 
 def compute_tf_signals(idx, candles, label, st_period=7, st_multiplier=3.0):
-    """EMA trend, Supertrend, RSI, ADX. Crossover times recorded for ALL days."""
-    if not candles or len(candles) < 15:
-        return {"label": label, "candle_count": len(candles) if candles else 0,
-                "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-",
-                "ema_crossovers": []}
-
-    store  = STORE[idx]
-    vwap   = get_vwap(candles)
+    if not candles or len(candles) < 15: 
+        return {"label": label, "candle_count": len(candles) if candles else 0, "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-", "ema_crossovers": []}
+    
+    store = STORE[idx]
+    vwap = get_vwap(candles)
     closes = [c["close"] for c in candles]
-    times  = [c["time"]  for c in candles]
-
-    ema7_arr  = calc_ema_array(closes, 7)
-    ema15_arr = calc_ema_array(closes, 15)
-    ema21_arr = calc_ema_array(closes, 21)
-
+    times = [c["time"] for c in candles]
+    
+    ema7_arr, ema15_arr, ema21_arr = calc_ema_array(closes, 7), calc_ema_array(closes, 15), calc_ema_array(closes, 21)
     today_str = datetime.now().strftime("%Y-%m-%d")
-
+    
     trend_start = pull_time = cont_time = st_time = "-"
-    is_bull = None
-    await_pull_b = await_pull_s = False
-    curr_st = None
-
-    # Collect ALL EMA crossover events across all available candle history
-    ema_crossovers = []  # list of {"time": "...", "dir": "BULL"/"BEAR", "close": ...}
+    is_bull, await_pull_b, await_pull_s, curr_st = None, False, False, None
+    ema_crossovers = []
 
     for i in range(15, len(candles)):
         e7, e15 = ema7_arr[i], ema15_arr[i]
-        if e7 is None or e15 is None:
-            continue
+        if e7 is None or e15 is None: continue
         c_close = closes[i]
-        raw_t   = times[i]
+        raw_t = times[i]
         try:
-            date_part = raw_t[:10]
-            time_part = raw_t[11:16]
-            is_today  = (date_part == today_str)
-            c_time    = ("Today " + time_part) if is_today else (date_part[8:10] + "-" + date_part[5:7] + " " + time_part)
-        except Exception:
-            is_today = False
-            c_time   = "-"
+            d_parts = raw_t[:10].split("-"); t_parts = raw_t[11:16]
+            is_today = (raw_t[:10] == today_str)
+            c_time = f"Today {t_parts}" if is_today else f"{d_parts[2]}-{d_parts[1]} {t_parts}"
+        except: is_today, c_time = False, "-"
 
         curr_bull = e7 > e15
-
+        
         if is_bull is None:
-            is_bull = curr_bull
-            # Record first candle as initial trend direction (always)
-            trend_start = c_time
-            ema_crossovers.append({
-                "time": c_time, "raw_time": raw_t[:16],
-                "dir": "BULL" if curr_bull else "BEAR",
-                "close": round(c_close, 2),
-                "ema7": round(e7, 2), "ema15": round(e15, 2),
-                "is_today": is_today, "label": "Initial"
-            })
+            is_bull = curr_bull; trend_start = c_time
+            ema_crossovers.append({"time": c_time, "dir": "BULL" if curr_bull else "BEAR", "close": round(c_close, 2), "is_today": is_today, "label": "Initial"})
             if curr_bull: await_pull_b = True
-            else:         await_pull_s = True
+            else: await_pull_s = True
         elif is_bull != curr_bull:
-            # EMA 7 crossed EMA 15 — record for ALL days
-            trend_start = c_time
-            pull_time   = "-"
-            cont_time   = "-"
-            ema_crossovers.append({
-                "time": c_time, "raw_time": raw_t[:16],
-                "dir": "BULL" if curr_bull else "BEAR",
-                "close": round(c_close, 2),
-                "ema7": round(e7, 2), "ema15": round(e15, 2),
-                "is_today": is_today, "label": "Cross ▲" if curr_bull else "Cross ▼"
-            })
+            trend_start, pull_time, cont_time = c_time, "-", "-"
+            ema_crossovers.append({"time": c_time, "dir": "BULL" if curr_bull else "BEAR", "close": round(c_close, 2), "is_today": is_today, "label": "Cross ▲" if curr_bull else "Cross ▼"})
             is_bull = curr_bull
             if curr_bull: await_pull_b = True
-            else:         await_pull_s = True
-
+            else: await_pull_s = True
+                
         if is_bull:
-            if await_pull_b and (c_close < e7 or c_close < e15):
-                pull_time = c_time; cont_time = "..."
-                await_pull_b = False
-            elif not await_pull_b and c_close > e7:
-                cont_time = c_time
-                await_pull_b = True
+            if await_pull_b and (c_close < e7 or c_close < e15): pull_time = c_time; cont_time = "..."; await_pull_b = False
+            elif not await_pull_b and c_close > e7: cont_time = c_time; await_pull_b = True
         else:
-            if await_pull_s and (c_close > e7 or c_close > e15):
-                pull_time = c_time; cont_time = "..."
-                await_pull_s = False
-            elif not await_pull_s and c_close < e7:
-                cont_time = c_time
-                await_pull_s = True
-
+            if await_pull_s and (c_close > e7 or c_close > e15): pull_time = c_time; cont_time = "..."; await_pull_s = False
+            elif not await_pull_s and c_close < e7: cont_time = c_time; await_pull_s = True
+                
         s_dir, _ = calc_supertrend(candles[:i+1], st_period, st_multiplier)
-        if curr_st is None:
-            curr_st = s_dir
-            st_time = c_time
-        elif curr_st != s_dir:
-            st_time = c_time
-            curr_st = s_dir
+        if curr_st is None: curr_st, st_time = s_dir, c_time
+        elif curr_st != s_dir: st_time, curr_st = c_time, s_dir
 
-    # Keep last 20 crossovers, most recent first
-    ema_crossovers = list(reversed(ema_crossovers[-20:]))
-
-    ema7  = ema7_arr[-1]
-    ema15 = ema15_arr[-1]
-    ema21 = ema21_arr[-1] if ema21_arr else None
-    price = closes[-1]
+    ema7, ema15, ema21, price = ema7_arr[-1], ema15_arr[-1], (ema21_arr[-1] if ema21_arr else None), closes[-1]
     st_dir, st_val = calc_supertrend(candles, st_period, st_multiplier)
-
+    
     trend = "N/A"
     if ema7 and ema15:
-        if price > ema7 and ema7 > ema15:   trend = "STRONG BULLISH"
+        if price > ema7 and ema7 > ema15: trend = "STRONG BULLISH"
         elif price > ema7 and ema7 < ema15: trend = "RECOVERING"
         elif price < ema7 and ema7 > ema15: trend = "MILD BEARISH"
-        else:                                trend = "STRONG BEARISH"
+        else: trend = "STRONG BEARISH"
 
-    rsis      = calc_rsi_array(closes, 14)
-    curr_rsi  = round(rsis[-1], 2) if rsis and rsis[-1] is not None else 0
-    prev_rsi  = round(rsis[-2], 2) if rsis and len(rsis) > 1 and rsis[-2] is not None else curr_rsi
-    base_r    = store["baseline_rsi"].get(label)
-    if not base_r and curr_rsi > 0:
-        store["baseline_rsi"][label] = curr_rsi
-        base_r = curr_rsi
-    rsi_5m_chg  = round(curr_rsi - prev_rsi, 2) if curr_rsi else 0
-    rsi_day_chg = round(curr_rsi - base_r,   2) if curr_rsi and base_r else 0
-    rsi_sig = ("OVERBOUGHT" if curr_rsi >= 70 else "OVERSOLD" if curr_rsi <= 30 else
-               "BULLISH" if curr_rsi >= 55 else "BEARISH" if curr_rsi <= 45 else "NEUTRAL") if curr_rsi else None
+    rsis = calc_rsi_array(closes, 14)
+    curr_rsi = round(rsis[-1], 2) if rsis and rsis[-1] is not None else 0
+    prev_rsi = round(rsis[-2], 2) if rsis and len(rsis) > 1 and rsis[-2] is not None else curr_rsi
+    
+    base_r = store["baseline_rsi"].get(label)
+    if not base_r and curr_rsi > 0: store["baseline_rsi"][label] = base_r = curr_rsi
+    rsi_5m_chg = round(curr_rsi - prev_rsi, 2) if curr_rsi else 0
+    rsi_day_chg = round(curr_rsi - base_r, 2) if curr_rsi and base_r else 0
+    rsi_sig = ("OVERBOUGHT" if curr_rsi >= 70 else "OVERSOLD" if curr_rsi <= 30 else "BULLISH" if curr_rsi >= 55 else "BEARISH" if curr_rsi <= 45 else "NEUTRAL") if curr_rsi else None
 
+    macd_val, macd_sig, macd_hist = calc_macd(closes)
     adx_val, pdi, ndi = calc_adx_full(candles, 14)
-    adx_sig = ("STRONG BULL" if (pdi or 0) > (ndi or 0) else "STRONG BEAR") if adx_val and adx_val >= 25 else (
-              "DEVELOPING" if adx_val and adx_val >= 20 else "RANGING")
+    adx_sig = ("STRONG BULL" if (pdi or 0) > (ndi or 0) else "STRONG BEAR") if adx_val and adx_val >= 25 else ("DEVELOPING" if adx_val and adx_val >= 20 else "RANGING")
 
     return {
-        "label": label, "candle_count": len(candles),
-        "current_price": round(price, 2) if price else None,
-        "ema7": ema7, "ema15": ema15, "ema21": ema21, "vwap": vwap,
-        "price_above_ema7":  (price > ema7)  if ema7  else None,
-        "price_above_ema15": (price > ema15) if ema15 else None,
-        "ema7_above_ema15":  (ema7 > ema15)  if (ema7 and ema15) else None,
-        "price_above_vwap":  (price > vwap)  if vwap  else None,
-        "trend": trend,
-        "supertrend": st_dir, "supertrend_val": st_val,
-        "rsi": curr_rsi if curr_rsi > 0 else None,
-        "rsi_signal": rsi_sig,
-        "rsi_5m_chg": rsi_5m_chg, "rsi_day_chg": rsi_day_chg,
+        "label": label, "candle_count": len(candles), "current_price": round(price, 2) if price else None, 
+        "ema7": ema7, "ema15": ema15, "ema21": ema21, "vwap": vwap, 
+        "price_above_ema7": (price > ema7) if ema7 else None, "price_above_ema15": (price > ema15) if ema15 else None, 
+        "ema7_above_ema15": (ema7 > ema15) if (ema7 and ema15) else None, "price_above_vwap": (price > vwap) if vwap else None,
+        "trend": trend, "supertrend": st_dir, "supertrend_val": st_val, 
+        "rsi": curr_rsi if curr_rsi > 0 else None, "rsi_signal": rsi_sig, "rsi_5m_chg": rsi_5m_chg, "rsi_day_chg": rsi_day_chg,
         "adx": adx_val, "pdi": pdi, "ndi": ndi, "adx_signal": adx_sig,
-        "ts_start": trend_start, "ts_pull": pull_time,
-        "ts_cont": cont_time,    "ts_st":   st_time,
-        "ema_crossovers": ema_crossovers,
+        "macd": macd_val, "macd_signal": macd_sig, "macd_hist": macd_hist,
+        "ts_start": trend_start, "ts_pull": pull_time, "ts_cont": cont_time, "ts_st": st_time,
+        "ema_crossovers": list(reversed(ema_crossovers[-20:]))
     }
 
 def price_oi_matrix(spot, prev_spot, chain, atm, idx):
@@ -902,11 +654,8 @@ def market_state(pcr, adx, oi_matrix_signal, alerts, vix):
     else: return "NEUTRAL / WAIT"
 
 def analyze_vix_price(spot, baseline_trend_val, vix, base_vix):
-    if not baseline_trend_val or not base_vix or base_vix == 0: 
-        return {"signal": "WAITING", "desc": "Need more data for baseline comparison"}
-    price_up = spot > baseline_trend_val
-    vix_up = vix > base_vix
-    
+    if not baseline_trend_val or not base_vix or base_vix == 0: return {"signal": "WAITING", "desc": "Need more data for baseline comparison"}
+    price_up, vix_up = spot > baseline_trend_val, vix > base_vix
     if price_up and vix_up: return {"signal": "STRONG BULLISH", "desc": "Price ↑ + VIX ↑ | Fear rising + Rally = Breakout expected."}
     elif price_up and not vix_up: return {"signal": "WEAK BULLISH", "desc": "Price ↑ + VIX ↓ | Move lacks power = Resistance might hold."}
     elif not price_up and vix_up: return {"signal": "STRONG BEARISH", "desc": "Price ↓ + VIX ↑ | Panic selling = Support might break."}
@@ -917,46 +666,32 @@ def process_chain(idx, raw, spot):
     store = STORE[idx]
     now = time.time()
     
-    # --- CRITICAL FIX: Safe OI extraction ---
     if not store["baseline_oi"] and raw:
         store["baseline_oi"] = {}
         for item in raw:
             s = str(item.get("strike_price"))
             if s and s != "None":
-                co = item.get("call_options") or {}
-                po = item.get("put_options") or {}
-                cmd = co.get("market_data") or {}
-                pmd = po.get("market_data") or {}
-                store["baseline_oi"][s] = {
-                    "call_oi": float(cmd.get("oi") or 0),
-                    "put_oi": float(pmd.get("oi") or 0),
-                    "call_ltp": float(cmd.get("ltp") or 0),
-                    "put_ltp": float(pmd.get("ltp") or 0)
-                }
+                cmd, pmd = item.get("call_options", {}).get("market_data", {}), item.get("put_options", {}).get("market_data", {})
+                store["baseline_oi"][s] = {"call_oi": float(cmd.get("oi") or 0), "put_oi": float(pmd.get("oi") or 0), "call_ltp": float(cmd.get("ltp") or 0), "put_ltp": float(pmd.get("ltp") or 0)}
 
-    target_5m = now - 300
-    target_10m = now - 600
-
-    prev_chain = {}
-    prev2_chain = {}
+    target_5m, target_10m = now - 300, now - 600
+    prev_chain, prev2_chain = {}, {}
 
     if store["history"]:
-        # 5-min window: look for entry between 3-8 minutes ago (wider window for safety)
-        valid_5m = [h for h in store["history"] if 180 <= (now - h["ts"]) <= 480]
-        if valid_5m:
-            prev_record = min(valid_5m, key=lambda x: abs(x["ts"] - target_5m))
-            prev_chain = prev_record.get("chain", {})
+        # 🚨 THE FIX: Safe memory fallback ensures we NEVER compare current snapshot to itself!
+        valid_5m = [h for h in store["history"] if 120 <= (now - h["ts"]) <= 480]
+        if valid_5m: prev_chain = min(valid_5m, key=lambda x: abs(x["ts"] - target_5m)).get("chain", {})
         else:
-            # Fallback: use the oldest entry in history that is at least 60 seconds old
-            old_entries = [h for h in store["history"] if (now - h["ts"]) >= 60]
-            if old_entries:
-                prev_chain = old_entries[0].get("chain", {})
+            old_entries = [h for h in store["history"] if (now - h["ts"]) >= 120]
+            if old_entries: prev_chain = min(old_entries, key=lambda x: abs(x["ts"] - target_5m)).get("chain", {})
+            elif len(store["history"]) > 0: prev_chain = store["history"][0].get("chain", {})
 
-        # 10-min window: look for entry between 7-14 minutes ago
-        valid_10m = [h for h in store["history"] if 420 <= (now - h["ts"]) <= 840]
-        if valid_10m:
-            prev2_record = min(valid_10m, key=lambda x: abs(x["ts"] - target_10m))
-            prev2_chain = prev2_record.get("chain", {})
+        valid_10m = [h for h in store["history"] if 480 <= (now - h["ts"]) <= 840]
+        if valid_10m: prev2_chain = min(valid_10m, key=lambda x: abs(x["ts"] - target_10m)).get("chain", {})
+        else:
+            older = [h for h in store["history"] if (now - h["ts"]) >= 300]
+            if older: prev2_chain = min(older, key=lambda x: abs(x["ts"] - target_10m)).get("chain", {})
+            else: prev2_chain = prev_chain
 
     base_chain = store["baseline_oi"]
     result = {}
@@ -965,77 +700,44 @@ def process_chain(idx, raw, spot):
         strike = float(item.get("strike_price", 0))
         if not strike: continue
         
-        # --- CRITICAL FIX: Safe OI extraction ---
-        ce = item.get("call_options") or {}
-        pe = item.get("put_options") or {}
-        ce_md = ce.get("market_data") or {}
-        pe_md = pe.get("market_data") or {}
-        ce_gk = ce.get("option_greeks") or {}
-        pe_gk = pe.get("option_greeks") or {}
+        ce_md, pe_md = item.get("call_options", {}).get("market_data", {}), item.get("put_options", {}).get("market_data", {})
+        ce_gk, pe_gk = item.get("call_options", {}).get("option_greeks", {}), item.get("put_options", {}).get("option_greeks", {})
         
-        call_oi = float(ce_md.get("oi") or 0)
-        put_oi = float(pe_md.get("oi") or 0)
-        call_vol = float(ce_md.get("volume") or 0)
-        put_vol = float(pe_md.get("volume") or 0)
-        call_ltp = float(ce_md.get("ltp") or ce_md.get("last_price") or 0)
-        put_ltp = float(pe_md.get("ltp") or pe_md.get("last_price") or 0)
-        call_open = float(ce_md.get("open_price") or 0)
-        put_open  = float(pe_md.get("open_price") or 0)
+        call_oi, put_oi = float(ce_md.get("oi") or 0), float(pe_md.get("oi") or 0)
+        call_vol, put_vol = float(ce_md.get("volume") or 0), float(pe_md.get("volume") or 0)
+        call_ltp, put_ltp = float(ce_md.get("ltp") or ce_md.get("last_price") or 0), float(pe_md.get("ltp") or pe_md.get("last_price") or 0)
+        call_open, put_open = float(ce_md.get("open_price") or 0), float(pe_md.get("open_price") or 0)
         
         s_str = str(strike)
-        prev_v = prev_chain.get(s_str, {})
-        base_v = base_chain.get(s_str, {})
-        prev2_v = prev2_chain.get(s_str, {})
+        prev_v, base_v, prev2_v = prev_chain.get(s_str, {}), base_chain.get(s_str, {}), prev2_chain.get(s_str, {})
 
-        c_oi_5m = call_oi - prev_v.get("call_oi", call_oi)
-        p_oi_5m = put_oi - prev_v.get("put_oi", put_oi)
-
-        c_oi_prev5m = prev_v.get("call_oi", call_oi) - prev2_v.get("call_oi", prev_v.get("call_oi", call_oi))
-        p_oi_prev5m = prev_v.get("put_oi", put_oi) - prev2_v.get("put_oi", prev_v.get("put_oi", put_oi))
+        c_oi_5m, p_oi_5m = call_oi - prev_v.get("call_oi", call_oi), put_oi - prev_v.get("put_oi", put_oi)
+        c_oi_prev5m, p_oi_prev5m = prev_v.get("call_oi", call_oi) - prev2_v.get("call_oi", prev_v.get("call_oi", call_oi)), prev_v.get("put_oi", put_oi) - prev2_v.get("put_oi", prev_v.get("put_oi", put_oi))
         
-        c_oi_velocity = round(c_oi_5m - c_oi_prev5m, 2)
-        p_oi_velocity = round(p_oi_5m - p_oi_prev5m, 2)
-        
-        c_oi_d = call_oi - base_v.get("call_oi", call_oi)
-        p_oi_d = put_oi - base_v.get("put_oi", put_oi)
-        
-        c_ltp_5m = call_ltp - prev_v.get("call_ltp", call_ltp)
-        p_ltp_5m = put_ltp - prev_v.get("put_ltp", put_ltp)
-
-        c_prev_close = ce_md.get("previous_close") or ce_md.get("close_price")
-        p_prev_close = pe_md.get("previous_close") or pe_md.get("close_price")
-        c_ltp_d = call_ltp - c_prev_close if c_prev_close else (call_ltp - base_v.get("call_ltp", call_ltp))
-        p_ltp_d = put_ltp - p_prev_close if p_prev_close else (put_ltp - base_v.get("put_ltp", put_ltp))
+        c_ltp_d = call_ltp - (ce_md.get("previous_close") or ce_md.get("close_price") or base_v.get("call_ltp", call_ltp))
+        p_ltp_d = put_ltp - (pe_md.get("previous_close") or pe_md.get("close_price") or base_v.get("put_ltp", put_ltp))
 
         result[strike] = {
-            "strike": strike,
-            "call_open": call_open, "put_open": put_open,
-            "call_oi": call_oi, "call_oi_chg": round(c_oi_5m, 2), "call_oi_chg_day": round(c_oi_d, 2),
-            "call_oi_velocity": c_oi_velocity,
-            "call_vol": call_vol, "put_vol": put_vol,
-            "call_vol_oi": round(call_vol/call_oi, 2) if call_oi else 0,
-            "call_iv": round(float(ce_gk.get("iv") or 0)*100,2), 
-            "call_ltp": call_ltp, "call_ltp_chg": round(c_ltp_5m, 2), "call_ltp_chg_day": round(c_ltp_d, 2),
-            "call_delta": float(ce_gk.get("delta") or 0), "call_gamma": float(ce_gk.get("gamma") or 0), 
-            "call_theta": float(ce_gk.get("theta") or 0), "call_vega": float(ce_gk.get("vega") or 0),
+            "strike": strike, "call_open": call_open, "put_open": put_open,
+            "call_oi": call_oi, "call_oi_chg": round(c_oi_5m, 2), "call_oi_chg_day": round(call_oi - base_v.get("call_oi", call_oi), 2),
+            "call_oi_velocity": round(c_oi_5m - c_oi_prev5m, 2), "call_vol": call_vol, "put_vol": put_vol,
+            "call_vol_oi": round(call_vol/call_oi, 2) if call_oi else 0, "call_iv": round(float(ce_gk.get("iv") or 0)*100, 2), 
+            "call_ltp": call_ltp, "call_ltp_chg": round(call_ltp - prev_v.get("call_ltp", call_ltp), 2), "call_ltp_chg_day": round(c_ltp_d, 2),
+            "call_delta": float(ce_gk.get("delta") or 0), "call_gamma": float(ce_gk.get("gamma") or 0), "call_theta": float(ce_gk.get("theta") or 0), "call_vega": float(ce_gk.get("vega") or 0),
             "call_gex": float(ce_gk.get("gamma") or 0) * call_oi * 25,
             
-            "put_oi": put_oi, "put_oi_chg": round(p_oi_5m, 2), "put_oi_chg_day": round(p_oi_d, 2),
-            "put_oi_velocity": p_oi_velocity,
-            "put_vol_oi": round(put_vol/put_oi, 2) if put_oi else 0,
-            "put_iv": round(float(pe_gk.get("iv") or 0)*100,2), 
-            "put_ltp": put_ltp, "put_ltp_chg": round(p_ltp_5m, 2), "put_ltp_chg_day": round(p_ltp_d, 2),
-            "put_delta": float(pe_gk.get("delta") or 0), "put_gamma": float(pe_gk.get("gamma") or 0), 
-            "put_theta": float(pe_gk.get("theta") or 0), "put_vega": float(pe_gk.get("vega") or 0),
+            "put_oi": put_oi, "put_oi_chg": round(p_oi_5m, 2), "put_oi_chg_day": round(put_oi - base_v.get("put_oi", put_oi), 2),
+            "put_oi_velocity": round(p_oi_5m - p_oi_prev5m, 2), "put_vol_oi": round(put_vol/put_oi, 2) if put_oi else 0,
+            "put_iv": round(float(pe_gk.get("iv") or 0)*100, 2), 
+            "put_ltp": put_ltp, "put_ltp_chg": round(put_ltp - prev_v.get("put_ltp", put_ltp), 2), "put_ltp_chg_day": round(p_ltp_d, 2),
+            "put_delta": float(pe_gk.get("delta") or 0), "put_gamma": float(pe_gk.get("gamma") or 0), "put_theta": float(pe_gk.get("theta") or 0), "put_vega": float(pe_gk.get("vega") or 0),
             "put_gex": float(pe_gk.get("gamma") or 0) * put_oi * 25
         }
-        
     return result
 
 def classify_strike_oi_flow(v, prev_spot, spot):
     c_c, cl, c_o = v.get("call_oi_chg", 0), v.get("call_ltp_chg", 0), v.get("call_oi", 0)
     p_c, pl, p_o = v.get("put_oi_chg", 0), v.get("put_ltp_chg", 0), v.get("put_oi", 0)
-    
     THRESH = 2000 
     
     if c_c > THRESH and cl > 0: cf = ("LONG BUILDUP", "BULLISH", "🟢")
@@ -1051,62 +753,34 @@ def classify_strike_oi_flow(v, prev_spot, spot):
     else: pf = ("STABLE", "NEUTRAL", "⚪")
 
     total_chg = c_c + p_c
-    if c_c > 25000 and p_c < -25000: net_note = "🔄 OI SHIFT: Money moving to CALL side."
-    elif p_c > 25000 and c_c < -25000: net_note = "🔄 OI SHIFT: Money moving to PUT side."
-    elif c_c > 25000 and p_c > 25000: net_note = "💥 BOTH SIDES ADDING OI: High uncertainty."
-    elif c_c < -25000 and p_c < -25000: net_note = "🌀 BOTH SIDES EXITING: Position squareoff."
-    else: net_note = "— No significant OI flow this cycle."
+    net_note = "🔄 OI SHIFT: Money moving to CALL side." if c_c > 25000 and p_c < -25000 else "🔄 OI SHIFT: Money moving to PUT side." if p_c > 25000 and c_c < -25000 else "💥 BOTH SIDES ADDING OI: High uncertainty." if c_c > 25000 and p_c > 25000 else "🌀 BOTH SIDES EXITING: Position squareoff." if c_c < -25000 and p_c < -25000 else "— No significant OI flow this cycle."
 
-    return (
-        {"condition": cf[0], "signal": cf[1], "emoji": cf[2], "oi_chg_l": round(c_c/100000,2), "oi_total_l": round(c_o/100000,2)},
-        {"condition": pf[0], "signal": pf[1], "emoji": pf[2], "oi_chg_l": round(p_c/100000,2), "oi_total_l": round(p_o/100000,2)},
-        {"total_oi_chg_l": round(total_chg/100000,2), "total_oi_l": round((c_o+p_o)/100000,2), "net_note": net_note}
-    )
+    return ({"condition": cf[0], "signal": cf[1], "emoji": cf[2], "oi_chg_l": round(c_c/100000,2), "oi_total_l": round(c_o/100000,2)},
+            {"condition": pf[0], "signal": pf[1], "emoji": pf[2], "oi_chg_l": round(p_c/100000,2), "oi_total_l": round(p_o/100000,2)},
+            {"total_oi_chg_l": round(total_chg/100000,2), "total_oi_l": round((c_o+p_o)/100000,2), "net_note": net_note})
 
 def get_activity(atm_strikes, idx):
-    acts = []
-    thresh = 20000 if idx == "NIFTY" else 10000 if idx == "BANKNIFTY" else 5000
-    
+    acts, thresh = [], 20000 if idx == "NIFTY" else 10000 if idx == "BANKNIFTY" else 5000
     for s_str, v in atm_strikes.items():
         s = float(s_str)
-        if v["call_oi_chg"] > thresh:
-            acts.append({"strike": s, "type": "CE", "trend": "BEAR", "ltp": v["call_ltp"], "oi_chg": v["call_oi_chg"], "note": "Heavy Resistance Added"})
-        elif v["call_oi_chg"] < -thresh:
-            acts.append({"strike": s, "type": "CE", "trend": "BULL", "ltp": v["call_ltp"], "oi_chg": v["call_oi_chg"], "note": "Resistance Unwinding"})
-            
-        if v["put_oi_chg"] > thresh:
-            acts.append({"strike": s, "type": "PE", "trend": "BULL", "ltp": v["put_ltp"], "oi_chg": v["put_oi_chg"], "note": "Heavy Support Added"})
-        elif v["put_oi_chg"] < -thresh:
-            acts.append({"strike": s, "type": "PE", "trend": "BEAR", "ltp": v["put_ltp"], "oi_chg": v["put_oi_chg"], "note": "Support Unwinding"})
-            
-    acts.sort(key=lambda x: abs(x["oi_chg"]), reverse=True)
-    return acts[:4]
+        if v["call_oi_chg"] > thresh: acts.append({"strike": s, "type": "CE", "trend": "BEAR", "ltp": v["call_ltp"], "oi_chg": v["call_oi_chg"], "note": "Heavy Resistance Added"})
+        elif v["call_oi_chg"] < -thresh: acts.append({"strike": s, "type": "CE", "trend": "BULL", "ltp": v["call_ltp"], "oi_chg": v["call_oi_chg"], "note": "Resistance Unwinding"})
+        if v["put_oi_chg"] > thresh: acts.append({"strike": s, "type": "PE", "trend": "BULL", "ltp": v["put_ltp"], "oi_chg": v["put_oi_chg"], "note": "Heavy Support Added"})
+        elif v["put_oi_chg"] < -thresh: acts.append({"strike": s, "type": "PE", "trend": "BEAR", "ltp": v["put_ltp"], "oi_chg": v["put_oi_chg"], "note": "Support Unwinding"})
+    return sorted(acts, key=lambda x: abs(x["oi_chg"]), reverse=True)[:4]
 
 def get_migrations(atm_strikes):
-    migs = []
-    ce_strikes = sorted(atm_strikes.values(), key=lambda x: x["call_oi_chg"])
-    pe_strikes = sorted(atm_strikes.values(), key=lambda x: x["put_oi_chg"])
-    
-    if ce_strikes and ce_strikes[0]["call_oi_chg"] < -25000 and ce_strikes[-1]["call_oi_chg"] > 25000:
-        migs.append({"from": str(ce_strikes[0]["strike"]), "to": str(ce_strikes[-1]["strike"]), "type": "CALL", "volume": abs(ce_strikes[0]["call_oi_chg"]), "note": "Resistance shifting"})
-        
-    if pe_strikes and pe_strikes[0]["put_oi_chg"] < -25000 and pe_strikes[-1]["put_oi_chg"] > 25000:
-        migs.append({"from": str(pe_strikes[0]["strike"]), "to": str(pe_strikes[-1]["strike"]), "type": "PUT", "volume": abs(pe_strikes[0]["put_oi_chg"]), "note": "Support shifting"})
-        
+    migs, ce_strikes, pe_strikes = [], sorted(atm_strikes.values(), key=lambda x: x["call_oi_chg"]), sorted(atm_strikes.values(), key=lambda x: x["put_oi_chg"])
+    if ce_strikes and ce_strikes[0]["call_oi_chg"] < -25000 and ce_strikes[-1]["call_oi_chg"] > 25000: migs.append({"from": str(ce_strikes[0]["strike"]), "to": str(ce_strikes[-1]["strike"]), "type": "CALL", "volume": abs(ce_strikes[0]["call_oi_chg"]), "note": "Resistance shifting"})
+    if pe_strikes and pe_strikes[0]["put_oi_chg"] < -25000 and pe_strikes[-1]["put_oi_chg"] > 25000: migs.append({"from": str(pe_strikes[0]["strike"]), "to": str(pe_strikes[-1]["strike"]), "type": "PUT", "volume": abs(pe_strikes[0]["put_oi_chg"]), "note": "Support shifting"})
     return migs
 
 def get_pin_risk(chain, atm):
-    closest = None
-    max_oi = 0
+    closest, max_oi = None, 0
     for s_str, v in chain.items():
         s = float(s_str)
-        if abs(s - atm) <= 150:
-            tot = v["call_oi"] + v["put_oi"]
-            if tot > max_oi:
-                max_oi = tot
-                closest = s
-    if closest:
-        return {"label": f"{closest} STRADDLE PIN", "score": 9.5, "desc": "Max pain concentration dragging price."}
+        if abs(s - atm) <= 150 and v["call_oi"] + v["put_oi"] > max_oi: max_oi, closest = v["call_oi"] + v["put_oi"], s
+    if closest: return {"label": f"{closest} STRADDLE PIN", "score": 9.5, "desc": "Max pain concentration dragging price."}
     return {"label": "NO PIN RISK", "score": 0, "desc": "Market is clear"}
 
 def get_analysis(mkt_state, pcr, vix, net_flow_l):
@@ -1117,25 +791,34 @@ def get_analysis(mkt_state, pcr, vix, net_flow_l):
         {"title": "SMART MONEY FLOW", "status": "LONG BUILDUP" if net_flow_l > 0 else "SHORT SELLING", "desc": f"Net OI Flow is {net_flow_l:+.1f}L contracts"}
     ]
 
-# ══════════════════════════════════════════════════
-#  MAIN REFRESH LOOP
-# ══════════════════════════════════════════════════
-
 def refresh(idx):
     load_token()
     if not token_store.get("access_token"):
         debug_status["last_error"] = "Token missing. Please login."
         return
 
+    # Update cache heartbeat IMMEDIATELY so we don't trigger multiple UI pull-through threads
+    oi_cache[idx]["last_fetch"] = time.time()
     store = STORE[idx]
     step = INDICES[idx]["step"]
 
     try:
-        spot   = fetch_spot(idx)
-        time.sleep(0.5)
-        expiry = get_expiry(idx)
-        time.sleep(0.5)
-        raw    = fetch_chain(idx, expiry)
+        spot = fetch_spot(idx)
+        
+        # 🚨 THE FIX: Only fetch valid expiry directly from chain! No guessing!
+        today_str = date.today().isoformat()
+        cached_expiry = _EXPIRY_DAY_CACHE.get(f"{idx}_{today_str}")
+        raw, expiry = [], cached_expiry
+        
+        if cached_expiry: raw = fetch_chain_raw(idx, cached_expiry)
+        if not raw:
+            for i in range(8):
+                test_date = (date.today() + timedelta(days=i)).strftime("%Y-%m-%d")
+                raw = fetch_chain_raw(idx, test_date)
+                if raw:
+                    expiry = test_date
+                    _EXPIRY_DAY_CACHE[f"{idx}_{today_str}"] = expiry
+                    break
         
         if not raw:
             if os.path.exists(DATA_FILE):
@@ -1144,34 +827,30 @@ def refresh(idx):
                         full_cache = json.load(f)
                         if idx in full_cache and full_cache[idx].get("chain"):
                             oi_cache[idx]["data"] = full_cache[idx]
-                            debug_status["last_error"] = f"[{idx}] API offline (Weekend/Limit). Loaded cached data."
+                            debug_status["last_error"] = f"[{idx}] API offline. Loaded cached data."
                             return
                 except: pass
-                
             err_msg = f"[{idx}] Upstox returned no chain data. Token expired or API limit reached."
             debug_status["last_error"] = err_msg
             if oi_cache[idx].get("data"): oi_cache[idx]["data"]["backend_error"] = err_msg
             else: oi_cache[idx]["data"] = {"backend_error": err_msg, "timestamp": datetime.now().isoformat()}
             return
 
-        atm   = round(round(spot/step)*step, 2)
+        atm = round(round(spot/step)*step, 2)
         chain = process_chain(idx, raw, spot)
         if not chain: return
 
         max_pain = compute_max_pain(chain)
         atm_strikes = {str(s):v for s,v in chain.items() if abs(float(s)-atm) <= ATM_RANGE * step}
         
-        total_call  = sum(v["call_oi"] for v in chain.values())
-        total_put   = sum(v["put_oi"]  for v in chain.values())
-        pcr         = round(total_put/total_call,2) if total_call else 0
+        total_call = sum(v["call_oi"] for v in chain.values())
+        total_put  = sum(v["put_oi"]  for v in chain.values())
+        pcr        = round(total_put/total_call,2) if total_call else 0
         
         prev_pcr = store["history"][-1]["pcr"] if store["history"] else pcr
         pcr_chg  = round(pcr - prev_pcr, 3)
-        time.sleep(0.5)
         futures  = fetch_futures(spot, idx)
-        time.sleep(0.5)
         vix      = fetch_vix()
-        time.sleep(0.3)
         
         if store["baseline_vix"] is None and vix > 0: store["baseline_vix"] = vix
 
@@ -1182,9 +861,6 @@ def refresh(idx):
             candle_cache_store[idx]["3m"]  = resample_candles(candles_1m, 3)[-60:]
             candle_cache_store[idx]["5m"]  = resample_candles(candles_1m, 5)[-60:]
             candle_cache_store[idx]["15m"] = resample_candles(candles_1m, 15)[-40:]
-        elif candle_cache_store[idx].get("5m"):
-            # Use cached candles if fresh fetch returned nothing
-            print(f"[{idx}] Using cached candles: {len(candle_cache_store[idx]['5m'])} 5m candles")
 
         cum_put_add = sum(v["put_oi_chg_day"] for v in chain.values())
         cum_call_add = sum(v["call_oi_chg_day"] for v in chain.values())
@@ -1194,8 +870,7 @@ def refresh(idx):
         atm_v = {}
         for k, v in atm_strikes.items():
             if abs(float(k) - atm_float) < 0.1:
-                atm_v = v
-                break
+                atm_v = v; break
 
         current_straddle = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
         old_data = oi_cache[idx].get("data") or {}
@@ -1235,34 +910,18 @@ def refresh(idx):
         gex_flip = min(gex_data, key=lambda x:abs(x["net_gex"])) if gex_data else None
 
         wall_shifts = []
-        if chain:
-            max_ce_strike = max(chain.items(), key=lambda x: x[1]["call_oi"])[0]
-            max_pe_strike = max(chain.items(), key=lambda x: x[1]["put_oi"])[0]
-        else:
-            max_ce_strike = max_pe_strike = None
+        max_ce_strike = max(chain.items(), key=lambda x: x[1]["call_oi"])[0] if chain else None
+        max_pe_strike = max(chain.items(), key=lambda x: x[1]["put_oi"])[0] if chain else None
         if store["prev_max_ce_strike"] is not None and max_ce_strike != store["prev_max_ce_strike"]:
-            shift_msg = f"Call wall shifted: {store['prev_max_ce_strike']} → {max_ce_strike}"
-            wall_shifts.append({"type": "CALL_WALL_SHIFT", "from": store["prev_max_ce_strike"],
-                                 "to": max_ce_strike, "icon": "🔄", "message": shift_msg})
-            alerts.append({"type": "CALL WALL SHIFT", "icon": "🔄",
-                           "message": f"Resistance moved {store['prev_max_ce_strike']} → {max_ce_strike}"})
+            wall_shifts.append({"type": "CALL_WALL_SHIFT", "from": store["prev_max_ce_strike"], "to": max_ce_strike, "icon": "🔄", "message": f"Call wall shifted: {store['prev_max_ce_strike']} → {max_ce_strike}"})
+            alerts.append({"type": "CALL WALL SHIFT", "icon": "🔄", "message": f"Resistance moved {store['prev_max_ce_strike']} → {max_ce_strike}"})
         if store["prev_max_pe_strike"] is not None and max_pe_strike != store["prev_max_pe_strike"]:
-            shift_msg = f"Put wall shifted: {store['prev_max_pe_strike']} → {max_pe_strike}"
-            wall_shifts.append({"type": "PUT_WALL_SHIFT", "from": store["prev_max_pe_strike"],
-                                 "to": max_pe_strike, "icon": "🔄", "message": shift_msg})
-            alerts.append({"type": "PUT WALL SHIFT", "icon": "🔄",
-                           "message": f"Support moved {store['prev_max_pe_strike']} → {max_pe_strike}"})
-        store["prev_max_ce_strike"] = max_ce_strike
-        store["prev_max_pe_strike"] = max_pe_strike
+            wall_shifts.append({"type": "PUT_WALL_SHIFT", "from": store["prev_max_pe_strike"], "to": max_pe_strike, "icon": "🔄", "message": f"Put wall shifted: {store['prev_max_pe_strike']} → {max_pe_strike}"})
+            alerts.append({"type": "PUT WALL SHIFT", "icon": "🔄", "message": f"Support moved {store['prev_max_pe_strike']} → {max_pe_strike}"})
+        store["prev_max_ce_strike"], store["prev_max_pe_strike"] = max_ce_strike, max_pe_strike
 
         ist_ts = (datetime.utcnow() + timedelta(hours=5, minutes=30)).strftime("%H:%M:%S")
-        for a in alerts:
-            store["alert_log"].append({
-                "time": ist_ts,
-                "type": a.get("type", "ALERT"),
-                "msg":  a.get("message", a.get("msg", "")),
-                "icon": a.get("icon", "⚡")
-            })
+        for a in alerts: store["alert_log"].append({"time": ist_ts, "type": a.get("type", "ALERT"), "msg":  a.get("message", ""), "icon": a.get("icon", "⚡")})
         store["alert_log"] = store["alert_log"][-100:]
 
         ist_hm = (datetime.utcnow() + timedelta(hours=5, minutes=30)).strftime("%H:%M")
@@ -1281,121 +940,54 @@ def refresh(idx):
         avg_skew=round(sum(x["skew"] for x in skew_data)/len(skew_data),2) if skew_data else 0
         iv_skew = {"data":skew_data,"avg_skew":avg_skew,"signal":"BEARISH SKEW — put IV elevated" if avg_skew>3 else "BULLISH SKEW — call IV elevated" if avg_skew<-3 else "NEUTRAL SKEW — balanced"}
 
-        # OI Analytics
-        ce_by_oi = sorted(chain.items(), key=lambda x: x[1]["call_oi"], reverse=True)
-        pe_by_oi = sorted(chain.items(), key=lambda x: x[1]["put_oi"],  reverse=True)
-        top3_ce = sum(v["call_oi"] for _,v in ce_by_oi[:3])
-        top3_pe = sum(v["put_oi"]  for _,v in pe_by_oi[:3])
-        ce_conc = round(top3_ce/total_call*100,1) if total_call else 0
-        pe_conc = round(top3_pe/total_put*100,1)  if total_put  else 0
-        top_ce_s = float(ce_by_oi[0][0]) if ce_by_oi else 0
-        top_pe_s = float(pe_by_oi[0][0]) if pe_by_oi else 0
-        ce_wall_pct = round(chain.get(str(int(top_ce_s)),{}).get("call_oi",0)/total_call*100,1) if total_call else 0
-        pe_wall_pct = round(chain.get(str(int(top_pe_s)),{}).get("put_oi",0)/total_put*100,1)  if total_put  else 0
-        tot_c_delta = sum(v.get("call_delta",0)*v["call_oi"]*25 for v in chain.values())
-        tot_p_delta = sum(abs(v.get("put_delta",0))*v["put_oi"]*25 for v in chain.values())
-        net_delta = round(tot_c_delta - tot_p_delta, 0)
-        delta_bias = "BULLISH" if net_delta > 0 else "BEARISH"
+        ce_by_oi, pe_by_oi = sorted(chain.items(), key=lambda x: x[1]["call_oi"], reverse=True), sorted(chain.items(), key=lambda x: x[1]["put_oi"],  reverse=True)
+        top3_ce, top3_pe = sum(v["call_oi"] for _,v in ce_by_oi[:3]), sum(v["put_oi"]  for _,v in pe_by_oi[:3])
         atm_zone  = [v for sk,v in chain.items() if abs(float(sk)-atm)<=2*step]
-        ce_vel    = sum(v.get("call_oi_velocity",0) for v in atm_zone)
-        pe_vel    = sum(v.get("put_oi_velocity",0)  for v in atm_zone)
-        oi_accel  = "ACCELERATING" if (ce_vel+pe_vel)>0 else "DECELERATING"
-        tot_ce_vol = sum(v.get("call_vol",0) for v in chain.values())
-        tot_pe_vol = sum(v.get("put_vol",0)  for v in chain.values())
-        voi_ce = round(tot_ce_vol/total_call,3) if total_call else 0
-        voi_pe = round(tot_pe_vol/total_put,3)  if total_put  else 0
-        ph_vals = [x["pcr"] for x in store["pcr_history"][-6:]]
-        if len(ph_vals) >= 3:
-            pt = ph_vals[-1]-ph_vals[0]
-            pcr_trend = "RISING" if pt>0.03 else "FALLING" if pt<-0.03 else "FLAT"
-        else:
-            pcr_trend = "BUILDING"
-        sm_bull = sum(v.get("put_oi_chg_day",0) for v in chain.values() if v.get("put_oi_chg_day",0)>0)
-        sm_bear = sum(abs(v.get("call_oi_chg_day",0)) for v in chain.values() if v.get("call_oi_chg_day",0)>0)
-        sm_bias = "BULLISH" if sm_bull>sm_bear else "BEARISH" if sm_bear>sm_bull else "NEUTRAL"
+        tot_ce_vol, tot_pe_vol = sum(v.get("call_vol",0) for v in chain.values()), sum(v.get("put_vol",0)  for v in chain.values())
+        sm_bull, sm_bear = sum(v.get("put_oi_chg_day",0) for v in chain.values() if v.get("put_oi_chg_day",0)>0), sum(abs(v.get("call_oi_chg_day",0)) for v in chain.values() if v.get("call_oi_chg_day",0)<0)
+        
         oi_analytics = {
-            "ce_concentration_pct": ce_conc, "pe_concentration_pct": pe_conc,
-            "top_ce_strike": top_ce_s,       "top_pe_strike": top_pe_s,
-            "ce_wall_pct": ce_wall_pct,       "pe_wall_pct": pe_wall_pct,
-            "net_delta": net_delta,           "delta_bias": delta_bias,
-            "oi_accel_signal": oi_accel,
+            "ce_concentration_pct": round(top3_ce/total_call*100,1) if total_call else 0, "pe_concentration_pct": round(top3_pe/total_put*100,1) if total_put else 0,
+            "top_ce_strike": float(ce_by_oi[0][0]) if ce_by_oi else 0, "top_pe_strike": float(pe_by_oi[0][0]) if pe_by_oi else 0,
+            "ce_wall_pct": round(chain.get(str(int(float(ce_by_oi[0][0])) if ce_by_oi else 0),{}).get("call_oi",0)/total_call*100,1) if total_call else 0,
+            "pe_wall_pct": round(chain.get(str(int(float(pe_by_oi[0][0])) if pe_by_oi else 0),{}).get("put_oi",0)/total_put*100,1) if total_put else 0,
+            "net_delta": round(sum(v.get("call_delta",0)*v["call_oi"]*25 for v in chain.values()) - sum(abs(v.get("put_delta",0))*v["put_oi"]*25 for v in chain.values()), 0),
+            "delta_bias": "BULLISH" if sum(v.get("call_delta",0)*v["call_oi"]*25 for v in chain.values()) - sum(abs(v.get("put_delta",0))*v["put_oi"]*25 for v in chain.values()) > 0 else "BEARISH",
+            "oi_accel_signal": "ACCELERATING" if (sum(v.get("call_oi_velocity",0) for v in atm_zone)+sum(v.get("put_oi_velocity",0) for v in atm_zone))>0 else "DECELERATING",
             "total_ce_chg_atm": round(sum(v.get("call_oi_chg",0) for v in atm_zone)/100000,2),
             "total_pe_chg_atm": round(sum(v.get("put_oi_chg",0)  for v in atm_zone)/100000,2),
-            "mkt_vol_oi_ce": voi_ce, "mkt_vol_oi_pe": voi_pe,
-            "pcr_trend": pcr_trend,
+            "mkt_vol_oi_ce": round(tot_ce_vol/total_call,3) if total_call else 0, "mkt_vol_oi_pe": round(tot_pe_vol/total_put,3) if total_put else 0,
+            "pcr_trend": "RISING" if len(store["pcr_history"]) >= 3 and store["pcr_history"][-1]["pcr"]-store["pcr_history"][-3]["pcr"] > 0.03 else "FALLING" if len(store["pcr_history"]) >= 3 and store["pcr_history"][-1]["pcr"]-store["pcr_history"][-3]["pcr"] < -0.03 else "FLAT",
             "straddle_vs_open": round(current_straddle-(morning_straddle or current_straddle),1),
-            "sm_flow_bias": sm_bias,
-            "sm_bull_flow_l": round(sm_bull/100000,1),
-            "sm_bear_flow_l": round(sm_bear/100000,1),
+            "sm_flow_bias": "BULLISH" if sm_bull>sm_bear else "BEARISH" if sm_bear>sm_bull else "NEUTRAL",
+            "sm_bull_flow_l": round(sm_bull/100000,1), "sm_bear_flow_l": round(sm_bear/100000,1),
         }
 
         ind_data["tech"]["overall_bias"] = mkt_state
         ind_data["tech"]["confluence"] = "Aligned" if mkt_state.startswith("BULL") or mkt_state.startswith("BEAR") else "Mixed"
-        
         fut_prem = futures - spot
-        if fut_prem > (step * 0.2): future_bias = "LONG BUILDUP"
-        elif fut_prem < -(step * 0.1): future_bias = "SHORT BUILDUP"
-        else: future_bias = "NEUTRAL"
-        future_desc = f"{fut_prem:+.1f} pts premium"
-
-        mp_drift = spot - max_pain
-        if mp_drift > (step * 0.5): max_pain_signal = "BULLISH DRIFT"
-        elif mp_drift < -(step * 0.5): max_pain_signal = "BEARISH DRIFT"
-        else: max_pain_signal = "PINNED"
-        max_pain_desc = f"{abs(mp_drift):.1f} pts from MP"
 
         intelligence = {
-            "cycle_count": len(store["history"]),
-            "market_state": mkt_state,
-            "oi_matrix_condition": oi_cond, "oi_matrix_signal": oi_signal, "oi_matrix_desc": oi_desc,
-            "pcr_zone": "BULLISH" if pcr > 1.2 else "BEARISH" if pcr < 0.8 else "NEUTRAL",
-            "levels": levels_data,
-            "alerts": alerts, 
-            "gex": {"profile": gex_data[:11], "flip_zone": gex_flip["strike"] if gex_flip else "—"},
-            "skew": iv_skew,
-            "future_bias": future_bias,
-            "future_desc": future_desc,
-            "max_pain_signal": max_pain_signal,
-            "max_pain_desc": max_pain_desc,
-            "index_technicals": ind_data["tech"],
-            "cumulative_net_flow_l": round(cum_net_flow / 100000, 2),
-            "morning_straddle": morning_straddle,
-            "straddle_decay": round(straddle_decay, 2),
-            "vix_matrix": vix_matrix,
-            "migrations": get_migrations(atm_strikes),
-            "activity": get_activity(atm_strikes, idx),
-            "analysis": get_analysis(mkt_state, pcr, vix, round(cum_net_flow / 100000, 2)),
-            "pin_risk": get_pin_risk(chain, atm),
-            "wall_shifts": wall_shifts,
-            "max_ce_strike": max_ce_strike,
-            "max_pe_strike": max_pe_strike,
-            "pcr_history": store["pcr_history"][-20:],
-            "straddle_history": store["straddle_history"][-20:],
-            "oi_analytics": oi_analytics,
+            "cycle_count": len(store["history"]), "market_state": mkt_state, "oi_matrix_condition": oi_cond, "oi_matrix_signal": oi_signal, "oi_matrix_desc": oi_desc,
+            "pcr_zone": "BULLISH" if pcr > 1.2 else "BEARISH" if pcr < 0.8 else "NEUTRAL", "levels": levels_data, "alerts": alerts, 
+            "gex": {"profile": gex_data[:11], "flip_zone": gex_flip["strike"] if gex_flip else "—"}, "skew": iv_skew,
+            "future_bias": "LONG BUILDUP" if fut_prem > (step * 0.2) else "SHORT BUILDUP" if fut_prem < -(step * 0.1) else "NEUTRAL",
+            "future_desc": f"{fut_prem:+.1f} pts premium",
+            "max_pain_signal": "BULLISH DRIFT" if (spot - max_pain) > (step * 0.5) else "BEARISH DRIFT" if (spot - max_pain) < -(step * 0.5) else "PINNED",
+            "max_pain_desc": f"{abs(spot - max_pain):.1f} pts from MP",
+            "index_technicals": ind_data["tech"], "cumulative_net_flow_l": round(cum_net_flow / 100000, 2), "morning_straddle": morning_straddle, "straddle_decay": round(straddle_decay, 2), "vix_matrix": vix_matrix, "migrations": get_migrations(atm_strikes), "activity": get_activity(atm_strikes, idx), "analysis": get_analysis(mkt_state, pcr, vix, round(cum_net_flow / 100000, 2)), "pin_risk": get_pin_risk(chain, atm), "wall_shifts": wall_shifts, "max_ce_strike": max_ce_strike, "max_pe_strike": max_pe_strike, "pcr_history": store["pcr_history"][-20:], "straddle_history": store["straddle_history"][-20:], "oi_analytics": oi_analytics,
         }
         
-        greeks = {
-            "delta": {"val": atm_v.get("call_delta", 0), "desc": "Call Delta"},
-            "gamma": {"val": atm_v.get("call_gamma", 0), "desc": "Call Gamma"},
-            "theta": {"val": atm_v.get("call_theta", 0), "desc": "Call Theta"},
-            "vega": {"val": atm_v.get("call_vega", 0), "desc": "Call Vega"}
-        }
-
+        greeks = {"delta": {"val": atm_v.get("call_delta", 0), "desc": "Call Delta"}, "gamma": {"val": atm_v.get("call_gamma", 0), "desc": "Call Gamma"}, "theta": {"val": atm_v.get("call_theta", 0), "desc": "Call Theta"}, "vega": {"val": atm_v.get("call_vega", 0), "desc": "Call Vega"}}
         adx_top, pdi_top, ndi_top = calc_adx_full(candle_cache_store[idx]["5m"], 14)
         ind_data["adx"] = adx_top; ind_data["pdi"] = pdi_top; ind_data["ndi"] = ndi_top
 
         data = {
-            "backend_error": None,
-            "spot": spot, "futures": futures, "premium": round(futures-spot,2),
-            "atm": atm, "pcr": pcr, "pcr_chg": pcr_chg, "vix": vix,
-            "max_pain": max_pain, "expiry": expiry, 
-            "total_call_oi": total_call, "total_put_oi": total_put,
-            "indicators": ind_data, "intelligence": intelligence,
-            "atm_strikes": atm_strikes, "chain": chain, "greeks": greeks,
-            "timestamp": datetime.now().isoformat(),
-            "index_name": idx
+            "backend_error": None, "spot": spot, "futures": futures, "premium": round(futures-spot,2),
+            "atm": atm, "pcr": pcr, "pcr_chg": pcr_chg, "vix": vix, "max_pain": max_pain, "expiry": expiry, 
+            "total_call_oi": total_call, "total_put_oi": total_put, "indicators": ind_data, "intelligence": intelligence,
+            "atm_strikes": atm_strikes, "chain": chain, "greeks": greeks, "timestamp": datetime.now().isoformat(), "index_name": idx
         }
-
         oi_cache[idx]["data"] = data
         
         chain_snapshot = {str(s): {"call_oi": v["call_oi"], "put_oi": v["put_oi"], "call_ltp": v["call_ltp"], "put_ltp": v["put_ltp"]} for s,v in chain.items()}
@@ -1409,41 +1001,25 @@ def refresh(idx):
             full_cache[idx] = data
             with open(DATA_FILE, "w") as f: json.dump(full_cache, f)
         except: pass
-        
-        try:
-            save_server_state()
-        except Exception as e:
-            print("Save state failed:", e)
+        try: save_server_state()
+        except: pass
 
         debug_status["last_error"] = f"[{idx}] OK {datetime.now().strftime('%H:%M:%S')} Spot={spot} PCR={pcr}"
-        print(debug_status["last_error"])
-        process_telegram_alerts(idx, alerts, data, atm_strikes, atm)
         
     except Exception as e:
-        error_trace = traceback.format_exc()
-        print(f"[{idx} REFRESH CRASH]\n", error_trace)
         debug_status["last_error"] = f"CRASH in {idx}: {str(e)}"
         if oi_cache[idx].get("data"): oi_cache[idx]["data"]["backend_error"] = f"Crash: {str(e)}"
         else: oi_cache[idx]["data"] = {"backend_error": f"Crash: {str(e)}", "timestamp": datetime.now().isoformat()}
 
 def loop():
-    time.sleep(5)
     while True:
         cycle_start = time.time()
-        print(f"[LOOP] Starting refresh cycle at {datetime.now().strftime('%H:%M:%S')}")
         for idx in INDICES.keys():
-            try:
-                refresh(idx)
-            except Exception as e:
-                print(f"[LOOP] Uncaught error in {idx}: {e}")
-                traceback.print_exc()
+            try: refresh(idx)
+            except: pass
             time.sleep(1)
         elapsed = time.time() - cycle_start
-        sleep_time = max(10, CACHE_TTL - elapsed)  # Sleep remaining time, min 10s
-        print(f"[LOOP] Cycle done in {elapsed:.1f}s. Sleeping {sleep_time:.0f}s until next cycle.")
-        time.sleep(sleep_time)
-
-threading.Thread(target=loop, daemon=True).start()
+        time.sleep(max(10, CACHE_TTL - elapsed))
 
 @app.route("/")
 def dashboard(): return send_file("dashboard.html")
@@ -1455,19 +1031,27 @@ def gallery():
     files.sort(key=os.path.getmtime, reverse=True)
     html = """<html><head><title>OI Snap Gallery</title><style>body { background: #07090c; color: #c9d1d9; font-family: sans-serif; text-align: center; }.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; padding: 20px; }.card { background: #0f1319; border: 1px solid #212836; border-radius: 10px; padding: 10px; }img { width: 100%; border-radius: 5px; cursor: pointer; transition: 0.2s; }img:hover { transform: scale(1.02); box-shadow: 0 0 15px rgba(0, 184, 255, 0.4); }a { color: #00b8ff; text-decoration: none; font-weight: bold; }</style></head><body><h1>📸 Automated Screenshot Gallery</h1><p><a href="/">← Back to Live Dashboard</a></p><div class="grid">"""
     if not files: html += "<h3>No screenshots taken yet. Waiting for the first 5-minute cycle...</h3>"
-    for f in files:
-        filename = os.path.basename(f)
-        html += f'''<div class="card"><h4 style="margin-top:5px; color:#8b949e">{filename}</h4><a href="/static/screenshots/{filename}" target="_blank"><img src="/static/screenshots/{filename}" loading="lazy"></a></div>'''
+    for f in files: html += f'''<div class="card"><h4 style="margin-top:5px; color:#8b949e">{os.path.basename(f)}</h4><a href="/static/screenshots/{os.path.basename(f)}" target="_blank"><img src="/static/screenshots/{os.path.basename(f)}" loading="lazy"></a></div>'''
     html += "</div></body></html>"
     return html
 
 @app.route('/static/screenshots/<filename>')
 def serve_screenshot(filename): return send_from_directory('static/screenshots', filename)
 
+# 🚨 THE FIX: Pull-through cache triggers refresh if loop dies
 @app.route("/oi/json")
 def oi_json():
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
+    
+    last_fetch = oi_cache[idx].get("last_fetch", 0)
+    if time.time() - last_fetch > 240:  # Data is older than 4 minutes, force a background refresh
+        if fetch_locks[idx].acquire(blocking=False):
+            def bg_ref():
+                try: refresh(idx)
+                finally: fetch_locks[idx].release()
+            threading.Thread(target=bg_ref, daemon=True).start()
+
     d = oi_cache[idx].get("data")
     if not d and os.path.exists(DATA_FILE):
         try:
@@ -1475,57 +1059,22 @@ def oi_json():
                 d = json.load(f).get(idx)
                 if d: oi_cache[idx]["data"] = d
         except: pass
-    if not d: 
-        diag_msg = debug_status.get('last_error', 'Unknown Error')
-        return jsonify({"error": f"Data Empty for {idx}. [Diagnostic: {diag_msg}] — Click login."})
+    if not d: return jsonify({"error": f"Data Empty for {idx}. [Diagnostic: {debug_status.get('last_error', 'Unknown Error')}] — Click login."})
     return jsonify(d)
 
 @app.route("/oi/histogram")
 def histogram():
     idx = request.args.get("idx", "NIFTY")
-    if idx not in INDICES: idx = "NIFTY"
-    d = oi_cache[idx].get("data")
-    if not d and os.path.exists(DATA_FILE):
-        try:
-            with open(DATA_FILE, "r") as f: d = json.load(f).get(idx)
-        except: pass
+    d = oi_cache[idx if idx in INDICES else "NIFTY"].get("data")
     if not d or not d.get("chain"): return jsonify([])
-    
-    chain = d["chain"]
-    atm = float(d["atm"])
-    step = float(INDICES[idx]["step"])
-    
-    safe_list = []
-    for s_str, v in chain.items():
-        try:
-            s_float = float(s_str)
-            if abs(s_float - atm) <= ATM_RANGE * step:
-                safe_list.append(v)
-        except Exception:
-            pass
-            
-    return jsonify(sorted(safe_list, key=lambda x: float(x.get("strike", 0))))
-
-@app.route("/telegram/force_summary")
-def force_telegram_summary():
-    idx = request.args.get("idx", "NIFTY")
-    d = oi_cache[idx].get("data")
-    if not d: return f"No data available for {idx} yet.", 400
-    msg = generate_5min_summary(idx, d, d.get("atm_strikes", {}), d.get("atm", 0))
-    send_telegram_alert(msg)
-    return f"Summary sent to Telegram for {idx} successfully!", 200
+    atm, step = float(d["atm"]), float(INDICES[idx if idx in INDICES else "NIFTY"]["step"])
+    return jsonify(sorted([v for s,v in d["chain"].items() if abs(float(s)-atm) <= ATM_RANGE * step], key=lambda x: float(x.get("strike", 0))))
 
 @app.route("/oi/alert_log")
-def alert_log_route():
-    idx = request.args.get("idx", "NIFTY")
-    if idx not in INDICES: idx = "NIFTY"
-    return jsonify(list(reversed(STORE[idx].get("alert_log", []))))
+def alert_log_route(): return jsonify(list(reversed(STORE[request.args.get("idx", "NIFTY")].get("alert_log", []))))
 
 @app.route("/oi/pcr_history")
-def pcr_history_route():
-    idx = request.args.get("idx", "NIFTY")
-    if idx not in INDICES: idx = "NIFTY"
-    return jsonify(STORE[idx].get("pcr_history", []))
+def pcr_history_route(): return jsonify(STORE[request.args.get("idx", "NIFTY")].get("pcr_history", []))
 
 @app.route("/oi/debug")
 def oi_debug():
@@ -1537,55 +1086,29 @@ def oi_debug():
         "indices": {}
     }
     for idx in INDICES:
-        d    = oi_cache[idx].get("data") or {}
-        cs   = candle_cache_store[idx]
-        hist = STORE[idx].get("history", [])
+        d, cs, hist = oi_cache[idx].get("data") or {}, candle_cache_store[idx], STORE[idx].get("history", [])
         info["indices"][idx] = {
-            "has_data":          bool(d),
-            "data_timestamp":    d.get("timestamp", "—"),
-            "spot":              d.get("spot", 0),
-            "pcr":               d.get("pcr", 0),
-            "backend_error":     d.get("backend_error"),
-            "history_count":     len(hist),
-            "oldest_history_s":  round(time.time() - hist[0]["ts"]) if hist else None,
-            "newest_history_s":  round(time.time() - hist[-1]["ts"]) if hist else None,
-            "expiry_cached":     _EXPIRY_DAY_CACHE.get(f"{idx}_{date.today().isoformat()}"),
-            "candles_1m":        len(cs.get("1m", [])),
-            "candles_5m":        len(cs.get("5m", [])),
-            "last_fetch_day":    cs.get("last_fetch_day", ""),
-            "last_full_fetch_ago_s": round(time.time() - cs.get("last_full_fetch", 0)) if cs.get("last_full_fetch") else None,
+            "has_data": bool(d), "data_timestamp": d.get("timestamp", "—"), "spot": d.get("spot", 0), "pcr": d.get("pcr", 0),
+            "backend_error": d.get("backend_error"), "history_count": len(hist),
+            "oldest_history_s": round(time.time() - hist[0]["ts"]) if hist else None,
+            "newest_history_s": round(time.time() - hist[-1]["ts"]) if hist else None,
+            "expiry_cached": _EXPIRY_DAY_CACHE.get(f"{idx}_{date.today().isoformat()}"),
+            "candles_5m": len(cs.get("5m", [])), "last_fetch_ago_s": round(time.time() - oi_cache[idx].get("last_fetch", 0))
         }
     return jsonify(info)
 
 @app.route("/login")
-def login(): 
-    return redirect(f"https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id={API_KEY}&redirect_uri={REDIRECT_URI}")
+def login(): return redirect(f"https://api.upstox.com/v2/login/authorization/dialog?response_type=code&client_id={API_KEY}&redirect_uri={REDIRECT_URI}")
 
 @app.route("/callback")
 def callback():
     code = request.args.get("code")
     resp = requests.post("https://api.upstox.com/v2/login/authorization/token", data={"code": code, "client_id": API_KEY, "client_secret": API_SECRET, "redirect_uri": REDIRECT_URI, "grant_type": "authorization_code"}, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
     data = resp.json()
-    if "access_token" not in data:
-        debug_status["last_error"] = f"Upstox Auth Rejected"
-        return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
-    
+    if "access_token" not in data: return f"<h2>Login Failed</h2><a href='/login'>Try again</a>"
     save_token(data.get("access_token"))
     send_telegram_alert("✅ <b>Upstox Login Successful!</b> Triple Engine is tracking.")
-    
-    def run_init():
-        threads = []
-        for idx in INDICES: 
-            t = threading.Thread(target=refresh, args=(idx,), daemon=True)
-            t.start()
-            threads.append(t)
-            time.sleep(1)
-        for t in threads:
-            t.join(timeout=60)
-            
-    threading.Thread(target=run_init, daemon=True).start()
-    
+    threading.Thread(target=lambda: [refresh(idx) for idx in INDICES], daemon=True).start()
     return """<html><body style="font-family:sans-serif;background:#0a0c10;color:#00e676;padding:40px"><h2>✅ Login Successful!</h2><p><a href="/" style="color:#40c4ff">→ Open Dashboard</a></p><script>setTimeout(()=>window.location.href="/",2000)</script></body></html>"""
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+if __name__ == "__main__": app.run(host="0.0.0.0", port=5000, debug=False)
