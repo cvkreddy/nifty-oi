@@ -279,9 +279,9 @@ def hdrs():
 def fetch_spot(idx):
     sym = INDICES[idx]["key"]
     keys_to_try = [sym]
-    if idx == "NIFTY": keys_to_try.extend(["NSE_INDEX|Nifty 50", "NSE_INDEX|NIFTY 50"])
-    elif idx == "BANKNIFTY": keys_to_try.extend(["NSE_INDEX|Nifty Bank", "NSE_INDEX|NIFTY BANK", "NSE_INDEX|BANKNIFTY"])
-    elif idx == "SENSEX": keys_to_try.extend(["BSE_INDEX|SENSEX", "BSE_INDEX|Sensex"])
+    if idx == "NIFTY" and sym != "NSE_INDEX|NIFTY 50": keys_to_try.append("NSE_INDEX|NIFTY 50")
+    if idx == "BANKNIFTY": keys_to_try.extend(["NSE_INDEX|Nifty Bank", "NSE_INDEX|NIFTY BANK", "NSE_INDEX|BANKNIFTY"])
+    if idx == "SENSEX": keys_to_try.extend(["BSE_INDEX|SENSEX", "BSE_INDEX|Sensex"])
     
     keys_to_try = list(dict.fromkeys(keys_to_try))
     
@@ -359,7 +359,8 @@ def fetch_base_1m_candles(idx):
         store["last_fetch_day"] = today_str
         try:
             to_dt   = date.today().strftime("%Y-%m-%d")
-            from_dt = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
+            # 🚨 FIX: 10 DAYS OF HISTORY NEEDED TO STABILIZE 15 EMA MATH
+            from_dt = (date.today() - timedelta(days=10)).strftime("%Y-%m-%d")
             url_h   = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_dt}/{from_dt}"
             rh = requests.get(url_h, headers=hdrs(), timeout=15)
             if rh.status_code == 200:
@@ -370,7 +371,7 @@ def fetch_base_1m_candles(idx):
 
     all_candles = historical + today_candles
     all_candles.sort(key=lambda x: x["time"])
-    cutoff = (datetime.now() - timedelta(days=5)).isoformat()
+    cutoff = (datetime.now() - timedelta(days=10)).isoformat()
     all_candles = [c for c in all_candles if c["time"] >= cutoff]
     store["1m"] = all_candles
     return all_candles
@@ -410,7 +411,6 @@ def fetch_chain_raw(idx, expiry):
         except Exception: pass
     return []
 
-# 🚨 UPDATED: Exact Expiry Matcher based on precise rules (Nifty=Tue, Sensex=Thu, BankNifty=Last Tue)
 def get_expiry(idx):
     sym = INDICES[idx]["key"]
     keys_to_try = [sym]
@@ -433,7 +433,6 @@ def get_expiry(idx):
         except Exception: 
             pass
 
-    # Strict Mathematical Fallback (If API is completely unresponsive)
     holidays = ["2026-01-15", "2026-01-26", "2026-03-03", "2026-03-26", "2026-03-31", "2026-04-03", "2026-04-14", "2026-05-01", "2026-05-28", "2026-06-26", "2026-09-14", "2026-10-02", "2026-10-20", "2026-11-10", "2026-11-24", "2026-12-25"]
     today_dt = date.today()
     ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
@@ -441,7 +440,7 @@ def get_expiry(idx):
     def get_last_tuesday(y, m):
         last_day = calendar.monthrange(y, m)[1]
         d = date(y, m, last_day)
-        offset = (d.weekday() - 1) % 7 # 1 is Tuesday
+        offset = (d.weekday() - 1) % 7
         return d - timedelta(days=offset)
 
     if idx == "BANKNIFTY":
@@ -457,7 +456,7 @@ def get_expiry(idx):
         return target_date.strftime("%Y-%m-%d")
         
     else:
-        target = 1 if idx == "NIFTY" else 3 # NIFTY=Tue(1), SENSEX=Thu(3)
+        target = 1 if idx == "NIFTY" else 3 
         weekday = today_dt.weekday()
         days_until = (target - weekday) % 7
         
@@ -608,6 +607,7 @@ def extract_levels(candles, spot):
                 
     return {"today_open": today_open, "yest_high": yest_high, "yest_low": yest_low, "orb_high": orb_high, "orb_low": orb_low, "orb_status": orb_status, "orb_time": orb_time, "yest_status": yest_status, "yest_time": yest_time}
 
+# 🚨 THE FIX: Exact PineScript Matching for Timing Logic (DD-MM HH:MM + Confirmation)
 def compute_tf_signals(idx, candles, label, st_period=7, st_multiplier=3.0):
     if not candles or len(candles) < 15: 
         return {"label": label, "candle_count": len(candles) if candles else 0, "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-", "ema_crossovers": []}
@@ -618,22 +618,33 @@ def compute_tf_signals(idx, candles, label, st_period=7, st_multiplier=3.0):
     times = [c["time"] for c in candles]
     
     ema7_arr, ema15_arr, ema21_arr = calc_ema_array(closes, 7), calc_ema_array(closes, 15), calc_ema_array(closes, 21)
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    today_date = date.today()
     
     trend_start = pull_time = cont_time = st_time = "-"
     is_bull, await_pull_b, await_pull_s, curr_st = None, False, False, None
     ema_crossovers = []
+
+    tf_str = "".join(filter(str.isdigit, label))
+    tf_mins = int(tf_str) if tf_str else 5
 
     for i in range(15, len(candles)):
         e7, e15 = ema7_arr[i], ema15_arr[i]
         if e7 is None or e15 is None: continue
         c_close = closes[i]
         raw_t = times[i]
+        
         try:
-            d_parts = raw_t[:10].split("-"); t_parts = raw_t[11:16]
-            is_today = (raw_t[:10] == today_str)
-            c_time = f"Today {t_parts}" if is_today else f"{d_parts[2]}-{d_parts[1]} {t_parts}"
-        except: is_today, c_time = False, "-"
+            # Parse start time and advance by timeframe length to get exact CLOSE time
+            if "T" in raw_t:
+                dt = datetime.strptime(raw_t[:16], "%Y-%m-%dT%H:%M")
+            else:
+                dt = datetime.strptime(raw_t[:16], "%Y-%m-%d %H:%M")
+            
+            close_dt = dt + timedelta(minutes=tf_mins)
+            c_time = close_dt.strftime("%d-%m %H:%M")
+            is_today = (close_dt.date() == today_date)
+        except Exception: 
+            is_today, c_time = False, "-"
 
         curr_bull = e7 > e15
         
@@ -649,12 +660,22 @@ def compute_tf_signals(idx, candles, label, st_period=7, st_multiplier=3.0):
             if curr_bull: await_pull_b = True
             else: await_pull_s = True
                 
+        is_confirmed = (i < len(candles) - 1)
+        
         if is_bull:
-            if await_pull_b and (c_close < e7 or c_close < e15): pull_time = c_time; cont_time = "..."; await_pull_b = False
-            elif not await_pull_b and c_close > e7: cont_time = c_time; await_pull_b = True
+            if await_pull_b and (c_close < e7 or c_close < e15) and is_confirmed: 
+                pull_time = c_time; cont_time = "..."
+                await_pull_b = False
+            elif not await_pull_b and c_close > e7 and is_confirmed: 
+                cont_time = c_time
+                await_pull_b = True
         else:
-            if await_pull_s and (c_close > e7 or c_close > e15): pull_time = c_time; cont_time = "..."; await_pull_s = False
-            elif not await_pull_s and c_close < e7: cont_time = c_time; await_pull_s = True
+            if await_pull_s and (c_close > e7 or c_close > e15) and is_confirmed: 
+                pull_time = c_time; cont_time = "..."
+                await_pull_s = False
+            elif not await_pull_s and c_close < e7 and is_confirmed: 
+                cont_time = c_time
+                await_pull_s = True
                 
         s_dir, _ = calc_supertrend(candles[:i+1], st_period, st_multiplier)
         if curr_st is None: curr_st, st_time = s_dir, c_time
@@ -888,6 +909,15 @@ def refresh(idx):
                 if raw: _EXPIRY_DAY_CACHE[f"{idx}_{today_str}"] = expiry
         
         if not raw:
+            for i in range(8):
+                test_date = (date.today() + timedelta(days=i)).strftime("%Y-%m-%d")
+                raw = fetch_chain_raw(idx, test_date)
+                if raw:
+                    expiry = test_date
+                    _EXPIRY_DAY_CACHE[f"{idx}_{today_str}"] = expiry
+                    break
+        
+        if not raw:
             if os.path.exists(DATA_FILE):
                 try:
                     with open(DATA_FILE, "r") as f:
@@ -1046,9 +1076,7 @@ def refresh(idx):
         }
         
         greeks = {"delta": {"val": atm_v.get("call_delta", 0), "desc": "Call Delta"}, "gamma": {"val": atm_v.get("call_gamma", 0), "desc": "Call Gamma"}, "theta": {"val": atm_v.get("call_theta", 0), "desc": "Call Theta"}, "vega": {"val": atm_v.get("call_vega", 0), "desc": "Call Vega"}}
-        adx_top, pdi_top, ndi_top = calc_adx_full(candle_cache_store[idx]["5m"], 14)
-        ind_data["adx"] = adx_top; ind_data["pdi"] = pdi_top; ind_data["ndi"] = ndi_top
-
+        
         data = {
             "backend_error": None, "spot": spot, "futures": futures, "premium": round(futures-spot,2),
             "atm": atm, "pcr": pcr, "pcr_chg": pcr_chg, "vix": vix, "max_pain": max_pain, "expiry": expiry, 
