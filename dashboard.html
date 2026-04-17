@@ -80,6 +80,7 @@
     <div class="timer" id="timer">5:00</div>
     <button class="btn" onclick="doFetch()">↺ REFRESH</button>
     <a href="/login" class="btn" style="text-decoration:none; display:inline-block;">🔑 LOGIN</a>
+    <a href="/oi/debug" target="_blank" class="btn-ss" style="text-decoration:none; display:inline-block; font-size:11px;">🔧 DEBUG</a>
   </div>
 </div>
 
@@ -626,9 +627,9 @@ async function doFetchCore() {
 
         if (raw.backend_error) {
             sStyle('err', 'display', 'block');
-            sHTML('err', `⚠ BACKEND DATA FROZEN: ${raw.backend_error} <a href="/login" style="color:#fff; text-decoration:underline; margin-left:10px">Try Re-Login</a>`);
+            sHTML('err', `⚠ SERVER ERROR: ${raw.backend_error} — <a href="/oi/debug" target="_blank" style="color:var(--info)">Debug</a> | <a href="/login" style="color:#fff;text-decoration:underline;margin-left:6px">Re-Login</a>`);
             sStyle('dot', 'background', 'var(--bear)');
-            // ✅ NO return here — fall through and render whatever cached data exists
+            // Render whatever data we have — don't leave screen blank
         } else {
             sStyle('err', 'display', 'none');
         }
@@ -667,7 +668,12 @@ async function doFetchCore() {
         
         const bTime = new Date(raw.timestamp).toLocaleTimeString('en-IN');
         const fTime = new Date().toLocaleTimeString('en-IN');
-        sHTML('upd', `<span style="color:var(--bull)">DATA: ${bTime}</span> | FETCHED: ${fTime}`);
+        const dataAge = Math.round((Date.now() - new Date(raw.timestamp).getTime()) / 1000);
+        const ageMin  = Math.floor(dataAge / 60);
+        const ageSec  = dataAge % 60;
+        const ageStr  = dataAge > 60 ? `${ageMin}m ${ageSec}s ago` : `${ageSec}s ago`;
+        const ageCol  = dataAge > 600 ? 'var(--bear)' : dataAge > 360 ? 'var(--warn)' : 'var(--bull)';
+        sHTML('upd', `<span style="color:${ageCol}">DATA: ${bTime} (${ageStr})</span> <span style="color:var(--text2)">| FETCHED: ${fTime}</span>`);
         sText('st-left', `${currentIdx} · Live Spot ₹${fmt(raw.spot)} · PCR ${raw.pcr.toFixed(2)}`);
 
     } catch (e) {

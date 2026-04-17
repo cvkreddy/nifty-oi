@@ -61,7 +61,7 @@ STORE = {idx: {
 } for idx in INDICES}
 
 oi_cache = {idx: {"data": None} for idx in INDICES}
-candle_cache_store = {idx: {"1m": [], "3m": [], "5m": [], "15m": [], "last_full_fetch": 0} for idx in INDICES}
+candle_cache_store = {idx: {"1m": [], "3m": [], "5m": [], "15m": [], "last_full_fetch": 0, "last_fetch_day": ""} for idx in INDICES}
 
 def reverse_engineer_baseline(idx):
     if len(STORE[idx]["baseline_oi"]) > 0: 
@@ -363,20 +363,28 @@ def fetch_base_1m_candles(idx):
     # Remove today's old entries from cache, replace with fresh intraday
     historical = [c for c in existing if c["time"][:10] != today_str]
 
-    # If cache is empty or stale (>24h since full fetch), do a full historical fetch once
-    if not historical or (now_ts - store.get("last_full_fetch", 0)) > 86400:
+    # Full historical fetch only once per calendar day
+    # Mark attempted even if it fails, so we don't retry every 5 minutes
+    last_fetch_day = store.get("last_fetch_day", "")
+    today_str_plain = date.today().isoformat()
+    should_fetch_hist = (last_fetch_day != today_str_plain) and not historical
+
+    if should_fetch_hist:
+        store["last_fetch_day"] = today_str_plain  # Mark attempted immediately
         try:
             to_dt   = date.today().strftime("%Y-%m-%d")
             from_dt = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
             url_h   = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_dt}/{from_dt}"
-            rh = requests.get(url_h, headers=hdrs(), timeout=20)
+            rh = requests.get(url_h, headers=hdrs(), timeout=25)
             if rh.status_code == 200:
-                historical = [c for c in _parse_candles(rh.json().get("data",{}).get("candles",[])) if c["time"][:10] != today_str]
+                hist_raw = _parse_candles(rh.json().get("data",{}).get("candles",[]))
+                historical = [c for c in hist_raw if c["time"][:10] != today_str]
                 store["last_full_fetch"] = now_ts
-                print(f"[{idx}] Full historical candle fetch: {len(historical)} candles")
+                print(f"[{idx}] Historical candles: {len(historical)} candles (past days)")
+            else:
+                print(f"[{idx}] Historical candle HTTP {rh.status_code} — using intraday only")
         except Exception as e:
-            print(f"[{idx}] Historical candle fetch failed: {e}")
-            historical = [c for c in existing if c["time"][:10] != today_str]
+            print(f"[{idx}] Historical candle fetch failed: {e} — using intraday only")
 
     # Combine historical + fresh intraday
     all_candles = historical + today_candles
@@ -410,46 +418,104 @@ def resample_candles(candles_1m, tf):
         res.append({"time": ct.isoformat(), "open": cg[0]["open"], "high": max(x["high"] for x in cg), "low": min(x["low"] for x in cg), "close": cg[-1]["close"], "vol": sum(x.get("vol", 0) for x in cg)})
     return res
 
+# Per-day expiry cache — avoids repeated API calls for same data
+_EXPIRY_DAY_CACHE = {}
+
 def get_expiry(idx):
+    """Get nearest valid expiry. Cached per-day to avoid repeated API calls.
+    Fallback: if today is Thu/Fri/Sat/Sun, use nearest upcoming Thursday.
+    If the API fails and it's expiry day, return TODAY (not next week).
+    """
+    today_str = date.today().isoformat()
+    cache_key = f"{idx}_{today_str}"
+    if cache_key in _EXPIRY_DAY_CACHE:
+        return _EXPIRY_DAY_CACHE[cache_key]
+
     sym = INDICES[idx]["key"]
-    try:
-        r = requests.get("https://api.upstox.com/v2/option/contract", params={"instrument_key": sym}, headers=hdrs(), timeout=10)
-        if r.status_code == 200:
-            items = r.json().get("data", [])
-            exps = sorted([i if isinstance(i, str) else i.get("expiry") for i in items if i])
-            today = datetime.today().strftime("%Y-%m-%d")
-            for e in exps:
-                if e and e >= today: return e
-    except Exception: 
-        pass
-    today = date.today()
-    days = (3 - today.weekday()) % 7
-    if days == 0: 
-        days = 7
-    return (today + timedelta(days=days)).strftime("%Y-%m-%d")
+    result = None
+
+    # Try Upstox API for accurate expiry list
+    for attempt in range(2):
+        try:
+            r = requests.get("https://api.upstox.com/v2/option/contract",
+                             params={"instrument_key": sym}, headers=hdrs(), timeout=8)
+            if r.status_code == 200:
+                items = r.json().get("data", [])
+                exps = []
+                for i in items:
+                    if isinstance(i, str) and i: exps.append(i)
+                    elif isinstance(i, dict) and i.get("expiry"): exps.append(i["expiry"])
+                exps = sorted(set(e for e in exps if e))
+                today = date.today().isoformat()
+                valid = [e for e in exps if e >= today]
+                if valid:
+                    result = valid[0]
+                    break
+            elif r.status_code == 429:
+                time.sleep(2)
+        except Exception as e:
+            print(f"[{idx}] get_expiry attempt {attempt+1} failed: {e}")
+            time.sleep(1)
+
+    if not result:
+        # Smart fallback: find nearest Thursday >= today
+        # CRITICAL: on Thursday itself (expiry day), return TODAY, not next week
+        today_dt  = date.today()
+        weekday   = today_dt.weekday()   # Monday=0 ... Thursday=3 ... Sunday=6
+        ist_hour  = (datetime.utcnow() + timedelta(hours=5, minutes=30)).hour
+        ist_min   = (datetime.utcnow() + timedelta(hours=5, minutes=30)).minute
+
+        if weekday == 3:  # Thursday
+            if ist_hour < 15 or (ist_hour == 15 and ist_min < 30):
+                # Before 3:30 PM IST — current week still active
+                result = today_dt.isoformat()
+            else:
+                # After 3:30 PM IST — move to next Thursday
+                result = (today_dt + timedelta(days=7)).isoformat()
+        else:
+            # Find next Thursday
+            days_until_thu = (3 - weekday) % 7
+            if days_until_thu == 0: days_until_thu = 7
+            result = (today_dt + timedelta(days=days_until_thu)).isoformat()
+
+        print(f"[{idx}] get_expiry fallback used: {result}")
+
+    _EXPIRY_DAY_CACHE[cache_key] = result
+    print(f"[{idx}] Expiry: {result}")
+    return result
 
 def fetch_chain(idx, expiry):
     sym = INDICES[idx]["key"]
-    for attempt in range(3): 
-        try:
-            r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": sym, "expiry_date": expiry}, headers=hdrs(), timeout=5)
-            if r.status_code == 429: 
-                time.sleep(1) 
-                continue
-            if r.status_code == 200 and r.json().get("data"):
-                return r.json().get("data", [])
-                
-            if idx == "NIFTY":
-                r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": "NSE_INDEX|NIFTY 50", "expiry_date": expiry}, headers=hdrs(), timeout=5)
+    keys_to_try = [sym]
+    if idx == "NIFTY" and sym != "NSE_INDEX|NIFTY 50":
+        keys_to_try.append("NSE_INDEX|NIFTY 50")
+
+    for attempt in range(2):
+        for key in keys_to_try:
+            try:
+                r = requests.get("https://api.upstox.com/v2/option/chain",
+                                 params={"instrument_key": key, "expiry_date": expiry},
+                                 headers=hdrs(), timeout=12)
                 if r.status_code == 429:
-                    time.sleep(1)
+                    print(f"[{idx}] Chain 429 rate limit, waiting 3s")
+                    time.sleep(3)
                     continue
-                if r.status_code == 200 and r.json().get("data"):
-                    INDICES["NIFTY"]["key"] = "NSE_INDEX|NIFTY 50"
-                    return r.json().get("data", [])
-            break
-        except: 
-            time.sleep(1)
+                if r.status_code == 200:
+                    data = r.json().get("data", [])
+                    if data:
+                        if key != sym:
+                            INDICES[idx]["key"] = key
+                        print(f"[{idx}] Chain OK: {len(data)} strikes for {expiry}")
+                        return data
+                    else:
+                        print(f"[{idx}] Chain empty for expiry {expiry} (key={key}) status={r.status_code}")
+                else:
+                    print(f"[{idx}] Chain HTTP {r.status_code} for expiry {expiry}")
+            except Exception as e:
+                print(f"[{idx}] Chain attempt {attempt+1} failed: {e}")
+                time.sleep(1)
+        if attempt == 0:
+            time.sleep(2)
     return []
 
 def compute_max_pain(chain):
@@ -1363,15 +1429,19 @@ def refresh(idx):
 def loop():
     time.sleep(5)
     while True:
-        # Run each index sequentially to avoid race conditions on history
-        # and avoid hammering Upstox API concurrently
+        cycle_start = time.time()
+        print(f"[LOOP] Starting refresh cycle at {datetime.now().strftime('%H:%M:%S')}")
         for idx in INDICES.keys():
             try:
                 refresh(idx)
             except Exception as e:
                 print(f"[LOOP] Uncaught error in {idx}: {e}")
-            time.sleep(2)  # Brief pause between indices
-        time.sleep(CACHE_TTL)
+                traceback.print_exc()
+            time.sleep(1)
+        elapsed = time.time() - cycle_start
+        sleep_time = max(10, CACHE_TTL - elapsed)  # Sleep remaining time, min 10s
+        print(f"[LOOP] Cycle done in {elapsed:.1f}s. Sleeping {sleep_time:.0f}s until next cycle.")
+        time.sleep(sleep_time)
 
 threading.Thread(target=loop, daemon=True).start()
 
@@ -1456,6 +1526,36 @@ def pcr_history_route():
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
     return jsonify(STORE[idx].get("pcr_history", []))
+
+@app.route("/oi/debug")
+def oi_debug():
+    ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    info = {
+        "server_time_ist": ist.strftime("%Y-%m-%d %H:%M:%S IST"),
+        "last_error": debug_status.get("last_error"),
+        "token_loaded": bool(token_store.get("access_token")),
+        "indices": {}
+    }
+    for idx in INDICES:
+        d    = oi_cache[idx].get("data") or {}
+        cs   = candle_cache_store[idx]
+        hist = STORE[idx].get("history", [])
+        info["indices"][idx] = {
+            "has_data":          bool(d),
+            "data_timestamp":    d.get("timestamp", "—"),
+            "spot":              d.get("spot", 0),
+            "pcr":               d.get("pcr", 0),
+            "backend_error":     d.get("backend_error"),
+            "history_count":     len(hist),
+            "oldest_history_s":  round(time.time() - hist[0]["ts"]) if hist else None,
+            "newest_history_s":  round(time.time() - hist[-1]["ts"]) if hist else None,
+            "expiry_cached":     _EXPIRY_DAY_CACHE.get(f"{idx}_{date.today().isoformat()}"),
+            "candles_1m":        len(cs.get("1m", [])),
+            "candles_5m":        len(cs.get("5m", [])),
+            "last_fetch_day":    cs.get("last_fetch_day", ""),
+            "last_full_fetch_ago_s": round(time.time() - cs.get("last_full_fetch", 0)) if cs.get("last_full_fetch") else None,
+        }
+    return jsonify(info)
 
 @app.route("/login")
 def login(): 
