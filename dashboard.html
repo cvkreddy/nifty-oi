@@ -1,101 +1,62 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Pro OI Terminal — Multi-Asset</title><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet"><style>:root{
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pro OI Terminal — Multi-Asset</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
   --bg:#07090c;--bg2:#0f1319;--bg3:#161d27;--border:#212836;--border2:#303a4d;
   --text:#c9d1d9;--text2:#8b949e;
   --bull:#00ff88;--bear:#ff3b57;--warn:#ffb800;--info:#00b8ff;--atm:#bc8cff;--purple:#a371f7;
   --font:'JetBrains Mono',monospace;--ui:'Rajdhani',sans-serif;
+  
+  --ps-bull: #1b5e20;
+  --ps-bear: #b71c1c;
+  --ps-wait: #e65100;
+  --ps-adx-h: #33691e;
+  --ps-adx-l: #37474f;
+  --ps-st-b: #00695c;
+  --ps-st-s: #b71c1c;
+  --ps-st-t: #263238;
 }
-*{margin:0;padding:0;box-sizing:border-box;}body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;}.hdr{background:linear-gradient(90deg, #0f1319 0%, #07090c 100%);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100;box-shadow:0 4px 15px rgba(0,0,0,0.6);}.logo{font-size:18px;font-weight:700;color:var(--info);letter-spacing:2px;text-shadow:0 0 10px rgba(0,184,255,0.4);}.dot{width:8px;height:8px;border-radius:50%;background:var(--bull);animation:blink 1.4s infinite;box-shadow:0 0 8px var(--bull);}@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}.timer{font-size:13px;color:var(--text2);font-weight:600;}.btn{font-family:var(--ui);font-size:13px;font-weight:600;background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--bull);padding:5px 14px;border-radius:6px;cursor:pointer;transition:all 0.2s;}.btn:hover{background:rgba(0,255,136,.2);box-shadow:0 0 10px rgba(0,255,136,0.2);}.btn-ss{font-family:var(--ui);font-size:12px;font-weight:600;background:rgba(0,184,255,.1);border:1px solid rgba(0,184,255,.3);color:var(--info);padding:5px 12px;border-radius:6px;cursor:pointer;}.tabs {display:flex; gap:12px; padding:12px 18px; background:var(--bg2); border-bottom:1px solid var(--border);}.tab {padding:6px 16px; border-radius:6px; cursor:pointer; font-family:var(--ui); font-weight:700; font-size:14px; color:var(--text2); border:1px solid transparent; transition:all 0.2s; letter-spacing:1px;}.tab:hover {color:var(--text);}.tab.active {background:rgba(0,184,255,.1); border-color:rgba(0,184,255,.3); color:var(--info); text-shadow:0 0 8px rgba(0,184,255,0.4);}.verdict-banner{padding:10px 18px;border-bottom:2px solid transparent;font-family:var(--ui);display:flex;align-items:center;gap:12px;flex-wrap:wrap;transition:all .4s;}.vb-icon{font-size:24px;filter:drop-shadow(0 0 5px rgba(255,255,255,0.2));}.vb-main{font-size:18px;font-weight:700;letter-spacing:.5px;}.vb-detail{font-size:13px;opacity:.9;flex:1;}.vb-time{font-size:11px;opacity:.6;}.state-bar{padding:12px 18px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--bg2);}.state-icon{font-size:24px;}.state-label{font-size:10px;color:var(--text2);letter-spacing:2px;margin-bottom:4px;text-transform:uppercase;font-family:var(--ui);font-weight:700;}.state-val{font-size:18px;font-weight:700;letter-spacing:1px;}.state-divider{width:1px;height:40px;background:var(--border2);}
-
+*{margin:0;padding:0;box-sizing:border-box;}body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;}.hdr{background:linear-gradient(90deg, #0f1319 0%, #07090c 100%);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100;box-shadow:0 4px 15px rgba(0,0,0,0.6);}.logo{font-size:18px;font-weight:700;color:var(--info);letter-spacing:2px;text-shadow:0 0 10px rgba(0,184,255,0.4);}.dot{width:8px;height:8px;border-radius:50%;background:var(--bull);animation:blink 1.4s infinite;box-shadow:0 0 8px var(--bull);}@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}.timer{font-size:13px;color:var(--text2);font-weight:600;}.btn{font-family:var(--ui);font-size:13px;font-weight:600;background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:var(--bull);padding:5px 14px;border-radius:6px;cursor:pointer;transition:all 0.2s;}.btn:hover{background:rgba(0,255,136,.2);box-shadow:0 0 10px rgba(0,255,136,0.2);}.btn-ss{font-family:var(--ui);font-size:12px;font-weight:600;background:rgba(0,184,255,.1);border:1px solid rgba(0,184,255,.3);color:var(--info);padding:5px 12px;border-radius:6px;cursor:pointer;}.tabs {display:flex; gap:12px; padding:12px 18px; background:var(--bg2); border-bottom:1px solid var(--border);}.tab {padding:6px 16px; border-radius:6px; cursor:pointer; font-family:var(--ui); font-weight:700; font-size:14px; color:var(--text2); border:1px solid transparent; transition:all 0.2s; letter-spacing:1px;}.tab:hover {color:var(--text);}.tab.active {background:rgba(0,184,255,.1); border-color:rgba(0,184,255,.3); color:var(--info); text-shadow:0 0 8px rgba(0,184,255,0.4);}
+.state-bar{padding:12px 18px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--bg2);}.state-label{font-size:10px;color:var(--text2);letter-spacing:2px;margin-bottom:4px;text-transform:uppercase;font-family:var(--ui);font-weight:700;}.state-divider{width:1px;height:40px;background:var(--border2);}
 .strip { background: var(--bg); border-bottom: 1px solid var(--border); padding: 12px 18px; display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; }
 .si { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); flex: 1; min-width: 140px; }
 .sdv { display: none; }
-
 .sl{font-size:10px;color:var(--text2);letter-spacing:1px;font-family:var(--ui);font-weight:700;}.sv{font-size:15px;font-weight:700;}.bull-glow{color:var(--bull);text-shadow:0 0 8px rgba(0,255,136,0.3);}.bear-glow{color:var(--bear);text-shadow:0 0 8px rgba(255,59,87,0.3);}.tot-bar{padding:8px 18px; background:var(--bg3); border-bottom:1px solid var(--border); font-size:12px; color:var(--text2); display:flex; align-items:center; gap:12px; font-family:var(--ui); font-weight:700; letter-spacing:0.5px;}.straddle-bar{background:linear-gradient(90deg, rgba(0,184,255,.05) 0%, transparent 100%);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}.sb-item{display:flex;align-items:baseline;gap:6px;}.sb-lbl{font-size:10px;color:var(--info);letter-spacing:1px;font-family:var(--ui);font-weight:700;}.sb-val{font-size:16px;font-weight:700;color:var(--info);text-shadow:0 0 8px rgba(0,184,255,0.3);}.sb-sub{font-size:11px;color:var(--text2);}.range-bar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;width:140px;position:relative;display:inline-block;vertical-align:middle;margin:0 8px;box-shadow:inset 0 1px 3px rgba(0,0,0,0.5);}.range-fill{position:absolute;height:100%;background:rgba(0,184,255,.5);border-radius:3px;}.range-dot{position:absolute;top:-3px;width:12px;height:12px;border-radius:50%;background:var(--info);transform:translateX(-50%);box-shadow:0 0 8px var(--info);}.alerts-bar{padding:8px 18px;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:center;}.alert-pill{font-size:11px;padding:4px 12px;border-radius:6px;font-weight:700;font-family:var(--ui);letter-spacing:0.5px;}.alert-high{background:rgba(255,59,87,.15);color:var(--bear);border:1px solid rgba(255,59,87,.4);box-shadow:0 0 10px rgba(255,59,87,0.1);}.tech-pill{font-size:10px;padding:3px 8px;border-radius:4px;font-weight:700;font-family:var(--ui);text-transform:uppercase;}#err{display:none;background:rgba(255,59,87,.15);border-bottom:2px solid var(--bear);color:#fff;padding:10px 18px;font-size:13px;font-weight:700;text-align:center;text-shadow:0 0 5px rgba(255,0,0,0.5);}.intel-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:12px 18px;}.ic{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;box-shadow:0 4px 12px rgba(0,0,0,0.2);transition:transform 0.2s;}.ic:hover{transform:translateY(-2px);border-color:var(--border2);}.ic-lbl{font-size:10px;color:var(--text2);letter-spacing:1.5px;margin-bottom:6px;font-family:var(--ui);font-weight:700;}.ic-val{font-size:16px;font-weight:700;margin-bottom:4px;}.ic-sub{font-size:11px;color:var(--text2);line-height:1.4;}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 18px 18px;}.full{grid-column:1/-1;}.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.25);}.ch{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg, var(--bg3) 0%, var(--bg2) 100%);}.ct{font-size:12px;font-weight:700;letter-spacing:1px;font-family:var(--ui);text-transform:uppercase;}table{width:100%;border-collapse:collapse;}th{padding:8px 10px;font-size:11px;font-weight:700;color:var(--text2);text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg3);font-family:var(--ui);letter-spacing:0.5px;}th.th-s{text-align:center;color:var(--info);}td{padding:8px 10px;font-size:13px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;}td.td-s{text-align:center;font-weight:700;font-size:15px;}tr:hover td{background:rgba(255,255,255,.03);}
-
 .ar td { background: rgba(163,113,247,.12) !important; border-top: 1px solid rgba(163,113,247,0.4); border-bottom: 1px solid rgba(163,113,247,0.4); box-shadow: inset 0 0 10px rgba(163,113,247,0.05); }
 .ar td.td-s { background: rgba(163,113,247,.3) !important; color: #fff; text-shadow: 0 0 10px var(--atm); font-size: 16px; font-weight: 800; }
-
 .flow-tbl tbody tr:nth-child(odd) td { background: rgba(255,255,255,0.015); }
 .flow-tbl tbody tr:hover td { background: rgba(0,184,255,0.08) !important; cursor: default; }
-
 .dim { opacity: 0.25; font-weight: 400 !important; }
-
 .vol-wrap { position: relative; width: 100%; padding: 4px 6px; display: block; text-align: center; }
 .vol-bg { position: absolute; top: 1px; bottom: 1px; background: rgba(255,255,255,0.08); border-radius: 3px; z-index: 0; }
 .vol-txt { position: relative; z-index: 1; color: var(--text2); }
+.sk-c{color:var(--bear);font-weight:700;}.sk-p{color:var(--bull);font-weight:700;}.sk-a{color:var(--atm);font-weight:700;}.vel-arrow{font-size:14px;margin-left:4px;font-weight:900;}.vel-up2{color:var(--bear);text-shadow:0 0 5px var(--bear);}.vel-up1{color:rgba(255,59,87,.7)}.vel-dn1{color:rgba(0,255,136,.7)}.vel-dn2{color:var(--bull);text-shadow:0 0 5px var(--bull);}.vel-flat{color:var(--text2)}
 
-.sk-c{color:var(--bear);font-weight:700;}.sk-p{color:var(--bull);font-weight:700;}.sk-a{color:var(--atm);font-weight:700;}.vel-arrow{font-size:14px;margin-left:4px;font-weight:900;}.vel-up2{color:var(--bear);text-shadow:0 0 5px var(--bear);}.vel-up1{color:rgba(255,59,87,.7)}.vel-dn1{color:rgba(0,255,136,.7)}.vel-dn2{color:var(--bull);text-shadow:0 0 5px var(--bull);}.vel-flat{color:var(--text2)}#nifty-tech-full {display: grid;grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));gap: 0;border-bottom: 1px solid var(--border);}.tech-col {padding: 12px 16px;border-right: 1px solid var(--border);}.tech-col:last-child {border-right: none;}.statusbar{padding:8px 20px;background:var(--bg2);border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px;color:var(--text2);position:fixed;bottom:0;left:0;right:0;font-family:var(--ui);font-weight:600;letter-spacing:0.5px;}.loading{color:var(--text2);padding:20px;text-align:center;font-size:14px;font-family:var(--ui);letter-spacing:1px;}.bull{color:var(--bull)!important;}.bear{color:var(--bear)!important;}.warn{color:var(--warn)!important;}.info{color:var(--info)!important;}.atmc{color:var(--atm)!important;}.pcr-spark{width:90px;height:24px;margin-top:6px;}.flow-tbl td{font-size:12px;padding:6px 10px;vertical-align:middle;}.flow-tbl th{font-size:11px;padding:8px 10px;}.mig-row{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,.03);font-size:12px;}.mig-row:last-child{border-bottom:none;}.mig-from{width:56px;text-align:right;font-weight:700;}.mig-to{width:56px;font-weight:700;}.mig-chg{width:48px;text-align:right;font-weight:700;}.mig-note{font-size:11px;color:var(--text2);flex:1;font-family:var(--ui);}.pin-box{padding:10px 16px;border-top:1px solid var(--border);background:var(--bg3);}.pin-inner{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:6px;border:1px solid transparent;}.pin-label{font-size:11px;font-weight:700;letter-spacing:1px;font-family:var(--ui);}.pin-note{font-size:11px;font-family:var(--ui);flex:1;color:var(--text2);}.pin-score{font-size:17px;font-weight:700;}.gg{display:grid;grid-template-columns:repeat(4,1fr);}.gc{padding:10px 14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);}.gc:nth-child(4n){border-right:none;}.gc:nth-last-child(-n+4){border-bottom:none;}.gl{font-size:10px;color:var(--text2);letter-spacing:1px;margin-bottom:4px;font-family:var(--ui);font-weight:700;}.gv{font-size:14px;font-weight:700;}.gs{font-size:10px;color:var(--text2);margin-top:2px;}.ag{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;}.ac{padding:12px 16px;border-right:1px solid var(--border);}.ac:last-child{border-right:none;}.at2{font-size:11px;letter-spacing:1.5px;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);font-family:var(--ui);}.arow{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);}.arow:last-child{border-bottom:none;}.ast{font-size:13px;font-weight:700;}.aoi{font-size:12px;font-weight:700;}.achg{font-size:10px;color:var(--text2);}.anote{font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5;}.aempty{font-size:12px;color:var(--text2);padding:6px 0;line-height:1.6;}.skew-row{display:flex;align-items:center;gap:10px;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,.03);}.skew-bar{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,0.5);}.skew-fill{height:100%;border-radius:3px;}.hw{padding:12px 16px;}.gex-row{display:flex;align-items:center;gap:8px;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,.03);}.gex-strike{font-size:13px;width:60px;text-align:right;flex-shrink:0;}.gex-bar-wrap{flex:1;display:flex;align-items:center;gap:2px;}.gex-pos{height:14px;background:var(--bear);border-radius:3px 0 0 3px;box-shadow:0 0 5px rgba(255,59,87,0.3);}.gex-neg{height:14px;background:var(--bull);border-radius:0 3px 3px 0;box-shadow:0 0 5px rgba(0,255,136,0.3);}.gex-mid{width:2px;background:var(--border2);height:16px;flex-shrink:0;}.gex-val{font-size:11px;width:56px;text-align:right;flex-shrink:0;font-weight:700;}
+/* PINESCRIPT TECH TABLE STYLES */
+.ps-table-wrap { width: 100%; overflow-x: auto; border-bottom: 1px solid var(--border); }
+.ps-table { width: 100%; border-collapse: collapse; min-width: 800px; text-align: center; }
+.ps-table th, .ps-table td { padding: 6px 8px; font-size: 11px; border: 1px solid var(--border2); white-space: nowrap; }
+.ps-table th { font-family: var(--ui); font-weight: 700; color: #fff; letter-spacing: 0.5px; }
+.ps-th-15m { background-color: rgba(25, 118, 210, 0.4); } 
+.ps-th-5m { background-color: rgba(142, 36, 170, 0.4); } 
+.ps-td-bull { background-color: var(--ps-bull); color: #fff; font-weight: 700; }
+.ps-td-bear { background-color: var(--ps-bear); color: #fff; font-weight: 700; }
+.ps-td-wait { background-color: var(--ps-wait); color: #fff; font-weight: 700; }
+.ps-td-adxh { background-color: var(--ps-adx-h); color: #fff; }
+.ps-td-adxl { background-color: var(--ps-adx-l); color: #fff; }
+.ps-td-stb  { background-color: var(--ps-st-b); color: #fff; font-weight: 700; }
+.ps-td-sts  { background-color: var(--ps-st-s); color: #fff; font-weight: 700; }
+.ps-td-stt  { background-color: var(--ps-st-t); color: #fff; }
 
-/* ── OI Velocity indicator ─────────────────────────── */
-.vel-acc-up{color:#ff3b57;font-weight:900;font-size:12px;text-shadow:0 0 4px rgba(255,59,87,0.6);}
-.vel-acc-dn{color:#00ff88;font-weight:900;font-size:12px;text-shadow:0 0 4px rgba(0,255,136,0.6);}
-.vel-acc-flat{color:var(--text2);font-size:11px;}
-
-/* ── Alert Log Timeline ────────────────────────────── */
-.alog-wrap{max-height:220px;overflow-y:auto;padding:6px 0;}
-.alog-wrap::-webkit-scrollbar{width:4px;}.alog-wrap::-webkit-scrollbar-track{background:var(--bg3);}.alog-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
-.alog-row{display:flex;align-items:flex-start;gap:10px;padding:6px 14px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:12px;transition:background 0.1s;}
-.alog-row:hover{background:rgba(255,255,255,0.03);}
-.alog-time{color:var(--text2);font-size:10px;white-space:nowrap;margin-top:1px;font-family:var(--ui);min-width:56px;}
-.alog-type{font-weight:700;font-size:11px;padding:2px 6px;border-radius:4px;white-space:nowrap;font-family:var(--ui);}
-.alog-msg{color:var(--text2);font-size:11px;line-height:1.4;flex:1;}
-.alog-empty{padding:20px;text-align:center;color:var(--text2);font-size:12px;font-family:var(--ui);}
-
-/* ── Straddle & PCR sparklines ─────────────────────── */
-.mini-spark{display:inline-block;vertical-align:middle;}
-
-/* ── Wall shift badge ──────────────────────────────── */
-.wall-shift-badge{background:rgba(255,184,0,0.15);color:var(--warn);border:1px solid rgba(255,184,0,0.4);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;font-family:var(--ui);animation:blink 1.4s infinite;}
-
-/* ── MACD display ──────────────────────────────────── */
-.macd-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:11px;}
-.macd-hist-bar{display:inline-block;height:8px;min-width:2px;border-radius:2px;vertical-align:middle;margin-left:4px;}
-
-/* ── Straddle decay chart ──────────────────────────── */
-.straddle-spark-wrap{flex:1;min-width:120px;display:flex;align-items:center;gap:8px;}
-
-/* Open Price Tags */
-.open-tag { font-size:9px; padding:2px 4px; border-radius:3px; margin-left:4px; font-weight:700; }
-.open-up { background:rgba(0,255,136,0.1); color:var(--bull); border:1px solid rgba(0,255,136,0.3); }
-.open-dn { background:rgba(255,59,87,0.1); color:var(--bear); border:1px solid rgba(255,59,87,0.3); }
-
-/* pill styles for flow table */
-.pill { font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;font-family:var(--ui);letter-spacing:.5px; }
-.pill-lb { background:rgba(0,255,136,.15);color:var(--bull);border:1px solid rgba(0,255,136,.3); }
-.pill-lu { background:rgba(255,184,0,.15);color:var(--warn);border:1px solid rgba(255,184,0,.3); }
-.pill-sb { background:rgba(255,59,87,.15);color:var(--bear);border:1px solid rgba(255,59,87,.3); }
-.pill-sc { background:rgba(188,140,255,.15);color:var(--atm);border:1px solid rgba(188,140,255,.3); }
-
-/* OI Matrix cards */
-.oi-matrix-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px 16px; }
-.oi-matrix-card { border-radius:8px;padding:10px 12px;border:1px solid transparent;transition:transform .2s; }
-.oi-matrix-card:hover { transform:translateY(-2px); }
-.oi-matrix-title { font-size:11px;font-weight:700;font-family:var(--ui);letter-spacing:.5px;margin-bottom:4px; }
-.oi-matrix-sub { font-size:10px;opacity:.8;font-family:var(--ui);font-weight:700;margin-bottom:6px; }
-.oi-matrix-pts { font-size:10px;color:rgba(255,255,255,.65);line-height:1.6;font-family:var(--ui); }
-.oi-matrix-active { box-shadow:0 0 12px rgba(255,255,255,.15);transform:scale(1.02); }
-
-/* SuperTrend table */
-.st-table { width:100%;border-collapse:collapse;font-size:12px; }
-.st-table th { background:var(--bg3);padding:7px 12px;font-size:10px;font-weight:700;color:var(--text2);text-align:center;letter-spacing:.5px;font-family:var(--ui);border-bottom:1px solid var(--border); }
-.st-table td { padding:7px 12px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04); }
-.st-table tr:hover td { background:rgba(255,255,255,.03); }
-.st-sell { background:rgba(255,59,87,.12);color:var(--bear);font-weight:700;font-size:13px;padding:3px 10px;border-radius:5px;border:1px solid rgba(255,59,87,.4); }
-.st-buy  { background:rgba(0,255,136,.12);color:var(--bull);font-weight:700;font-size:13px;padding:3px 10px;border-radius:5px;border:1px solid rgba(0,255,136,.4); }
-
-/* Index OI Interpretation section */
-.oi-interp-row { display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border); }
-.oi-interp-cell { padding:10px 16px;border-right:1px solid var(--border);border-bottom:1px solid var(--border); }
-.oi-interp-cell:nth-child(2n) { border-right:none; }
-.oi-interp-label { font-size:10px;color:var(--text2);letter-spacing:1px;font-family:var(--ui);font-weight:700;margin-bottom:3px; }
-.oi-interp-val   { font-size:13px;font-weight:700;margin-bottom:3px; }
-.oi-interp-note  { font-size:10px;color:var(--text2);line-height:1.5;font-family:var(--ui); }
-
-/* ORB & Range Status */
-.level-card { background:var(--bg2); padding:10px 14px; border-radius:8px; border:1px solid var(--border); }
-.level-hdr { font-size:10px; color:var(--text2); letter-spacing:1px; font-family:var(--ui); font-weight:700; margin-bottom:6px; }
-.level-val { font-size:14px; font-weight:700; display:flex; justify-content:space-between; }
-.range-gray { background:rgba(139,148,158,0.15); color:var(--text2); padding:4px 8px; border-radius:4px; font-size:11px; font-weight:700; border:1px solid rgba(139,148,158,0.3); }
+.statusbar{padding:8px 20px;background:var(--bg2);border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px;color:var(--text2);position:fixed;bottom:0;left:0;right:0;font-family:var(--ui);font-weight:600;letter-spacing:0.5px;}.loading{color:var(--text2);padding:20px;text-align:center;font-size:14px;font-family:var(--ui);letter-spacing:1px;}.bull{color:var(--bull)!important;}.bear{color:var(--bear)!important;}.warn{color:var(--warn)!important;}.info{color:var(--info)!important;}.atmc{color:var(--atm)!important;}.pcr-spark{width:90px;height:24px;margin-top:6px;}.mig-row{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,.03);font-size:12px;}.mig-row:last-child{border-bottom:none;}.mig-from{width:56px;text-align:right;font-weight:700;}.mig-to{width:56px;font-weight:700;}.mig-chg{width:48px;text-align:right;font-weight:700;}.mig-note{font-size:11px;color:var(--text2);flex:1;font-family:var(--ui);}.pin-box{padding:10px 16px;border-top:1px solid var(--border);background:var(--bg3);}.pin-inner{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:6px;border:1px solid transparent;}.pin-label{font-size:11px;font-weight:700;letter-spacing:1px;font-family:var(--ui);}.pin-note{font-size:11px;font-family:var(--ui);flex:1;color:var(--text2);}.pin-score{font-size:17px;font-weight:700;}.gg{display:grid;grid-template-columns:repeat(4,1fr);}.gc{padding:10px 14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);}.gc:nth-child(4n){border-right:none;}.gc:nth-last-child(-n+4){border-bottom:none;}.gl{font-size:10px;color:var(--text2);letter-spacing:1px;margin-bottom:4px;font-family:var(--ui);font-weight:700;}.gv{font-size:14px;font-weight:700;}.gs{font-size:10px;color:var(--text2);margin-top:2px;}.ag{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;}.ac{padding:12px 16px;border-right:1px solid var(--border);}.ac:last-child{border-right:none;}.at2{font-size:11px;letter-spacing:1.5px;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);font-family:var(--ui);}.arow{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);}.arow:last-child{border-bottom:none;}.ast{font-size:13px;font-weight:700;}.aoi{font-size:12px;font-weight:700;}.achg{font-size:10px;color:var(--text2);}.anote{font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5;}.aempty{font-size:12px;color:var(--text2);padding:6px 0;line-height:1.6;}.skew-row{display:flex;align-items:center;gap:10px;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,.03);}.skew-bar{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,0.5);}.skew-fill{height:100%;border-radius:3px;}.hw{padding:12px 16px;}.gex-row{display:flex;align-items:center;gap:8px;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,.03);}.gex-strike{font-size:13px;width:60px;text-align:right;flex-shrink:0;}.gex-bar-wrap{flex:1;display:flex;align-items:center;gap:2px;}.gex-pos{height:14px;background:var(--bear);border-radius:3px 0 0 3px;box-shadow:0 0 5px rgba(255,59,87,0.3);}.gex-neg{height:14px;background:var(--bull);border-radius:0 3px 3px 0;box-shadow:0 0 5px rgba(0,255,136,0.3);}.gex-mid{width:2px;background:var(--border2);height:16px;flex-shrink:0;}.gex-val{font-size:11px;width:56px;text-align:right;flex-shrink:0;font-weight:700;}
+.vel-acc-up{color:#ff3b57;font-weight:900;font-size:12px;text-shadow:0 0 4px rgba(255,59,87,0.6);}.vel-acc-dn{color:#00ff88;font-weight:900;font-size:12px;text-shadow:0 0 4px rgba(0,255,136,0.6);}.vel-acc-flat{color:var(--text2);font-size:11px;}
+.alog-wrap{max-height:220px;overflow-y:auto;padding:6px 0;}.alog-wrap::-webkit-scrollbar{width:4px;}.alog-wrap::-webkit-scrollbar-track{background:var(--bg3);}.alog-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}.alog-row{display:flex;align-items:flex-start;gap:10px;padding:6px 14px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:12px;transition:background 0.1s;}.alog-row:hover{background:rgba(255,255,255,0.03);}.alog-time{color:var(--text2);font-size:10px;white-space:nowrap;margin-top:1px;font-family:var(--ui);min-width:56px;}.alog-type{font-weight:700;font-size:11px;padding:2px 6px;border-radius:4px;white-space:nowrap;font-family:var(--ui);}.alog-msg{color:var(--text2);font-size:11px;line-height:1.4;flex:1;}.alog-empty{padding:20px;text-align:center;color:var(--text2);font-size:12px;font-family:var(--ui);}.mini-spark{display:inline-block;vertical-align:middle;}.wall-shift-badge{background:rgba(255,184,0,0.15);color:var(--warn);border:1px solid rgba(255,184,0,0.4);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;font-family:var(--ui);animation:blink 1.4s infinite;}.open-tag { font-size:9px; padding:2px 4px; border-radius:3px; margin-left:4px; font-weight:700; }.open-up { background:rgba(0,255,136,0.1); color:var(--bull); border:1px solid rgba(0,255,136,0.3); }.open-dn { background:rgba(255,59,87,0.1); color:var(--bear); border:1px solid rgba(255,59,87,0.3); }.level-card { background:var(--bg2); padding:10px 14px; border-radius:8px; border:1px solid var(--border); }.level-hdr { font-size:10px; color:var(--text2); letter-spacing:1px; font-family:var(--ui); font-weight:700; margin-bottom:6px; }.level-val { font-size:14px; font-weight:700; display:flex; justify-content:space-between; }.range-gray { background:rgba(139,148,158,0.15); color:var(--text2); padding:4px 8px; border-radius:4px; font-size:11px; font-weight:700; border:1px solid rgba(139,148,158,0.3); }
+.pill{font-size:10px;padding:3px 10px;border-radius:4px;font-weight:700;font-family:var(--ui);white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -124,84 +85,30 @@
 
 <div id="err">⚠ Error fetching data</div>
 
-<div class="verdict-banner" id="verdict-banner">
-  <div class="vb-icon" id="vb-icon">⏳</div>
-  <div class="vb-main" id="vb-main">Connecting to server...</div>
-  <div class="vb-detail" id="vb-detail">Waiting for first data cycle</div>
-  <div class="vb-time" id="vb-time">—</div>
-</div>
-
 <div class="state-bar" id="state-bar">
-  <div class="state-icon" id="state-icon">⏳</div>
-  <div>
-    <div class="state-label">MARKET STATE</div>
-    <div class="state-val" id="state-val">—</div>
+  <div style="flex:1.2">
+    <div class="state-label">OVERALL INDEX ACTION (Price + Total OI)</div>
+    <div style="font-size:22px;font-weight:700;" id="idx-action-val">—</div>
+    <div style="font-size:11px;color:var(--text2);margin-top:3px;font-family:var(--ui);" id="idx-action-desc">Gathering data for 6 conventions...</div>
   </div>
   <div class="state-divider"></div>
   <div style="flex:1">
-    <div class="state-label">OI MATRIX (Price+OI Signal)</div>
+    <div class="state-label">ATM ZONE OI MATRIX</div>
     <div style="font-size:15px;font-weight:700;" id="matrix-val">—</div>
-    <div style="font-size:10px;color:var(--text2);font-family:var(--ui);margin-top:2px;" id="matrix-scenario">—</div>
+    <div style="font-size:11px;color:var(--text2);margin-top:3px;font-family:var(--ui);" id="matrix-desc">—</div>
+    <div style="font-size:11px;margin-top:3px;font-family:var(--ui);" id="wall-info"></div>
   </div>
   <div class="state-divider"></div>
-  <div style="flex:2">
-    <div style="font-size:14px;color:var(--text2);font-weight:600;" id="state-note">—</div>
-    <div style="font-size:12px;color:var(--text2);margin-top:4px;" id="matrix-desc">—</div>
-    <div style="font-size:11px;margin-top:4px;font-family:var(--ui);" id="wall-info"></div>
+  <div style="flex:1">
+    <div class="state-label">CE WALL / PE WALL</div>
+    <div style="font-size:13px;font-weight:700;margin-top:4px;" id="wall-display">—</div>
+    <div style="font-size:11px;color:var(--text2);margin-top:3px;font-family:var(--ui);" id="wall-desc">Strongest resistance and support strikes</div>
   </div>
-</div>
-
-<!-- ═══ OI MATRIX REFERENCE GUIDE (Image 1 logic) ═══ -->
-<div style="background:var(--bg2);border-bottom:2px solid var(--border2);">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px 6px;cursor:pointer" onclick="toggleMatrix()">
-    <span style="font-size:11px;font-weight:700;color:var(--info);letter-spacing:1.5px;font-family:var(--ui)">📊 OI MATRIX GUIDE — Price + OI = Real Market Signal (click to expand)</span>
-    <span id="matrix-toggle-icon" style="color:var(--text2);font-size:13px">▼</span>
-  </div>
-  <div id="oi-matrix-panel" style="display:none">
-    <div style="padding:6px 18px 4px;font-size:11px;color:var(--text2);font-family:var(--ui);border-top:1px solid var(--border)">
-      <span style="color:var(--warn);font-weight:700">Price shows direction, OI shows conviction</span> — together they reveal the real signal of smart money.
-    </div>
-    <div class="oi-matrix-grid">
-      <!-- Scenario 1: Long Buildup -->
-      <div class="oi-matrix-card" id="om-1" style="background:rgba(0,255,136,.07);border-color:rgba(0,255,136,.25)">
-        <div class="oi-matrix-title" style="color:var(--bull)">① Price ↑ + OI ↑</div>
-        <div class="oi-matrix-sub" style="color:var(--bull)">LONG BUILD-UP (Strong Bullish)</div>
-        <div class="oi-matrix-pts">• Fresh buyers are entering<br>• Trend is strong<br>• Avoid selling — resistance can break</div>
-      </div>
-      <!-- Scenario 2: Short Buildup -->
-      <div class="oi-matrix-card" id="om-2" style="background:rgba(255,59,87,.07);border-color:rgba(255,59,87,.25)">
-        <div class="oi-matrix-title" style="color:var(--bear)">② Price ↓ + OI ↑</div>
-        <div class="oi-matrix-sub" style="color:var(--bear)">SHORT BUILD-UP (Strong Bearish)</div>
-        <div class="oi-matrix-pts">• Fresh sellers are entering<br>• Downtrend is strong<br>• Avoid buying — support can break</div>
-      </div>
-      <!-- Scenario 3: Short Covering -->
-      <div class="oi-matrix-card" id="om-3" style="background:rgba(163,113,247,.07);border-color:rgba(163,113,247,.25)">
-        <div class="oi-matrix-title" style="color:var(--atm)">③ Price ↑ + OI ↓</div>
-        <div class="oi-matrix-sub" style="color:var(--atm)">SHORT COVERING</div>
-        <div class="oi-matrix-pts">• Sellers are exiting<br>• Resistance can form<br>• Reversal expected — not strongly bullish</div>
-      </div>
-      <!-- Scenario 4: Long Unwinding -->
-      <div class="oi-matrix-card" id="om-4" style="background:rgba(255,184,0,.07);border-color:rgba(255,184,0,.25)">
-        <div class="oi-matrix-title" style="color:var(--warn)">④ Price ↓ + OI ↓</div>
-        <div class="oi-matrix-sub" style="color:var(--warn)">LONG UNWINDING</div>
-        <div class="oi-matrix-pts">• Buyers are exiting<br>• Support can form<br>• Bounce expected — not strongly bearish</div>
-      </div>
-      <!-- Scenario 5: Breakout Pending -->
-      <div class="oi-matrix-card" id="om-5" style="background:rgba(0,184,255,.07);border-color:rgba(0,184,255,.25)">
-        <div class="oi-matrix-title" style="color:var(--info)">⑤ Price Sideways + OI ↑</div>
-        <div class="oi-matrix-sub" style="color:var(--info)">BREAKOUT PENDING</div>
-        <div class="oi-matrix-pts">• Positions are building<br>• Big move is coming<br>• Breakout pending — wait for direction</div>
-      </div>
-      <!-- Scenario 6: Choppy -->
-      <div class="oi-matrix-card" id="om-6" style="background:rgba(139,148,158,.07);border-color:rgba(139,148,158,.25)">
-        <div class="oi-matrix-title" style="color:var(--text2)">⑥ Price Sideways + OI ↓</div>
-        <div class="oi-matrix-sub" style="color:var(--text2)">CHOPPY MARKET</div>
-        <div class="oi-matrix-pts">• Low market interest<br>• No conviction<br>• Choppy — avoid trading</div>
-      </div>
-    </div>
-    <div style="padding:6px 18px 10px;font-size:10px;color:var(--text2);font-family:var(--ui);border-top:1px solid var(--border)">
-      💡 <span style="color:var(--warn);font-weight:700">Currently Detected:</span> <span id="matrix-active-label" style="font-weight:700;color:var(--text)">Waiting for data...</span>
-    </div>
+  <div class="state-divider"></div>
+  <div style="flex:1.3">
+    <div class="state-label">SMART MONEY VERDICT</div>
+    <div style="font-size:13px;font-weight:700;margin-top:4px;" id="verdict-val">—</div>
+    <div style="font-size:11px;color:var(--text2);margin-top:3px;font-family:var(--ui);" id="verdict-desc">—</div>
   </div>
 </div>
 
@@ -284,47 +191,10 @@
 
 <div class="card" style="border-radius:0; border-left:none; border-right:none; margin-bottom:14px;">
   <div class="ch">
-    <span class="ct info">📊 TECHNICALS & LEVELS (3m, 5m, 15m)</span>
-    <span id="tech-overall-bias" style="font-weight:700;font-size:14px;color:var(--text2)">—</span><span class="cs" id="tech-bias-lbl" style="font-weight:700;font-size:13px">Bias: —</span>
+    <span class="ct info">📊 TECHNICALS & LEVELS (5m, 15m)</span>
+    <span id="tech-overall-bias" style="font-weight:700;font-size:14px;color:var(--text2)">—</span><span class="cs" id="tech-bias-lbl" style="font-weight:700;font-size:13px; margin-left:8px;">Bias: —</span>
   </div>
   
-  <!-- SuperTrend Signal Table (Image 2 logic) -->
-  <div style="border-bottom:1px solid var(--border);background:rgba(0,0,0,.2);overflow-x:auto">
-    <div style="padding:8px 16px 4px;font-size:10px;color:var(--info);font-family:var(--ui);font-weight:700;letter-spacing:1px">📡 SUPERTREND SIGNAL TRACKER — 15min & 5min (live from server)</div>
-    <table class="st-table">
-      <thead>
-        <tr>
-          <th>Instrument</th>
-          <th style="background:rgba(0,184,255,.05);color:var(--info)">15m TrendStart</th>
-          <th style="background:rgba(0,184,255,.05);color:var(--info)">15m Trend</th>
-          <th style="background:rgba(0,184,255,.05);color:var(--info)">15m Pullback</th>
-          <th style="background:rgba(0,184,255,.05);color:var(--info)">15m Cont</th>
-          <th style="background:rgba(0,184,255,.05);color:var(--info)">15m ADX(14)</th>
-          <th style="background:rgba(0,184,255,.05);color:var(--info)">15m ST Signal</th>
-          <th style="background:rgba(0,184,255,.05);color:var(--info)">15m ST Time</th>
-          <th style="background:rgba(163,113,247,.05);color:var(--atm)">5m TrendStart</th>
-          <th style="background:rgba(163,113,247,.05);color:var(--atm)">5m Trend</th>
-          <th style="background:rgba(163,113,247,.05);color:var(--atm)">5m Pullback</th>
-          <th style="background:rgba(163,113,247,.05);color:var(--atm)">5m Cont</th>
-          <th style="background:rgba(163,113,247,.05);color:var(--atm)">5m ADX(14)</th>
-          <th style="background:rgba(163,113,247,.05);color:var(--atm)">5m ST Signal</th>
-          <th style="background:rgba(163,113,247,.05);color:var(--atm)">5m ST Time</th>
-        </tr>
-      </thead>
-      <tbody id="st-signal-tbody">
-        <tr><td colspan="15" class="loading">Loading SuperTrend data...</td></tr>
-      </tbody>
-    </table>
-    <div style="padding:6px 16px 8px;font-size:10px;color:var(--text2);font-family:var(--ui);line-height:1.7">
-      <span style="color:var(--bull);font-weight:700">TrendStart</span> = when trend began &nbsp;|&nbsp; 
-      <span style="color:var(--warn);font-weight:700">Pullback</span> = last pullback time &nbsp;|&nbsp; 
-      <span style="color:var(--info);font-weight:700">Cont</span> = continuation signal &nbsp;|&nbsp;
-      <span style="color:var(--bull);font-weight:700">ADX≥25</span>=Strong trend &nbsp;
-      <span style="color:var(--warn);font-weight:700">ADX 20–25</span>=Developing &nbsp;
-      <span style="color:var(--text2)">ADX&lt;20</span>=Ranging
-    </div>
-  </div>
-
   <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); background:rgba(0,184,255,0.02)">
       <div class="level-card">
           <div class="level-hdr">15M ORB (OPENING RANGE BREAKOUT)</div>
@@ -342,19 +212,8 @@
       </div>
   </div>
 
-  <div id="nifty-tech-full">
-    <div class="tech-col">
-      <div style="font-size:11px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:10px">3 MIN TF</div>
-      <div id="tech-3m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
-    </div>
-    <div class="tech-col">
-      <div style="font-size:11px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:10px">5 MIN TF</div>
-      <div id="tech-5m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
-    </div>
-    <div class="tech-col">
-      <div style="font-size:11px;color:var(--info);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:10px">15 MIN TF</div>
-      <div id="tech-15m-full"><div class="loading" style="padding:4px 0">Loading...</div></div>
-    </div>
+  <div class="ps-table-wrap" id="ps-table-wrap">
+      <div class="loading" style="padding:20px;">Waiting for Technicals...</div>
   </div>
 </div>
 
@@ -380,50 +239,11 @@
   </div>
 </div>
 
-<!-- ═══ LIVE OI MATRIX READING for Index ═══ -->
-<div class="card" style="border-radius:0;border-left:none;border-right:none;margin-bottom:4px;">
-  <div class="ch">
-    <span class="ct" style="color:var(--warn)">🧠 INDEX OI MATRIX — CURRENT READING (Price + OI = Signal)</span>
-    <span id="index-matrix-time" style="font-size:11px;color:var(--text2)">—</span>
-  </div>
-  <div id="index-matrix-body" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0">
-    <div class="loading" style="grid-column:1/-1">Waiting for data...</div>
-  </div>
-  <!-- OI Matrix 6-scenario reference mini-grid -->
-  <div style="border-top:1px solid var(--border);padding:10px 16px;">
-    <div style="font-size:10px;color:var(--text2);font-family:var(--ui);font-weight:700;letter-spacing:1px;margin-bottom:8px">REFERENCE: ALL 6 SCENARIOS EXPLAINED</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-      <div style="background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:6px;padding:8px 10px">
-        <div style="font-size:11px;font-weight:700;color:var(--bull);font-family:var(--ui)">① Price↑ OI↑ = Long Build-Up</div>
-        <div style="font-size:10px;color:var(--text2);margin-top:3px;line-height:1.5">Buyers entering. Strong uptrend. <b>Do not sell</b> — resistance may break.</div>
-      </div>
-      <div style="background:rgba(255,59,87,.06);border:1px solid rgba(255,59,87,.2);border-radius:6px;padding:8px 10px">
-        <div style="font-size:11px;font-weight:700;color:var(--bear);font-family:var(--ui)">② Price↓ OI↑ = Short Build-Up</div>
-        <div style="font-size:10px;color:var(--text2);margin-top:3px;line-height:1.5">Sellers entering. Strong downtrend. <b>Do not buy</b> — support may break.</div>
-      </div>
-      <div style="background:rgba(163,113,247,.06);border:1px solid rgba(163,113,247,.2);border-radius:6px;padding:8px 10px">
-        <div style="font-size:11px;font-weight:700;color:var(--atm);font-family:var(--ui)">③ Price↑ OI↓ = Short Covering</div>
-        <div style="font-size:10px;color:var(--text2);margin-top:3px;line-height:1.5">Shorts exiting = weak rally. Not truly bullish — reversal likely.</div>
-      </div>
-      <div style="background:rgba(255,184,0,.06);border:1px solid rgba(255,184,0,.2);border-radius:6px;padding:8px 10px">
-        <div style="font-size:11px;font-weight:700;color:var(--warn);font-family:var(--ui)">④ Price↓ OI↓ = Long Unwinding</div>
-        <div style="font-size:10px;color:var(--text2);margin-top:3px;line-height:1.5">Longs exiting = weak fall. Not truly bearish — bounce expected.</div>
-      </div>
-      <div style="background:rgba(0,184,255,.06);border:1px solid rgba(0,184,255,.2);border-radius:6px;padding:8px 10px">
-        <div style="font-size:11px;font-weight:700;color:var(--info);font-family:var(--ui)">⑤ Sideways + OI↑ = Breakout Pending</div>
-        <div style="font-size:10px;color:var(--text2);margin-top:3px;line-height:1.5">Positions building. Big move is coming. Wait for direction.</div>
-      </div>
-      <div style="background:rgba(139,148,158,.06);border:1px solid rgba(139,148,158,.2);border-radius:6px;padding:8px 10px">
-        <div style="font-size:11px;font-weight:700;color:var(--text2);font-family:var(--ui)">⑥ Sideways + OI↓ = Choppy</div>
-        <div style="font-size:10px;color:var(--text2);margin-top:3px;line-height:1.5">No conviction, low interest. Avoid trading, wait for clarity.</div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <div class="grid">
   <div class="card">
-    <div class="ch"><span class="ct bear">CALL SIDE — RESISTANCE (ATM ±5)</span></div>
+    <div class="ch"><span class="ct bear">CALL SIDE — RESISTANCE (ATM ±5)</span>
+      <span style="font-size:10px;color:var(--text2);font-family:var(--ui)">OI↑ = more resistance building | OI↓ = resistance weakening</span>
+    </div>
     <table>
       <thead>
         <tr>
@@ -432,15 +252,16 @@
       </thead>
       <tbody id="call-tbody"><tr><td colspan="8" class="loading">Waiting...</td></tr></tbody>
     </table>
-    <!-- OI Matrix interpretation for each strike -->
-    <div style="border-top:1px solid var(--border);background:rgba(255,59,87,.03)">
-      <div style="padding:6px 14px 4px;font-size:10px;color:var(--bear);font-family:var(--ui);font-weight:700;letter-spacing:1px">🔴 CALL OI INTERPRETATION (Price+OI Matrix)</div>
-      <div id="call-oi-interp" style="padding:0 14px 10px;font-size:11px;color:var(--text2);font-family:var(--ui);line-height:1.7">Waiting for data...</div>
+    <div style="border-top:1px solid var(--border);padding:8px 14px;background:rgba(255,59,87,.03)">
+      <div style="font-size:10px;color:var(--bear);font-family:var(--ui);font-weight:700;letter-spacing:1px;margin-bottom:5px">🔴 CE OI MATRIX READING (per strike)</div>
+      <div id="call-oi-interp" style="font-size:11px;color:var(--text2);font-family:var(--ui);line-height:1.8">—</div>
     </div>
   </div>
 
   <div class="card">
-    <div class="ch"><span class="ct bull">PUT SIDE — SUPPORT (ATM ±5)</span></div>
+    <div class="ch"><span class="ct bull">PUT SIDE — SUPPORT (ATM ±5)</span>
+      <span style="font-size:10px;color:var(--text2);font-family:var(--ui)">OI↑ = more support building | OI↓ = support weakening</span>
+    </div>
     <table>
       <thead>
         <tr>
@@ -449,44 +270,34 @@
       </thead>
       <tbody id="put-tbody"><tr><td colspan="8" class="loading">Waiting...</td></tr></tbody>
     </table>
-    <!-- OI Matrix interpretation for puts -->
-    <div style="border-top:1px solid var(--border);background:rgba(0,255,136,.03)">
-      <div style="padding:6px 14px 4px;font-size:10px;color:var(--bull);font-family:var(--ui);font-weight:700;letter-spacing:1px">🟢 PUT OI INTERPRETATION (Price+OI Matrix)</div>
-      <div id="put-oi-interp" style="padding:0 14px 10px;font-size:11px;color:var(--text2);font-family:var(--ui);line-height:1.7">Waiting for data...</div>
+    <div style="border-top:1px solid var(--border);padding:8px 14px;background:rgba(0,255,136,.03)">
+      <div style="font-size:10px;color:var(--bull);font-family:var(--ui);font-weight:700;letter-spacing:1px;margin-bottom:5px">🟢 PE OI MATRIX READING (per strike)</div>
+      <div id="put-oi-interp" style="font-size:11px;color:var(--text2);font-family:var(--ui);line-height:1.8">—</div>
     </div>
   </div>
 
   <div class="card full">
     <div class="ch">
-      <span class="ct warn">⚡ OI FLOW MATRIX — WHAT'S HAPPENING AT EACH STRIKE</span>
+      <span class="ct warn">⚡ OI FLOW MATRIX — THE 6 CONVENTIONS APPLIED</span>
       <span class="cs" id="flow-time">—</span>
-    </div>
-    <!-- Flow matrix OI signal legend -->
-    <div style="padding:8px 16px;border-bottom:1px solid var(--border);background:rgba(255,184,0,0.03);display:flex;gap:12px;flex-wrap:wrap;align-items:center">
-      <span style="font-size:10px;color:var(--text2);font-family:var(--ui);font-weight:700;letter-spacing:1px">OI SIGNAL KEY:</span>
-      <span style="font-size:10px;font-family:var(--ui)"><span class="pill pill-lb">L-BUILD</span> = Price↑+OI↑ (Strong Bull)</span>
-      <span style="font-size:10px;font-family:var(--ui)"><span class="pill pill-sb">S-BUILD</span> = Price↓+OI↑ (Strong Bear)</span>
-      <span style="font-size:10px;font-family:var(--ui)"><span class="pill pill-sc">S-COVER</span> = Price↑+OI↓ (Short Cover)</span>
-      <span style="font-size:10px;font-family:var(--ui)"><span class="pill pill-lu">L-UNWIND</span> = Price↓+OI↓ (Long Unwind)</span>
-      <span style="font-size:10px;color:var(--text2);font-family:var(--ui)">NET FLOW = PE Δ − CE Δ (positive = bullish)</span>
     </div>
     <div style="overflow-x:auto">
       <table class="flow-tbl">
         <thead>
           <tr style="background:var(--bg3)">
             <th class="th-s" style="min-width:80px">STRIKE</th>
-            <th style="text-align:left;min-width:180px;color:var(--bear)">🔴 CALL (CE) FLOW</th>
+            <th style="text-align:left;min-width:180px;color:var(--bear)">🔴 CALL (CE) ACTION</th>
             <th style="text-align:left;min-width:70px;color:var(--bear)">CE Δ OI</th>
             <th style="text-align:center;color:var(--warn);min-width:60px">CE VEL</th>
             <th style="text-align:center;color:var(--text2);min-width:90px">CE Vol</th>
             <th style="text-align:center;min-width:140px">NET FLOW</th>
-            <th style="text-align:left;min-width:180px;color:var(--bull)">✅ PUT (PE) FLOW</th>
+            <th style="text-align:left;min-width:180px;color:var(--bull)">✅ PUT (PE) ACTION</th>
             <th style="text-align:left;min-width:70px;color:var(--bull)">PE Δ OI</th>
             <th style="text-align:center;color:var(--warn);min-width:60px">PE VEL</th>
             <th style="text-align:center;color:var(--text2);min-width:90px">PE Vol</th>
           </tr>
         </thead>
-        <tbody id="flow-tbody"><tr><td colspan="8" class="loading">Waiting...</td></tr></tbody>
+        <tbody id="flow-tbody"><tr><td colspan="10" class="loading">Waiting...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -519,11 +330,67 @@
     <div class="gg" id="greeks"><div class="loading" style="grid-column:1/-1">Waiting...</div></div>
   </div>
 
-  <div class="card">
-    <div class="ch"><span class="ct purple">GEX PROFILE</span><span class="cs" id="gex-flip-label">Flip zone: —</span></div>
-    <div id="gex-panel"><div class="loading">Waiting...</div></div>
+  <div class="card full">
+    <div class="ch">
+      <span class="ct" style="color:var(--warn)">🧠 OI + PRICE DEEP ANALYSIS — THE 6 SCENARIOS APPLIED (ATM ±5 STRIKES)</span>
+      <span id="oi-price-time" style="font-size:11px;color:var(--text2)">—</span>
+    </div>
+    <!-- 6 scenarios reference bar -->
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:0;border-bottom:1px solid var(--border);">
+      <div style="padding:7px 10px;background:rgba(0,255,136,.08);border-right:1px solid var(--border);text-align:center">
+        <div style="font-size:10px;font-weight:700;color:var(--bull);font-family:var(--ui)">① P↑ OI↑</div>
+        <div style="font-size:9px;color:var(--text2);margin-top:2px">Long Build-Up</div>
+      </div>
+      <div style="padding:7px 10px;background:rgba(255,59,87,.08);border-right:1px solid var(--border);text-align:center">
+        <div style="font-size:10px;font-weight:700;color:var(--bear);font-family:var(--ui)">② P↓ OI↑</div>
+        <div style="font-size:9px;color:var(--text2);margin-top:2px">Short Build-Up</div>
+      </div>
+      <div style="padding:7px 10px;background:rgba(163,113,247,.08);border-right:1px solid var(--border);text-align:center">
+        <div style="font-size:10px;font-weight:700;color:var(--atm);font-family:var(--ui)">③ P↑ OI↓</div>
+        <div style="font-size:9px;color:var(--text2);margin-top:2px">Short Covering</div>
+      </div>
+      <div style="padding:7px 10px;background:rgba(255,184,0,.08);border-right:1px solid var(--border);text-align:center">
+        <div style="font-size:10px;font-weight:700;color:var(--warn);font-family:var(--ui)">④ P↓ OI↓</div>
+        <div style="font-size:9px;color:var(--text2);margin-top:2px">Long Unwinding</div>
+      </div>
+      <div style="padding:7px 10px;background:rgba(0,184,255,.08);border-right:1px solid var(--border);text-align:center">
+        <div style="font-size:10px;font-weight:700;color:var(--info);font-family:var(--ui)">⑤ Flat OI↑</div>
+        <div style="font-size:9px;color:var(--text2);margin-top:2px">Breakout Pending</div>
+      </div>
+      <div style="padding:7px 10px;background:rgba(139,148,158,.06);text-align:center">
+        <div style="font-size:10px;font-weight:700;color:var(--text2);font-family:var(--ui)">⑥ Flat OI↓</div>
+        <div style="font-size:9px;color:var(--text2);margin-top:2px">Choppy Market</div>
+      </div>
+    </div>
+    <!-- Per-strike OI+Price table -->
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:var(--bg3)">
+            <th style="padding:8px 10px;text-align:center;color:var(--info);font-family:var(--ui);border-bottom:1px solid var(--border);min-width:65px">STRIKE</th>
+            <th style="padding:8px 10px;text-align:center;color:var(--bear);font-family:var(--ui);border-bottom:1px solid var(--border);min-width:160px">CE SCENARIO</th>
+            <th style="padding:8px 10px;text-align:right;color:var(--bear);font-family:var(--ui);border-bottom:1px solid var(--border)">CE LTP Δ</th>
+            <th style="padding:8px 10px;text-align:right;color:var(--bear);font-family:var(--ui);border-bottom:1px solid var(--border)">CE OI Δ</th>
+            <th style="padding:8px 10px;text-align:center;color:var(--bear);font-family:var(--ui);border-bottom:1px solid var(--border)">CE IV%</th>
+            <th style="padding:8px 10px;text-align:center;font-family:var(--ui);border-bottom:1px solid var(--border);min-width:120px">NET FLOW BIAS</th>
+            <th style="padding:8px 10px;text-align:center;color:var(--bull);font-family:var(--ui);border-bottom:1px solid var(--border)">PE IV%</th>
+            <th style="padding:8px 10px;text-align:right;color:var(--bull);font-family:var(--ui);border-bottom:1px solid var(--border)">PE OI Δ</th>
+            <th style="padding:8px 10px;text-align:right;color:var(--bull);font-family:var(--ui);border-bottom:1px solid var(--border)">PE LTP Δ</th>
+            <th style="padding:8px 10px;text-align:center;color:var(--bull);font-family:var(--ui);border-bottom:1px solid var(--border);min-width:160px">PE SCENARIO</th>
+            <th style="padding:8px 10px;text-align:left;color:var(--warn);font-family:var(--ui);border-bottom:1px solid var(--border);min-width:200px">ACTION / IMPLICATION</th>
+          </tr>
+        </thead>
+        <tbody id="oi-price-tbody"><tr><td colspan="11" class="loading">Waiting for data...</td></tr></tbody>
+      </table>
+    </div>
+    <!-- Explanation footer -->
+    <div style="padding:8px 14px;border-top:1px solid var(--border);background:rgba(255,255,255,0.02);display:flex;gap:16px;flex-wrap:wrap;font-size:10px;color:var(--text2);font-family:var(--ui)">
+      <span>📌 <b style="color:var(--text)">Net Flow Bias</b> = PE OI Δ − CE OI Δ. Positive = bullish pressure. Negative = bearish.</span>
+      <span>📌 <b style="color:var(--text)">ATM row</b> highlighted in purple — most important strike to watch.</span>
+      <span>📌 <b style="color:var(--warn)">Price shows direction · OI shows conviction · Together = real signal</b></span>
+    </div>
   </div>
-  
+
   <div class="card">
     <div class="ch"><span class="ct warn">IV SKEW — CALL vs PUT</span><span class="cs" id="skew-signal">—</span></div>
     <div id="skew-panel"><div class="loading">Waiting...</div></div>
@@ -598,9 +465,9 @@ let targetTime = Date.now() + 300000;
 let snapCount = 0;
 let isSnapping = false;
 let memory = {
-    'NIFTY':     { pcrHistory: [], prevOIChg: {}, cycleCount: 0 },
-    'BANKNIFTY': { pcrHistory: [], prevOIChg: {}, cycleCount: 0 },
-    'SENSEX':    { pcrHistory: [], prevOIChg: {}, cycleCount: 0 }
+    'NIFTY':     { pcrHistory: [], prevOIChg: {}, cycleCount: 0, prevSpot: null, prevTotalOI: null },
+    'BANKNIFTY': { pcrHistory: [], prevOIChg: {}, cycleCount: 0, prevSpot: null, prevTotalOI: null },
+    'SENSEX':    { pcrHistory: [], prevOIChg: {}, cycleCount: 0, prevSpot: null, prevTotalOI: null }
 };
 
 function g(id) { return document.getElementById(id); }
@@ -711,7 +578,7 @@ function switchTab(idx) {
     
     sHTML('call-tbody', '<tr><td colspan="8" class="loading">Loading ' + idx + '...</td></tr>');
     sHTML('put-tbody', '<tr><td colspan="8" class="loading">Loading ' + idx + '...</td></tr>');
-    sHTML('flow-tbody', '<tr><td colspan="8" class="loading">Loading ' + idx + '...</td></tr>');
+    sHTML('flow-tbody', '<tr><td colspan="10" class="loading">Loading ' + idx + '...</td></tr>');
     sHTML('histogram', '<div class="loading">Loading...</div>');
     
     doFetchCore();
@@ -736,13 +603,10 @@ function velArrow(strike, isCall, currentChg) {
     return '<span class="vel-flat vel-arrow">→</span>';
 }
 
-// OI Velocity acceleration indicator (acceleration of rate of change)
 function oiVelIndicator(velocity, isCall) {
     if (velocity === undefined || velocity === null || velocity === 0) return '<span class="vel-acc-flat">—</span>';
     const sign = velocity > 0 ? 1 : -1;
     const abs = Math.abs(velocity);
-    // For calls: +ve velocity = accelerating resistance (bearish), -ve = decelerating (bullish)
-    // For puts:  +ve velocity = accelerating support (bullish), -ve = decelerating (bearish)
     const bearish = isCall ? sign > 0 : sign < 0;
     const arrow = abs > 50000 ? (sign > 0 ? '▲▲' : '▼▼') : (sign > 0 ? '▲' : '▼');
     const cls = bearish ? 'vel-acc-up' : 'vel-acc-dn';
@@ -763,14 +627,26 @@ function sigBg(sig) {
     return c === 'var(--bull)' ? 'rgba(0,255,136,.08)' : c === 'var(--bear)' ? 'rgba(255,59,87,.08)' : c === 'var(--warn)' ? 'rgba(255,184,0,.05)' : 'rgba(139,148,158,.04)';
 }
 
-function getFlowPill(sig) {
-    if(sig.includes('LONG BUILDUP')) return '<span class="pill pill-lb">L-BUILD</span>';
-    if(sig.includes('LONG UNWINDING')) return '<span class="pill pill-lu">L-UNWIND</span>';
-    if(sig.includes('SHORT BUILDUP')) return '<span class="pill pill-sb">S-BUILD</span>';
-    if(sig.includes('SHORT COVERING')) return '<span class="pill pill-sc">S-COVER</span>';
-    if(sig.includes('STABLE')) return '<span class="pill dim" style="color:var(--text2)">STABLE</span>'; 
-    return `<span class="pill dim" style="color:var(--text2)">${sig}</span>`;
+// ✅ THE 6 CONVENTIONS RULE LOGIC FOR JS
+function getRulePill(priceChg, oiChg) {
+    const P_TOL = 0.5; // Price movement tolerance 
+    const OI_TOL = 2000; // Contract threshold
+
+    let pUp = priceChg > P_TOL;
+    let pDn = priceChg < -P_TOL;
+    let oUp = oiChg > OI_TOL;
+    let oDn = oiChg < -OI_TOL;
+
+    if (pUp && oUp) return '<span class="pill" style="background:rgba(0,255,136,0.15);color:var(--bull);border:1px solid rgba(0,255,136,0.3)">LONG BUILDUP</span>';
+    if (pDn && oUp) return '<span class="pill" style="background:rgba(255,59,87,0.15);color:var(--bear);border:1px solid rgba(255,59,87,0.3)">SHORT BUILDUP</span>';
+    if (pUp && oDn) return '<span class="pill" style="background:rgba(255,184,0,0.15);color:var(--warn);border:1px solid rgba(255,184,0,0.3)">SHORT COVERING</span>';
+    if (pDn && oDn) return '<span class="pill" style="background:rgba(0,184,255,0.15);color:var(--info);border:1px solid rgba(0,184,255,0.3)">LONG UNWINDING</span>';
+    if (!pUp && !pDn && oUp) return '<span class="pill" style="background:rgba(163,113,247,0.15);color:var(--purple);border:1px solid rgba(163,113,247,0.3)">POS BUILDING</span>';
+    if (!pUp && !pDn && oDn) return '<span class="pill dim" style="background:rgba(139,148,158,0.15);color:var(--text2);border:1px solid rgba(139,148,158,0.3)">LOW INTEREST</span>';
+    
+    return '<span class="pill dim" style="color:var(--text2)">STABLE</span>';
 }
+
 
 function renderPCRSparkline(pcr, intel) {
     const mem = memory[currentIdx];
@@ -800,12 +676,6 @@ async function doFetchCore() {
         const raw = await jr.json();
         
         if (raw.error) {
-            if (raw.error.includes('login') || raw.error.includes('token') || raw.error.includes('stuck')) {
-                sText('vb-icon', '🔒');
-                sText('vb-main', 'Authentication Required');
-                sStyle('vb-main', 'color', 'var(--warn)');
-                sHTML('vb-detail', `<a href="/login" style="color:var(--info); text-decoration:underline; font-weight:bold; font-size:14px">Click here to re-authenticate with Upstox</a><br><span style="font-size:11px;color:var(--text2)">${raw.error}</span>`);
-            }
             throw new Error(raw.error);
         }
 
@@ -813,7 +683,6 @@ async function doFetchCore() {
             sStyle('err', 'display', 'block');
             sHTML('err', `⚠ SERVER ERROR: ${raw.backend_error} — <a href="/oi/debug" target="_blank" style="color:var(--info)">Debug</a> | <a href="/login" style="color:#fff;text-decoration:underline;margin-left:6px">Re-Login</a>`);
             sStyle('dot', 'background', 'var(--bear)');
-            // Render whatever data we have — don't leave screen blank
         } else {
             sStyle('err', 'display', 'none');
         }
@@ -875,26 +744,36 @@ function render(d, hist) {
     const ind = d.indicators || {};
     sText('expiry-badge', 'Expiry: ' + (d.expiry || '—'));
 
-    const ms = intel.market_state || '—';
-    const msCol = msColor(ms);
-    let icon = '⏳', main = ms, details = 'Waiting for confirmation...';
-    if (ms.includes('UP')) { icon = '📈'; details = 'Support building'; }
-    else if (ms.includes('DOWN')) { icon = '📉'; details = 'Resistance building'; }
-    else if (ms.includes('BREAK')) { icon = '⚡'; details = 'Breakout Imminent'; }
+    // ✅ NEW: Strict Index Overall Action logic
+    let prevSpot = mem.prevSpot !== null ? mem.prevSpot : spot;
+    let currentTotalOI = (d.total_call_oi || 0) + (d.total_put_oi || 0);
+    let prevTotalOI = mem.prevTotalOI !== null ? mem.prevTotalOI : currentTotalOI;
     
-    sStyle('verdict-banner', 'background', `linear-gradient(90deg, rgba(${ms.includes('UP') ? '0,255,136' : ms.includes('DOWN') ? '255,59,87' : '255,184,0'},0.1) 0%, transparent 100%)`);
-    sStyle('verdict-banner', 'borderBottomColor', msCol);
-    sText('vb-icon', icon); 
-    sText('vb-main', main); 
-    sStyle('vb-main', 'color', msCol);
-    sText('vb-detail', details); 
-    sText('vb-time', new Date().toLocaleTimeString('en-IN'));
+    let pDiff = spot - prevSpot;
+    let oDiff = currentTotalOI - prevTotalOI;
     
-    sStyle('state-bar', 'borderBottomColor', msCol);
-    sText('state-icon', icon);
-    styl('state-val', ms, msCol);
-    sText('state-note', details);
-    
+    mem.prevSpot = spot;
+    mem.prevTotalOI = currentTotalOI;
+
+    let idxAction = "GATHERING DATA";
+    let idxCol = "var(--text2)";
+    let idxDesc = "Need 2 cycles to calculate 6 rules...";
+
+    if (mem.cycleCount > 1) {
+        if (pDiff > 2 && oDiff > 10000) { idxAction = "LONG BUILD-UP"; idxCol = "var(--bull)"; idxDesc = "Price ↑ + OI ↑ (Fresh buyers entering)"; }
+        else if (pDiff < -2 && oDiff > 10000) { idxAction = "SHORT BUILD-UP"; idxCol = "var(--bear)"; idxDesc = "Price ↓ + OI ↑ (Fresh sellers entering)"; }
+        else if (pDiff > 2 && oDiff < -10000) { idxAction = "SHORT COVERING"; idxCol = "var(--warn)"; idxDesc = "Price ↑ + OI ↓ (Sellers exiting)"; }
+        else if (pDiff < -2 && oDiff < -10000) { idxAction = "LONG UNWINDING"; idxCol = "var(--warn)"; idxDesc = "Price ↓ + OI ↓ (Buyers exiting)"; }
+        else if (Math.abs(pDiff) <= 2 && oDiff > 10000) { idxAction = "POSITIONS BUILDING"; idxCol = "var(--purple)"; idxDesc = "Price Sideways + OI ↑ (Breakout pending)"; }
+        else if (Math.abs(pDiff) <= 2 && oDiff < -10000) { idxAction = "LOW INTEREST"; idxCol = "var(--text2)"; idxDesc = "Price Sideways + OI ↓ (Choppy market)"; }
+        else { idxAction = "STABLE"; idxCol = "var(--text2)"; idxDesc = "No significant momentum detected."; }
+    }
+
+    sText('idx-action-val', idxAction);
+    sStyle('idx-action-val', 'color', idxCol);
+    sText('idx-action-desc', idxDesc);
+
+    // Matrix ATM Zone
     const mxCond = intel.oi_matrix_condition || '—';
     const mxSig = intel.oi_matrix_signal || '—';
     const mxCol2 = mxSig.includes('BULL') ? 'var(--bull)' : mxSig.includes('BEAR') ? 'var(--bear)' : 'var(--warn)';
@@ -1024,7 +903,7 @@ function render(d, hist) {
     let orbS = g('orb-status');
     if (orbS) {
         orbS.textContent = lvl.orb_status || '—';
-        orbS.className = (lvl.orb_status||'').includes('RANGE') ? 'range-gray' : (lvl.orb_status||'').includes('ABOVE') ? 'range-gray tp-bull' : 'range-gray tp-bear';
+        orbS.className = (lvl.orb_status||'').includes('RANGE') ? 'range-gray' : (lvl.orb_status||'').includes('ABOVE') ? 'range-gray t-sbull' : 'range-gray t-sbear';
         if (lvl.orb_time && lvl.orb_time !== '-') orbS.innerHTML += ` <span style="opacity:0.7">@ ${lvl.orb_time}</span>`;
     }
 
@@ -1032,163 +911,106 @@ function render(d, hist) {
     let yestS = g('yest-status');
     if (yestS) {
         yestS.textContent = lvl.yest_status || '—';
-        yestS.className = (lvl.yest_status||'').includes('RANGE') ? 'range-gray' : (lvl.yest_status||'').includes('ABOVE') ? 'range-gray tp-bull' : 'range-gray tp-bear';
+        yestS.className = (lvl.yest_status||'').includes('RANGE') ? 'range-gray' : (lvl.yest_status||'').includes('ABOVE') ? 'range-gray t-sbull' : 'range-gray t-sbear';
         if (lvl.yest_time && lvl.yest_time !== '-') yestS.innerHTML += ` <span style="opacity:0.7">@ ${lvl.yest_time}</span>`;
     }
 
-    renderTech(intel.index_technicals);
+    renderPSTechTable(intel.index_technicals);
     renderChain(d.chain, atm, spot);
-    renderFlow(d.atm_strikes, atm, mem.cycleCount);
+    renderFlow(d.atm_strikes, atm);
     if (intel.migrations) renderMig(intel.migrations);
     if (intel.pin_risk) renderPin(intel.pin_risk);
     if (hist.length) renderHist(hist, atm);
     if (d.greeks) renderGreeks(d.greeks);
-    if (intel.gex) renderGex(intel.gex);
+    // GEX removed — replaced with OI+Price Deep Analysis
     if (intel.skew) renderSkew(intel.skew);
     if (intel.activity) renderActivity(intel.activity);
     if (intel.analysis) renderAnalysis(intel.analysis);
-    // ── NEW renderers ────────────────────────────────────────────────────────
+
     if (intel.pcr_history) renderPCRHistory(intel.pcr_history);
     if (intel.straddle_history) renderStraddleHistory(intel.straddle_history);
     renderWallShifts(intel.wall_shifts || [], intel.max_ce_strike, intel.max_pe_strike);
     if (intel.oi_analytics) renderOIAnalytics(intel.oi_analytics, d.indicators || {});
-    // ── NEW Image 1 & 2 renderers ────────────────────────────────────────────
-    renderSTSignalTable(intel.index_technicals);
-    renderOptionsOIInterp(d.chain, atm, spot, prevSpot);
-    renderIndexMatrix(d, spot, prevSpot);
-    // Update OI matrix scenario label
-    const netOIChg = (d.total_put_oi || 0) + (d.total_call_oi || 0);
-    const pChg = prevSpot ? spot - prevSpot : 0;
-    const sc = detectOIMatrixScenario(pChg, intel.cumulative_net_flow_l || 0);
-    highlightMatrix(sc.num);
-    sHTML('matrix-active-label', `${sc.label} — ${sc.action}`);
-    sHTML('matrix-scenario', `<span style="color:${sc.color};font-weight:700">${sc.scenario}</span>`);
-    prevSpot = spot;
+
+    // ── NEW: OI+Price analysis renderers ────────────────────────────────────
+    renderOIPriceTable(d.atm_strikes, atm);
+    renderOptionsOIInterp(d.chain, atm, spot);
+    updateVerdict(intel, idxAction, idxCol);
 
     Object.keys(d.chain).forEach(k => {
         mem.prevOIChg[k] = { call_chg: d.chain[k].call_oi_chg, put_chg: d.chain[k].put_oi_chg };
     });
 }
 
-// Compact EMA crossover pills — only today's crosses, simple and clean
-function buildEmaCrossoverTable(crossovers) {
-    if (!crossovers || crossovers.length === 0) {
-        return '<div style="margin-top:5px;font-size:10px;color:var(--text2);font-family:var(--ui)">EMA crossover: Building history...</div>';
-    }
-    // Only show today's real crosses (not Initial)
-    const todayCrosses = crossovers.filter(c => c.is_today && c.label !== 'Initial');
-    
-    if (todayCrosses.length === 0) {
-        // Show most recent cross even if not today
-        const lastCross = crossovers.find(c => c.label !== 'Initial');
-        if (!lastCross) return '<div style="margin-top:5px;font-size:10px;color:var(--text2);font-family:var(--ui)">No EMA cross today — trend stable</div>';
-        const col = lastCross.dir === 'BULL' ? 'var(--bull)' : 'var(--bear)';
-        const icon = lastCross.dir === 'BULL' ? '🟢' : '🔴';
-        const label = lastCross.dir === 'BULL' ? 'Golden Cross' : 'Death Cross';
-        return `<div style="margin-top:5px;font-size:11px;color:var(--text2);font-family:var(--ui)">
-            ${icon} Last cross: <span style="color:${col};font-weight:700">${label}</span> @ <span style="color:var(--info)">${lastCross.time}</span>
-            <span style="font-size:10px;color:var(--text2)"> (₹${lastCross.close})</span>
-        </div>`;
-    }
-    
-    // Today's crosses as compact pills
-    const pills = todayCrosses.map(c => {
-        const isBull = c.dir === 'BULL';
-        const col  = isBull ? 'var(--bull)' : 'var(--bear)';
-        const bg   = isBull ? 'rgba(0,255,136,0.12)' : 'rgba(255,59,87,0.12)';
-        const icon = isBull ? '🟢' : '🔴';
-        const lbl  = isBull ? 'Golden Cross' : 'Death Cross';
-        return `<div style="display:inline-flex;align-items:center;gap:5px;background:${bg};border:1px solid ${col.replace(')',',0.3)')};border-radius:5px;padding:3px 9px;margin:2px 3px 2px 0">
-            <span style="font-size:12px">${icon}</span>
-            <span style="font-size:11px;font-weight:700;color:${col}">${lbl}</span>
-            <span style="font-size:11px;color:var(--info);font-weight:700">${c.time}</span>
-            <span style="font-size:10px;color:var(--text2)">₹${c.close}</span>
-        </div>`;
-    }).join('');
-    
-    return `<div style="margin-top:6px;border-top:1px solid rgba(255,255,255,0.05);padding-top:6px">
-        <div style="font-size:10px;color:var(--text2);letter-spacing:1px;font-family:var(--ui);font-weight:700;margin-bottom:5px">TODAY'S EMA CROSSES</div>
-        <div style="display:flex;flex-wrap:wrap">${pills}</div>
-    </div>`;
-}
-
-function renderTech(tech) {
+function renderPSTechTable(tech) {
     if (!tech) return;
+    
     sText('tech-bias-lbl', 'Bias: ' + (tech.overall_bias || '—'));
     const biasEl = g('tech-overall-bias');
     if (biasEl) { biasEl.textContent = tech.overall_bias || '—'; biasEl.style.color = msColor(tech.overall_bias); }
-    sText('tech-confluence', tech.confluence || '—');
+    
+    const t15 = tech['15m'] || {};
+    const t5 = tech['5m'] || {};
 
-    ['3m', '5m', '15m'].forEach(tf => {
-        const d = tech[tf];
-        const el = g('tech-' + tf + '-full');
-        if (!d || !el) return;
-
-        const rsiCol   = !d.rsi ? 'var(--text2)' : d.rsi >= 70 ? 'var(--bear)' : d.rsi <= 30 ? 'var(--bull)' : d.rsi >= 55 ? 'var(--bull)' : d.rsi <= 45 ? 'var(--bear)' : 'var(--warn)';
-        const adxCol   = !d.adx ? 'var(--text2)' : d.adx >= 25 ? 'var(--bull)' : d.adx >= 20 ? 'var(--warn)' : 'var(--text2)';
-        const pdiCol   = 'var(--bull)';
-        const ndiCol   = 'var(--bear)';
-        const trendCol = msColor(d.trend);
-        const stCol    = d.supertrend === 'BULLISH' ? 'var(--bull)' : d.supertrend === 'BEARISH' ? 'var(--bear)' : 'var(--text2)';
-
-        const row = (label, val, col, note) =>
-            '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
-            '<span style="color:var(--text2);font-size:11px">' + label + '</span>' +
-            '<span style="font-weight:700;color:' + (col||'var(--text)') + '">' + val + (note ? ' <span style="font-size:10px;color:var(--text2)">' + note + '</span>' : '') + '</span>' +
-            '</div>';
-
-        const pill = (label, col, bg) =>
-            '<span style="background:' + bg + ';color:' + col + ';font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;font-family:var(--ui)">' + label + '</span>';
-
-        // Helper: convert CSS var to a semi-transparent bg
-        function varToBg(cssVar, alpha) {
-            const map = {'var(--bull)':'0,255,136','var(--bear)':'255,59,87','var(--warn)':'255,184,0','var(--info)':'0,184,255','var(--atm)':'163,113,247','var(--text2)':'139,148,158'};
-            const rgb = map[cssVar] || '139,148,158';
-            return `rgba(${rgb},${alpha})`;
+    const getBgCls = (val, isAdx = false, isSt = false) => {
+        if (!val || val === '-' || val === '...') return 'ps-td-wait';
+        if (isAdx) {
+            const num = parseFloat(val);
+            return num > 25 ? 'ps-td-adxh' : 'ps-td-adxl';
         }
+        if (isSt) {
+            return val === 'BULLISH' ? 'ps-td-stb' : 'ps-td-sts';
+        }
+        if (val.includes('E7>E15')) return 'ps-td-bull';
+        if (val.includes('E15>E7')) return 'ps-td-bear';
+        if (val.includes('BUY')) return 'ps-td-stb';
+        if (val.includes('SELL')) return 'ps-td-sts';
+        
+        return 'ps-td-stt';
+    };
 
-        // ADX strength bar
-        const adxW  = d.adx ? Math.min(100, d.adx * 2) : 0;
-        const adxBar = '<div style="width:60px;height:4px;background:var(--bg3);border-radius:2px;display:inline-block;vertical-align:middle;margin-left:4px;overflow:hidden">' +
-                       '<div style="width:' + adxW + '%;height:100%;background:' + adxCol + ';border-radius:2px"></div></div>';
+    const trend15 = t15.ema7_above_ema15 ? "E7>E15" : "E15>E7";
+    const trend5  = t5.ema7_above_ema15  ? "E7>E15" : "E15>E7";
+    const stSig15 = t15.supertrend === 'BULLISH' ? "▲ BUY" : "▼ SELL";
+    const stSig5  = t5.supertrend  === 'BULLISH' ? "▲ BUY" : "▼ SELL";
 
-        const html =
-            // Status pills row
-            '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' +
-            pill(d.trend || 'N/A', trendCol, varToBg(trendCol, 0.12)) +
-            pill(d.supertrend || 'ST N/A', stCol, varToBg(stCol, 0.12)) +
-            '</div>' +
-            // EMA values
-            row('EMA 7', d.ema7 || '—', d.price_above_ema7 ? 'var(--bull)' : 'var(--bear)',
-                d.ema7 ? (d.price_above_ema7 ? '▲ Price above' : '▼ Price below') : '') +
-            row('EMA 15', d.ema15 || '—', d.ema7_above_ema15 ? 'var(--bull)' : 'var(--bear)',
-                d.ema15 ? (d.ema7_above_ema15 ? 'EMA7 above' : 'EMA7 below') : '') +
-            // RSI
-            row('RSI (14)',
-                (d.rsi || '—') + (d.rsi_5m_chg ? ' <span style="font-size:10px">(' + (d.rsi_5m_chg > 0 ? '+' : '') + d.rsi_5m_chg + ')</span>' : ''),
-                rsiCol, d.rsi_signal || '') +
-            // ADX — replaces MACD
-            '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
-            '<span style="color:var(--text2);font-size:11px">ADX (14)</span>' +
-            '<span style="font-weight:700;color:' + adxCol + '">' + (d.adx || '—') + adxBar + ' ' + (d.adx_signal || '') + '</span>' +
-            '</div>' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04)">' +
-            '<span style="color:var(--text2);font-size:11px">+DI / −DI</span>' +
-            '<span><span style="color:var(--bull);font-weight:700">' + (d.pdi || '—') + '</span>' +
-            ' <span style="color:var(--text2)"> / </span>' +
-            '<span style="color:var(--bear);font-weight:700">' + (d.ndi || '—') + '</span></span>' +
-            '</div>' +
-            // Timestamps
-            '<div style="border-top:1px solid rgba(255,255,255,0.05);margin-top:5px;padding-top:5px">' +
-            row('EMA Cross', d.ts_start || '—', 'var(--info)', '') +
-            row('Pullback to', d.ts_pull  || '—', 'var(--warn)', '') +
-            row('SuperTrend',  d.ts_st    || '—', stCol, '') +
-            '</div>' +
-            // ✅ EMA 7/15 Crossover History — shows ALL crossovers across all days
-            buildEmaCrossoverTable(d.ema_crossovers);
-
-        el.innerHTML = html;
-    });
+    const tableHtml = `
+    <table class="ps-table">
+        <thead>
+            <tr>
+                <th style="background:var(--bg3); border-right:1px solid var(--border)">Instrument</th>
+                <th colspan="7" class="ps-th-15m">15 min</th>
+                <th colspan="7" class="ps-th-5m">5 min</th>
+            </tr>
+            <tr style="background:var(--bg3)">
+                <th style="border-right:1px solid var(--border)">Instrument</th>
+                <th>TrendStart</th><th>Trend</th><th>Pullback</th><th>Cont</th><th>ADX(14)</th><th>ST Signal</th><th>ST Time</th>
+                <th>TrendStart</th><th>Trend</th><th>Pullback</th><th>Cont</th><th>ADX(14)</th><th>ST Signal</th><th>ST Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="font-weight:700; background:var(--bg2); border-right:1px solid var(--border)">${currentIdx}</td>
+                <td class="${t15.ts_start !== '-' ? (t15.ema7_above_ema15 ? 'ps-td-bull' : 'ps-td-bear') : 'ps-td-stt'}">${t15.ts_start || '-'}</td>
+                <td class="${t15.ema7_above_ema15 ? 'ps-td-bull' : 'ps-td-bear'}">${trend15}</td>
+                <td class="${t15.ts_pull !== '-' && t15.ts_pull !== '...' ? (t15.ema7_above_ema15 ? 'ps-td-bull' : 'ps-td-bear') : 'ps-td-wait'}">${t15.ts_pull || '-'}</td>
+                <td class="${t15.ts_cont !== '-' && t15.ts_cont !== '...' ? (t15.ema7_above_ema15 ? 'ps-td-bull' : 'ps-td-bear') : 'ps-td-wait'}">${t15.ts_cont || '-'}</td>
+                <td class="${getBgCls(t15.adx, true)}">${t15.adx || '-'}</td>
+                <td class="${getBgCls(stSig15, false, true)}">${stSig15}</td>
+                <td class="ps-td-stt">${t15.ts_st || '-'}</td>
+                
+                <td class="${t5.ts_start !== '-' ? (t5.ema7_above_ema15 ? 'ps-td-bull' : 'ps-td-bear') : 'ps-td-stt'}">${t5.ts_start || '-'}</td>
+                <td class="${t5.ema7_above_ema15 ? 'ps-td-bull' : 'ps-td-bear'}">${trend5}</td>
+                <td class="${t5.ts_pull !== '-' && t5.ts_pull !== '...' ? (t5.ema7_above_ema15 ? 'ps-td-bull' : 'ps-td-bear') : 'ps-td-wait'}">${t5.ts_pull || '-'}</td>
+                <td class="${t5.ts_cont !== '-' && t5.ts_cont !== '...' ? (t5.ema7_above_ema15 ? 'ps-td-bull' : 'ps-td-bear') : 'ps-td-wait'}">${t5.ts_cont || '-'}</td>
+                <td class="${getBgCls(t5.adx, true)}">${t5.adx || '-'}</td>
+                <td class="${getBgCls(stSig5, false, true)}">${stSig5}</td>
+                <td class="ps-td-stt">${t5.ts_st || '-'}</td>
+            </tr>
+        </tbody>
+    </table>
+    `;
+    sHTML('ps-table-wrap', tableHtml);
 }
 
 function getOpenTag(ltp, open) {
@@ -1238,38 +1060,33 @@ function renderChain(chain, atm, spot) {
     sHTML('put-tbody', pHtml || '<tr><td colspan="8" class="loading">No data</td></tr>');
 }
 
-function renderFlow(atmStrikes, atm, cycleCount) {
+// ✅ NEW: The strictly applied 6 Rules logic for Options Flow
+function renderFlow(atmStrikes, atm) {
     let fHtml = '';
-    
     let strikes = Object.keys(atmStrikes).map(Number).sort((a, b) => a - b);
     
     let maxVol = 0;
-    strikes.forEach(k => {
-        maxVol = Math.max(maxVol, atmStrikes[k].call_vol || 0, atmStrikes[k].put_vol || 0);
-    });
+    strikes.forEach(k => { maxVol = Math.max(maxVol, atmStrikes[k].call_vol || 0, atmStrikes[k].put_vol || 0); });
 
     strikes.forEach(k => {
         let v = atmStrikes[k];
         let nf = (v.put_oi_chg || 0) - (v.call_oi_chg || 0);
-        
-        let ceSig = v.call_flow ? v.call_flow.condition : 'STABLE';
-        let peSig = v.put_flow ? v.put_flow.condition : 'STABLE';
-        
         let isAtm = Math.abs(k - atm) < 0.1;
 
         let cVolPct = maxVol ? ((v.call_vol || 0) / maxVol) * 100 : 0;
         let pVolPct = maxVol ? ((v.put_vol || 0) / maxVol) * 100 : 0;
-        let ceDimClass = ceSig.includes('STABLE') ? 'dim' : '';
-        let peDimClass = peSig.includes('STABLE') ? 'dim' : '';
 
-        // OI Velocity indicators
+        // Apply JS logic 6 rules using Strike Price Change & Strike OI Change
+        const ceRule = getRulePill(v.call_ltp_chg || 0, v.call_oi_chg || 0);
+        const peRule = getRulePill(v.put_ltp_chg || 0, v.put_oi_chg || 0);
+
         const ceVel = oiVelIndicator(v.call_oi_velocity, true);
         const peVel = oiVelIndicator(v.put_oi_velocity, false);
 
         fHtml += `<tr class="${isAtm ? 'ar' : ''}">
             <td class="td-s" style="color:${isAtm ? 'var(--atm)' : ''}">${k}</td>
             
-            <td style="text-align:left" class="${ceDimClass}">${getFlowPill(ceSig)}</td>
+            <td style="text-align:left">${ceRule}</td>
             <td>${dimZ(v.call_oi_chg, fc, v.call_oi_chg >= 0 ? 'var(--bear)' : 'var(--bull)')}</td>
             <td style="text-align:center">${ceVel}</td>
             <td style="padding:0">
@@ -1278,7 +1095,7 @@ function renderFlow(atmStrikes, atm, cycleCount) {
             
             <td>${dimZ(nf, (n) => (n >= 0 ? '+' : '') + fc(n), nf >= 0 ? 'var(--bull)' : 'var(--bear)')}</td>
             
-            <td style="text-align:left" class="${peDimClass}">${getFlowPill(peSig)}</td>
+            <td style="text-align:left">${peRule}</td>
             <td>${dimZ(v.put_oi_chg, fc, v.put_oi_chg >= 0 ? 'var(--bull)' : 'var(--bear)')}</td>
             <td style="text-align:center">${peVel}</td>
             <td style="padding:0">
@@ -1305,12 +1122,12 @@ function renderMig(migs) {
 
 function renderPin(pin) {
     const col = sigColor(pin.label || '');
-    const colMap = {'var(--bull)':'rgba(0,255,136,0.3)','var(--bear)':'rgba(255,59,87,0.3)','var(--warn)':'rgba(255,184,0,0.3)','var(--text2)':'rgba(139,148,158,0.3)'};
+    const colBorder = {'var(--bull)':'rgba(0,255,136,0.3)','var(--bear)':'rgba(255,59,87,0.3)','var(--warn)':'rgba(255,184,0,0.3)','var(--text2)':'rgba(139,148,158,0.3)'};
     sText('pin-label', pin.label || 'NO PIN RISK');
     sText('pin-note', pin.desc || 'Market is clear');
     sText('pin-score', (pin.score || 0).toFixed(1));
     sStyle('pin-inner', 'background', sigBg(pin.label || ''));
-    sStyle('pin-inner', 'borderColor', colMap[col] || 'rgba(139,148,158,0.3)');
+    sStyle('pin-inner', 'borderColor', colBorder[col] || 'rgba(139,148,158,0.3)');
     sStyle('pin-label', 'color', col);
     sStyle('pin-score', 'color', col);
 }
@@ -1344,64 +1161,6 @@ function renderGreeks(greeks) {
         </div>
     `).join('');
     sHTML('greeks', html || '<div class="loading">No data</div>');
-}
-
-function renderGex(gex) {
-    const flipZone = gex.flip_zone || '—';
-    const flipNum  = parseFloat(flipZone);
-    
-    // GEX interpretation
-    let flipDesc = '—';
-    if (!isNaN(flipNum)) {
-        flipDesc = `₹${Math.round(flipNum).toLocaleString('en-IN')} — when price crosses here, market-maker hedging REVERSES direction (acceleration point)`;
-    }
-    sHTML('gex-flip-label', `<span style="color:var(--warn);font-weight:700">⚡ Flip zone: ${flipZone}</span>`);
-    
-    // Add GEX explanation header
-    const explain = `<div style="padding:8px 14px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text2);font-family:var(--ui);line-height:1.6;background:rgba(255,255,255,0.02)">
-        <div style="font-size:11px;font-weight:700;color:var(--info);margin-bottom:4px">📖 HOW TO READ GEX (Gamma Exposure)</div>
-        <div><span style="color:var(--bear);font-weight:700">🔴 Positive GEX (red bars)</span> = Dealers are SHORT gamma → they <b>SELL</b> into rallies &amp; <b>BUY</b> dips = market STABILISES, lower volatility</div>
-        <div><span style="color:var(--bull);font-weight:700">🟢 Negative GEX (green bars)</span> = Dealers are LONG gamma → they <b>BUY</b> rallies &amp; <b>SELL</b> dips = market AMPLIFIES moves, higher vol</div>
-        <div style="margin-top:3px"><span style="color:var(--warn);font-weight:700">⚡ Flip zone ₹${isNaN(flipNum)?'—':Math.round(flipNum).toLocaleString('en-IN')}</span> = Price crossing here switches dealer hedging. <b>Expect acceleration</b> past this level.</div>
-        <div style="margin-top:2px;font-size:10px;color:var(--text2)">Largest absolute GEX strike = strongest magnet. Price tends to gravitate toward it on expiry day.</div>
-    </div>`;
-
-    let p = gex.profile || [];
-    if (!p.length) { sHTML('gex-panel', explain + '<div class="loading">Waiting for data...</div>'); return; }
-    
-    const maxG = Math.max(...p.map(x => Math.abs(x.net_gex))) || 1;
-    const flipS = parseFloat(flipZone);
-    
-    let rows = p.map(x => {
-        const ng  = x.net_gex || 0;
-        const pct = Math.round((Math.abs(ng) / maxG) * 100);
-        const isFlip = !isNaN(flipS) && Math.abs(x.strike - flipS) < 1;
-        const isPos  = ng > 0;
-        const col    = isPos ? 'var(--bear)' : 'var(--bull)';
-        const barBg  = isPos ? 'var(--bear)' : 'var(--bull)';
-        
-        // Interpretation per strike
-        let interp = '';
-        if (Math.abs(ng) / maxG > 0.5) {
-            interp = isPos ? '<span style="font-size:9px;color:var(--bear);margin-left:4px">strong magnet ↔ stabilises</span>'
-                          : '<span style="font-size:9px;color:var(--bull);margin-left:4px">amplifies move ⚡</span>';
-        }
-        
-        return `<div class="gex-row" style="${isFlip ? 'background:rgba(255,184,0,0.08);border-left:2px solid var(--warn)' : ''}">
-            <div class="gex-strike" style="color:${isFlip ? 'var(--warn)' : 'var(--text2)'}">
-                ${x.strike}${isFlip ? ' ⚡' : ''}
-            </div>
-            <div class="gex-bar-wrap">
-                ${isPos
-                    ? `<div style="flex:1;display:flex;justify-content:flex-end"><div class="gex-pos" style="width:${pct}%"></div></div><div class="gex-mid"></div><div style="flex:1"></div>`
-                    : `<div style="flex:1"></div><div class="gex-mid"></div><div style="flex:1"><div class="gex-neg" style="width:${pct}%"></div></div>`
-                }
-            </div>
-            <div class="gex-val" style="color:${col}">${ng >= 0 ? '+' : ''}${(ng/1000).toFixed(0)}K${interp}</div>
-        </div>`;
-    }).join('');
-    
-    sHTML('gex-panel', explain + rows);
 }
 
 function renderSkew(skew) {
@@ -1452,7 +1211,6 @@ function renderAnalysis(anls) {
     sHTML('analysis-grid', html || '<div class="loading" style="grid-column:1/-1">Waiting for enough data...</div>');
 }
 
-// ── Alert Log Renderer ───────────────────────────────────────────────────────
 function renderAlertLog(logs) {
     const el = g('alert-log-body');
     if (!el) return;
@@ -1478,7 +1236,6 @@ function renderAlertLog(logs) {
     }).join('');
 }
 
-// ── SVG Sparkline Helper ─────────────────────────────────────────────────────
 function renderSparkSVG(svgId, data, valueKey, color, W, H) {
     const el = g(svgId);
     if (!el || !data || data.length < 2) return;
@@ -1501,26 +1258,22 @@ function renderSparkSVG(svgId, data, valueKey, color, W, H) {
     <polyline points="${pts}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 3px ${lineColor})"/>`;
 }
 
-// ── PCR History Chart ────────────────────────────────────────────────────────
 function renderPCRHistory(pcrHistory) {
     if (!pcrHistory || pcrHistory.length < 2) return;
     const W = 400, H = 80;
     renderSparkSVG('pcr-hist-chart', pcrHistory, 'pcr', 'var(--info)', W, H);
 
     const vals = pcrHistory.map(d => d.pcr);
-    const last = vals[vals.length - 1];
-    const first = vals[0];
+    const last = vals[vals.length - 1], first = vals[0];
     const chg = (last - first).toFixed(3);
     const col = last > first ? 'var(--bull)' : last < first ? 'var(--bear)' : 'var(--text2)';
     const lbl = g('pcr-hist-lbl');
     if (lbl) { lbl.textContent = `PCR: ${last.toFixed(2)} (${chg >= 0 ? '+' : ''}${chg} today)`; lbl.style.color = col; }
 
-    // labels: first & last time
     const labEl = g('pcr-hist-labels');
     if (labEl) labEl.innerHTML = `<span>${pcrHistory[0].time}</span><span style="color:${col};font-weight:700">PCR ${last.toFixed(2)}</span><span>${pcrHistory[pcrHistory.length-1].time}</span>`;
 }
 
-// ── Straddle History Chart ───────────────────────────────────────────────────
 function renderStraddleHistory(straddleHistory) {
     if (!straddleHistory || straddleHistory.length < 2) return;
     const W = 400, H = 80;
@@ -1536,23 +1289,163 @@ function renderStraddleHistory(straddleHistory) {
     const labEl = g('straddle-hist-labels');
     if (labEl) labEl.innerHTML = `<span>${straddleHistory[0].time}</span><span style="color:${col};font-weight:700">₹${last}</span><span>${straddleHistory[straddleHistory.length-1].time}</span>`;
 
-    // Also render the inline straddle sparkline in the straddle bar
     renderSparkSVG('straddle-spark', straddleHistory, 'value', 'var(--info)', 100, 28);
     const sparkLbl = g('straddle-spark-lbl');
     if (sparkLbl) { sparkLbl.textContent = (chg >= 0 ? '▲+' : '▼') + Math.abs(chg).toFixed(1); sparkLbl.style.color = col; }
 }
 
-// ── Wall Shift Renderer ──────────────────────────────────────────────────────
 function renderWallShifts(wallShifts, maxCeStrike, maxPeStrike) {
-    const alertsEl = g('alerts-content');
-    if (!alertsEl) return;
-    // Add wall info to state bar as sub-info
     const wallInfoEl = g('wall-info');
     if (wallInfoEl) {
         wallInfoEl.innerHTML = maxCeStrike
             ? `Max CE Wall: <span style="color:var(--bear);font-weight:700">${maxCeStrike}</span>&nbsp;&nbsp;Max PE Wall: <span style="color:var(--bull);font-weight:700">${maxPeStrike}</span>`
             : '';
     }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OI + PRICE ANALYSIS — THE 6 SCENARIOS ENGINE
+// ═══════════════════════════════════════════════════════════════
+
+// Color map helper (avoids broken CSS var string manipulation)
+const VAR_RGB = {
+    'var(--bull)': '0,255,136',
+    'var(--bear)': '255,59,87',
+    'var(--warn)': '255,184,0',
+    'var(--info)': '0,184,255',
+    'var(--atm)':  '163,113,247',
+    'var(--text2)':'139,148,158'
+};
+function varBg(cssVar, alpha) {
+    return `rgba(${VAR_RGB[cssVar]||'139,148,158'},${alpha})`;
+}
+function varBorder(cssVar, alpha) {
+    return `rgba(${VAR_RGB[cssVar]||'139,148,158'},${alpha||0.35})`;
+}
+
+// The 6-scenario classifier — returns full object
+function classifyScenario(ltpChg, oiChg) {
+    const P = 0.5, O = 2000;
+    const pUp = ltpChg > P, pDn = ltpChg < -P, oUp = oiChg > O, oDn = oiChg < -O;
+    if (pUp && oUp)   return { n:1, label:'① LONG BUILD-UP',    color:'var(--bull)', bg:'rgba(0,255,136,.12)',  border:'rgba(0,255,136,.3)',  action:'Fresh buyers entering. Trend strengthening.' };
+    if (pDn && oUp)   return { n:2, label:'② SHORT BUILD-UP',   color:'var(--bear)', bg:'rgba(255,59,87,.12)',  border:'rgba(255,59,87,.3)',  action:'Fresh sellers entering. Downtrend strong.' };
+    if (pUp && oDn)   return { n:3, label:'③ SHORT COVERING',   color:'var(--atm)',  bg:'rgba(163,113,247,.12)',border:'rgba(163,113,247,.3)', action:'Shorts exiting. Weak rally — not truly bullish.' };
+    if (pDn && oDn)   return { n:4, label:'④ LONG UNWINDING',   color:'var(--warn)', bg:'rgba(255,184,0,.12)',  border:'rgba(255,184,0,.3)',  action:'Longs exiting. Weak fall — bounce possible.' };
+    if (!pUp && !pDn && oUp) return { n:5, label:'⑤ POS BUILDING',  color:'var(--info)', bg:'rgba(0,184,255,.12)',  border:'rgba(0,184,255,.3)',  action:'Sideways + OI rising. Breakout imminent.' };
+    if (!pUp && !pDn && oDn) return { n:6, label:'⑥ LOW INTEREST', color:'var(--text2)',bg:'rgba(139,148,158,.08)',border:'rgba(139,148,158,.25)',action:'Low conviction. Choppy — avoid trading.' };
+    return                     { n:0, label:'STABLE',             color:'var(--text2)',bg:'rgba(139,148,158,.04)',border:'rgba(139,148,158,.15)',action:'No significant activity.' };
+}
+
+function scenarioPill(sc) {
+    return `<span style="background:${sc.bg};color:${sc.color};border:1px solid ${sc.border};padding:2px 8px;border-radius:4px;font-weight:700;font-family:var(--ui);font-size:10px;white-space:nowrap">${sc.label}</span>`;
+}
+
+// Render the full OI+Price per-strike analysis table
+function renderOIPriceTable(atmStrikes, atm) {
+    const el = g('oi-price-tbody');
+    const timeEl = g('oi-price-time');
+    if (!el) return;
+    if (timeEl) timeEl.textContent = new Date().toLocaleTimeString('en-IN');
+
+    const strikes = Object.keys(atmStrikes).map(Number).sort((a,b)=>a-b);
+    if (!strikes.length) { el.innerHTML = '<tr><td colspan="11" class="loading">No data</td></tr>'; return; }
+
+    let html = '';
+    strikes.forEach(k => {
+        const v = atmStrikes[k];
+        const isAtm = Math.abs(k - atm) < 0.1;
+
+        const ceSc = classifyScenario(v.call_ltp_chg || 0, v.call_oi_chg || 0);
+        const peSc = classifyScenario(v.put_ltp_chg  || 0, v.put_oi_chg  || 0);
+
+        const netFlow = (v.put_oi_chg || 0) - (v.call_oi_chg || 0);
+        const nfCol   = netFlow > 2000 ? 'var(--bull)' : netFlow < -2000 ? 'var(--bear)' : 'var(--text2)';
+        const nfLabel = netFlow > 2000 ? '🟢 BULLISH' : netFlow < -2000 ? '🔴 BEARISH' : '⚪ NEUTRAL';
+
+        // Combined action hint
+        let action = '';
+        if (ceSc.n === 1 && peSc.n === 1) action = '💡 Both sides building — strong directional move';
+        else if (ceSc.n === 2) action = '⚠️ CE Short Build-Up — resistance heavy';
+        else if (peSc.n === 1) action = '✅ PE Long Build-Up — support strong';
+        else if (ceSc.n === 3) action = '📌 CE Short Covering — resistance weakening';
+        else if (peSc.n === 4) action = '📌 PE Long Unwinding — support weakening';
+        else if (ceSc.n === 5 || peSc.n === 5) action = '⚡ Positions accumulating — watch for breakout';
+        else action = ceSc.action;
+
+        const ceLtpChg = v.call_ltp_chg || 0;
+        const peLtpChg = v.put_ltp_chg  || 0;
+        const ceOIChg  = v.call_oi_chg  || 0;
+        const peOIChg  = v.put_oi_chg   || 0;
+
+        html += `<tr style="${isAtm ? 'background:rgba(163,113,247,0.08);border-top:1px solid rgba(163,113,247,0.3);border-bottom:1px solid rgba(163,113,247,0.3)' : ''}">
+            <td style="text-align:center;font-weight:700;font-size:${isAtm?'15':'13'}px;color:${isAtm?'var(--atm)':'var(--text)'}${isAtm?';text-shadow:0 0 8px rgba(163,113,247,0.5)':''}">${k}${isAtm?' ★':''}</td>
+            <td style="text-align:center">${scenarioPill(ceSc)}</td>
+            <td style="text-align:right;color:${ceLtpChg>=0?'var(--bull)':'var(--bear)'};font-weight:700">${ceLtpChg>=0?'+':''}${ceLtpChg.toFixed(1)}</td>
+            <td style="text-align:right;font-weight:700;color:${ceOIChg>0?'var(--bear)':ceOIChg<0?'var(--bull)':'var(--text2)'}">${fc(ceOIChg)}</td>
+            <td style="text-align:center;color:var(--text2)">${(v.call_iv||0).toFixed(1)}%</td>
+            <td style="text-align:center;font-weight:700;color:${nfCol}">${nfLabel}<br><span style="font-size:10px;opacity:.7">${fc(netFlow)}</span></td>
+            <td style="text-align:center;color:var(--text2)">${(v.put_iv||0).toFixed(1)}%</td>
+            <td style="text-align:right;font-weight:700;color:${peOIChg>0?'var(--bull)':peOIChg<0?'var(--bear)':'var(--text2)'}">${fc(peOIChg)}</td>
+            <td style="text-align:right;color:${peLtpChg>=0?'var(--bull)':'var(--bear)'};font-weight:700">${peLtpChg>=0?'+':''}${peLtpChg.toFixed(1)}</td>
+            <td style="text-align:center">${scenarioPill(peSc)}</td>
+            <td style="text-align:left;font-size:10px;color:var(--text2);font-family:var(--ui);padding:6px 10px">${action}</td>
+        </tr>`;
+    });
+    el.innerHTML = html || '<tr><td colspan="11" class="loading">No data</td></tr>';
+}
+
+// Per-strike OI interpretation below call/put tables
+function renderOptionsOIInterp(chain, atm, spot) {
+    const strikes = Object.keys(chain).map(Number).sort((a,b)=>a-b);
+    const atmIdx  = strikes.indexOf(atm);
+    if (atmIdx === -1) return;
+    const visible = strikes.slice(Math.max(0,atmIdx-3), Math.min(strikes.length,atmIdx+4));
+
+    let ceHtml = '', peHtml = '';
+    visible.forEach(k => {
+        const v = chain[k];
+        const isAtm = Math.abs(k-atm) < 0.1;
+        const ceSc  = classifyScenario(v.call_ltp_chg||0, v.call_oi_chg||0);
+        const peSc  = classifyScenario(v.put_ltp_chg||0,  v.put_oi_chg||0);
+        const strike = `<span style="display:inline-block;width:50px;text-align:right;font-weight:700;color:${isAtm?'var(--atm)':'var(--text2)'};margin-right:6px">${k}${isAtm?' ★':''}</span>`;
+        ceHtml += `<div style="padding:2px 0">${strike}${scenarioPill(ceSc)} <span style="font-size:10px;color:var(--text2);margin-left:4px">${ceSc.action}</span></div>`;
+        peHtml += `<div style="padding:2px 0">${strike}${scenarioPill(peSc)} <span style="font-size:10px;color:var(--text2);margin-left:4px">${peSc.action}</span></div>`;
+    });
+    sHTML('call-oi-interp', ceHtml || '—');
+    sHTML('put-oi-interp',  peHtml || '—');
+}
+
+// Update the state bar verdict section
+function updateVerdict(intel, idxAction, idxCol) {
+    const wallEl   = g('wall-display');
+    const verdictEl = g('verdict-val');
+    const verdictDesc = g('verdict-desc');
+
+    // Wall display
+    if (wallEl && intel.max_ce_strike) {
+        wallEl.innerHTML = `<span style="color:var(--bear)">🔴 CE: ${intel.max_ce_strike}</span> &nbsp;|&nbsp; <span style="color:var(--bull)">🟢 PE: ${intel.max_pe_strike||'—'}</span>`;
+    }
+
+    // Smart money verdict based on combining index action + ATM matrix
+    const mxSig = intel.oi_matrix_signal || '';
+    let verdict = '—', vCol = 'var(--text2)', vDesc = '—';
+    if (idxAction.includes('LONG BUILD') && mxSig.includes('BULL')) {
+        verdict = '🚀 STRONG BULL'; vCol = 'var(--bull)'; vDesc = 'Index+ATM both confirming bullish. Buy dips.';
+    } else if (idxAction.includes('SHORT BUILD') && mxSig.includes('BEAR')) {
+        verdict = '🔻 STRONG BEAR'; vCol = 'var(--bear)'; vDesc = 'Index+ATM both confirming bearish. Sell rallies.';
+    } else if (idxAction.includes('SHORT COVER')) {
+        verdict = '⚠️ WEAK RALLY'; vCol = 'var(--warn)'; vDesc = 'Shorts exiting but longs not entering. Caution.';
+    } else if (idxAction.includes('LONG UNWIND')) {
+        verdict = '⚠️ WEAK FALL'; vCol = 'var(--warn)'; vDesc = 'Longs exiting but shorts not entering. Bounce likely.';
+    } else if (idxAction.includes('POS BUILD') || idxAction.includes('POSITIONS')) {
+        verdict = '⚡ BREAKOUT SETUP'; vCol = 'var(--info)'; vDesc = 'OI accumulating. Wait for price direction.';
+    } else if (idxAction.includes('LOW INTEREST') || idxAction.includes('STABLE')) {
+        verdict = '😴 RANGE/CHOP'; vCol = 'var(--text2)'; vDesc = 'No conviction. Avoid fresh positions.';
+    } else {
+        verdict = idxAction || '—'; vCol = idxCol; vDesc = 'Monitoring market conventions...';
+    }
+    if (verdictEl) { verdictEl.textContent = verdict; verdictEl.style.color = vCol; }
+    if (verdictDesc) verdictDesc.textContent = vDesc;
 }
 
 function renderOIAnalytics(oa, ind) {
@@ -1567,11 +1460,10 @@ function renderOIAnalytics(oa, ind) {
         '<div style="font-size:11px;color:var(--text2);line-height:1.4">' + desc + '</div>' +
         '</div>';
 
-    const bull = 'var(--bull)', bear = 'var(--bear)', warn = 'var(--warn)', info = 'var(--info)', text2 = 'var(--text2)';
+    const bull = 'var(--bull)', bear = 'var(--bear)', warn = 'var(--warn)', text2 = 'var(--text2)';
     const concCol = v => v > 60 ? bull : v > 40 ? warn : text2;
     const biasCol = v => v === 'BULLISH' ? bull : v === 'BEARISH' ? bear : warn;
 
-    // ADX from indicators (top-level)
     const adxVal = ind.adx;
     const pdi    = ind.pdi;
     const ndi    = ind.ndi;
@@ -1582,21 +1474,19 @@ function renderOIAnalytics(oa, ind) {
 
     el.innerHTML =
         cell('CE CONCENTRATION',
-            (oa.ce_concentration_pct || 0) + '%',
-            concCol(oa.ce_concentration_pct || 0),
-            'Top 3 CE strikes hold this % of total CE OI. High = market has a strong wall at specific levels.') +
+            (oa.ce_concentration_pct || 0) + '%', concCol(oa.ce_concentration_pct || 0),
+            'Top 3 CE strikes hold this % of total CE OI. High = strong resistance wall at specific levels.') +
         cell('PE CONCENTRATION',
-            (oa.pe_concentration_pct || 0) + '%',
-            concCol(oa.pe_concentration_pct || 0),
+            (oa.pe_concentration_pct || 0) + '%', concCol(oa.pe_concentration_pct || 0),
             'Top 3 PE strikes hold this % of total PE OI. High = strong support concentration.') +
         cell('CE WALL STRENGTH',
             'Strike ' + (oa.top_ce_strike || '—') + ' → ' + (oa.ce_wall_pct || 0) + '%',
             oa.ce_wall_pct > 20 ? bear : text2,
-            'Single biggest resistance. If >20% — very strong wall, break is rare.') +
+            'Single biggest resistance. >20% = very strong wall, break is rare. Watch this strike.') +
         cell('PE WALL STRENGTH',
             'Strike ' + (oa.top_pe_strike || '—') + ' → ' + (oa.pe_wall_pct || 0) + '%',
             oa.pe_wall_pct > 20 ? bull : text2,
-            'Single biggest support. If >20% — very strong floor, breakdown is rare.') +
+            'Single biggest support floor. >20% = very strong, breakdown is rare. Watch this strike.') +
         cell('NET DELTA EXPOSURE',
             (oa.net_delta > 0 ? '+' : '') + (oa.net_delta || 0).toFixed(0) + ' → ' + (oa.delta_bias || '—'),
             biasCol(oa.delta_bias || ''),
@@ -1604,19 +1494,18 @@ function renderOIAnalytics(oa, ind) {
         cell('OI VELOCITY',
             oa.oi_accel_signal || '—',
             oa.oi_accel_signal === 'ACCELERATING' ? warn : text2,
-            'Is OI being added faster or slower vs last cycle? Accelerating = bigger move likely.') +
+            'Is OI being added faster or slower vs last cycle? Accelerating = bigger move likely soon.') +
         cell('ADX STRENGTH',
-            (adxVal ? adxVal.toFixed(1) : '—') + adxBar + adxSig,
-            adxCol,
+            (adxVal ? adxVal.toFixed(1) : '—') + adxBar + adxSig, adxCol,
             '+DI <span style="color:var(--bull);font-weight:700">' + (pdi||'—') + '</span>  −DI <span style="color:var(--bear);font-weight:700">' + (ndi||'—') + '</span>  |  ≥25=strong trend, <20=ranging') +
         cell('PCR TREND',
             (oa.pcr_trend || '—') + (oa.pcr_trend === 'RISING' ? ' ▲' : oa.pcr_trend === 'FALLING' ? ' ▼' : ' →'),
             oa.pcr_trend === 'RISING' ? bull : oa.pcr_trend === 'FALLING' ? bear : text2,
-            'PCR direction over last 6 cycles. Rising PCR = more put writing = bullish.') +
+            'PCR direction over last 6 cycles. Rising PCR = more put writing = bullish sentiment.') +
         cell('SMART MONEY FLOW',
             (oa.sm_flow_bias || '—') + ' | Bulls +' + (oa.sm_bull_flow_l || 0) + 'L Bears +' + (oa.sm_bear_flow_l || 0) + 'L',
             biasCol(oa.sm_flow_bias || ''),
-            'Who is writing more OI today? Bull = PE writers adding → support. Bear = CE writers adding → resistance.') +
+            'Who is writing more OI today? Bull = PE writers adding → support. Bear = CE writers → resistance.') +
         cell('STRADDLE vs OPEN',
             (oa.straddle_vs_open >= 0 ? '+' : '') + (oa.straddle_vs_open || 0) + ' pts',
             oa.straddle_vs_open > 0 ? bear : oa.straddle_vs_open < 0 ? bull : text2,
@@ -1624,17 +1513,16 @@ function renderOIAnalytics(oa, ind) {
         cell('VOL/OI RATIO',
             'CE ' + (oa.mkt_vol_oi_ce || 0).toFixed(2) + ' · PE ' + (oa.mkt_vol_oi_pe || 0).toFixed(2),
             oa.mkt_vol_oi_ce > 1 ? warn : text2,
-            '>1.0 = High retail intraday activity. <0.5 = Positional/institutional. Low = Smart money.') +
+            '>1.0 = High retail intraday activity. <0.5 = Positional/institutional (smart money).') +
         cell('ATM ZONE OI CHANGE',
             'CE ' + (oa.total_ce_chg_atm >= 0 ? '+' : '') + (oa.total_ce_chg_atm || 0) + 'L · PE ' + (oa.total_pe_chg_atm >= 0 ? '+' : '') + (oa.total_pe_chg_atm || 0) + 'L',
             (oa.total_pe_chg_atm || 0) > (oa.total_ce_chg_atm || 0) ? bull : bear,
-            'Net OI change in ATM ±2 strikes this 5-min cycle. PE > CE adding = bullish pressure.');
+            'Net OI change in ATM ±2 strikes this 5-min cycle. PE > CE adding = bullish pressure at ATM.');
 }
 
 setInterval(() => {
     if (isSnapping) return;
     
-    // Check if market is actually open (IST Time)
     let now = new Date();
     let utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     let ist = new Date(utc + (3600000 * 5.5));
@@ -1657,7 +1545,7 @@ setInterval(() => {
 
     if (!isMarketOpen) {
         sText('snap-status', '💤 Market Closed (No Auto-Snap)');
-        targetTime = Date.now() + 300000; // Reset timer so it doesn't snap
+        targetTime = Date.now() + 300000; 
         return;
     }
 
@@ -1672,213 +1560,18 @@ setInterval(() => {
     sText('timer', m + ':' + (s < 10 ? '0' : '') + s);
 }, 1000);
 
-// ── Index OI Matrix Live Reading ─────────────────────────────────────────────
-function renderIndexMatrix(d, spot, prevSpotVal) {
-    const el = g('index-matrix-body');
-    if (!el) return;
-    sText('index-matrix-time', new Date().toLocaleTimeString('en-IN'));
+window.onload = () => { doFetch(); };
 
-    const intel = d.intelligence || {};
-    const pChg = prevSpotVal ? spot - prevSpotVal : 0;
-    const pChgPct = prevSpotVal ? ((spot - prevSpotVal) / prevSpotVal * 100).toFixed(2) : 0;
-    const netFlow = intel.cumulative_net_flow_l || 0;
-    const sc = detectOIMatrixScenario(pChg, netFlow);
-
-    const colMap = {'var(--bull)':'rgba(0,255,136','var(--bear)':'rgba(255,59,87','var(--warn)':'rgba(255,184,0','var(--info)':'rgba(0,184,255','var(--atm)':'rgba(163,113,247','var(--text2)':'rgba(139,148,158'};
-    const rgb = colMap[sc.color] || 'rgba(139,148,158';
-
-    function cell(lbl, val, col, desc) {
-        return `<div style="padding:12px 14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)">
-            <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:5px">${lbl}</div>
-            <div style="font-size:15px;font-weight:700;color:${col};margin-bottom:3px">${val}</div>
-            <div style="font-size:11px;color:var(--text2);line-height:1.4">${desc}</div>
-        </div>`;
-    }
-
-    el.innerHTML =
-        `<div style="grid-column:1/-1;padding:10px 14px;background:${rgb},0.08);border-bottom:1px solid ${rgb},0.25);border-radius:0">
-            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-                <div style="font-size:22px;font-weight:900;color:${sc.color};font-family:var(--ui)">${sc.label}</div>
-                <div style="font-size:13px;color:var(--text2);font-family:var(--ui)">${sc.action}</div>
-            </div>
-        </div>` +
-        cell('SPOT CHANGE (vs prev)',
-            `${pChg >= 0 ? '+' : ''}${pChg.toFixed(1)} pts (${pChgPct}%)`,
-            pChg > 0 ? 'var(--bull)' : pChg < 0 ? 'var(--bear)' : 'var(--text2)',
-            'Price direction component of OI Matrix') +
-        cell('NET OI FLOW',
-            `${netFlow >= 0 ? '+' : ''}${netFlow.toFixed(1)}L`,
-            netFlow > 0 ? 'var(--bull)' : netFlow < 0 ? 'var(--bear)' : 'var(--text2)',
-            'Net smart money flow (PE-CE). Positive = put writers dominant = bullish') +
-        cell('SCENARIO DETECTED',
-            sc.scenario,
-            sc.color,
-            intel.oi_matrix_desc || intel.oi_matrix_signal || '—') +
-        cell('MARKET STATE',
-            intel.market_state || '—',
-            msColor(intel.market_state || ''),
-            intel.oi_matrix_signal || 'Cross-referencing price momentum with OI conviction');
-}
-
-// ── OI Matrix Panel Toggle ───────────────────────────────────────────────────
-function toggleMatrix() {
-    const panel = g('oi-matrix-panel');
-    const icon  = g('matrix-toggle-icon');
-    if (!panel) return;
-    if (panel.style.display === 'none') {
-        panel.style.display = 'block';
-        if (icon) icon.textContent = '▲';
-    } else {
-        panel.style.display = 'none';
-        if (icon) icon.textContent = '▼';
-    }
-}
-
-// ── OI Matrix Scenario Detector ──────────────────────────────────────────────
-function detectOIMatrixScenario(priceChg, oiChg) {
-    // priceChg: numeric (spot vs prev), oiChg: net CE+PE OI change
-    const pUp   = priceChg >  0.05;
-    const pDn   = priceChg < -0.05;
-    const pFlat = !pUp && !pDn;
-    const oUp   = oiChg >  0;
-    const oDn   = oiChg <= 0;
-    if (pUp && oUp)  return { num:1, label:'① Long Build-Up (Strong Bullish)',  color:'var(--bull)',  scenario:'Price ↑ OI ↑', action:'Fresh buyers entering. Trend strong. Avoid selling.' };
-    if (pDn && oUp)  return { num:2, label:'② Short Build-Up (Strong Bearish)', color:'var(--bear)',  scenario:'Price ↓ OI ↑', action:'Fresh sellers entering. Downtrend strong. Avoid buying.' };
-    if (pUp && oDn)  return { num:3, label:'③ Short Covering',                   color:'var(--atm)',   scenario:'Price ↑ OI ↓', action:'Sellers exiting. Not strongly bullish — reversal possible.' };
-    if (pDn && oDn)  return { num:4, label:'④ Long Unwinding',                   color:'var(--warn)',  scenario:'Price ↓ OI ↓', action:'Buyers exiting. Not strongly bearish — bounce possible.' };
-    if (pFlat && oUp) return { num:5, label:'⑤ Breakout Pending',               color:'var(--info)',  scenario:'Sideways + OI ↑', action:'Positions building. Big move coming — wait for breakout.' };
-    return                   { num:6, label:'⑥ Choppy / No Conviction',          color:'var(--text2)', scenario:'Sideways + OI ↓', action:'Low interest. No conviction. Avoid trading.' };
-}
-
-// Highlight active OI matrix card
-function highlightMatrix(num) {
-    for (let i = 1; i <= 6; i++) {
-        const card = g('om-' + i);
-        if (!card) continue;
-        card.classList.toggle('oi-matrix-active', i === num);
-        card.style.opacity = (i === num || num === 0) ? '1' : '0.4';
-    }
-}
-
-// OI Matrix pill HTML
-function matrixPill(sc) {
-    return `<span style="background:${sc.color.replace(')', ',0.12)').replace('var','rgba').replace('(--','(').replace('(','(0,0,0,')};color:${sc.color};border:1px solid ${sc.color.replace(')', ',0.3)').replace('var','rgba').replace('(--','(').replace('(','(0,0,0,')};padding:3px 10px;border-radius:5px;font-weight:700;font-family:var(--ui);font-size:12px">${sc.label}</span>`;
-}
-
-// Render OI interpretation for calls/puts
-function renderOptionsOIInterp(chain, atm, spot, prevSpot) {
-    const pChg = prevSpot ? spot - prevSpot : 0;
-    // For each visible strike compute scenario
-    let strikes = Object.keys(chain).map(Number).sort((a,b) => a-b);
-    let atmIdx  = strikes.indexOf(atm);
-    if (atmIdx === -1) return;
-    let visible = strikes.slice(Math.max(0, atmIdx-3), Math.min(strikes.length, atmIdx+4));
-
-    let ceLines = '', peLines = '';
-    visible.forEach(k => {
-        const v = chain[k];
-        const isAtm = Math.abs(k - atm) < 0.1;
-        // Call scenario
-        const ceOIChg = v.call_oi_chg || 0;
-        const ceSc = detectOIMatrixScenario(pChg, ceOIChg);
-        const peOIChg = v.put_oi_chg || 0;
-        const peSc = detectOIMatrixScenario(pChg, peOIChg);
-        ceLines += `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.03)">
-            <span style="width:52px;text-align:right;font-weight:700;color:${isAtm ? 'var(--atm)' : 'var(--text2)'}">${k}${isAtm?' ATM':''}</span>
-            <span style="font-weight:700;color:${ceSc.color};min-width:180px">${ceSc.label}</span>
-            <span style="font-size:10px;color:var(--text2)">${ceSc.action}</span>
-        </div>`;
-        peLines += `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.03)">
-            <span style="width:52px;text-align:right;font-weight:700;color:${isAtm ? 'var(--atm)' : 'var(--text2)'}">${k}${isAtm?' ATM':''}</span>
-            <span style="font-weight:700;color:${peSc.color};min-width:180px">${peSc.label}</span>
-            <span style="font-size:10px;color:var(--text2)">${peSc.action}</span>
-        </div>`;
-    });
-    sHTML('call-oi-interp', ceLines || 'No data');
-    sHTML('put-oi-interp',  peLines || 'No data');
-}
-
-// ── SuperTrend Signal Table Renderer ────────────────────────────────────────
-function renderSTSignalTable(tech) {
-    const el = g('st-signal-tbody');
-    if (!el || !tech) return;
-
-    function stPill(val) {
-        if (!val || val === '—') return '<span style="color:var(--text2)">—</span>';
-        const v = String(val).toUpperCase();
-        if (v.includes('SELL') || v.includes('BEAR')) return `<span class="st-sell">▼ ${val}</span>`;
-        if (v.includes('BUY')  || v.includes('BULL')) return `<span class="st-buy">▲ ${val}</span>`;
-        return `<span style="color:var(--text2)">${val}</span>`;
-    }
-    function adxColor(adx) {
-        if (!adx) return 'var(--text2)';
-        const v = parseFloat(adx);
-        return v >= 25 ? 'var(--bull)' : v >= 20 ? 'var(--warn)' : 'var(--text2)';
-    }
-    function emaCrossLabel(d) {
-        if (!d) return '—';
-        if (d.ema7_above_ema15) return '<span style="color:var(--bull)">E7>E15</span>';
-        return '<span style="color:var(--bear)">E15>E7</span>';
-    }
-    function contLabel(d) {
-        if (!d || !d.ts_pull) return '<span style="color:var(--text2)">—</span>';
-        return `<span style="color:var(--warn)">...</span>`;
-    }
-
-    const idx = currentIdx;
-    const d15 = tech && tech['15m'];
-    const d5  = tech && tech['5m'];
-
-    el.innerHTML = `<tr>
-        <td style="font-weight:700;color:var(--info);font-family:var(--ui)">${idx}</td>
-        <!-- 15m -->
-        <td style="color:var(--info)">${d15 ? (d15.ts_start || '—') : '—'}</td>
-        <td>${d15 ? emaCrossLabel(d15) : '—'}</td>
-        <td style="color:var(--warn)">${d15 ? (d15.ts_pull || '—') : '—'}</td>
-        <td>${d15 ? contLabel(d15) : '—'}</td>
-        <td style="color:${d15 ? adxColor(d15.adx) : 'var(--text2)'};font-weight:700">${d15 ? (d15.adx || '—') : '—'}</td>
-        <td>${d15 ? stPill(d15.supertrend) : '—'}</td>
-        <td style="color:var(--text2);font-size:11px">${d15 ? (d15.ts_st || '—') : '—'}</td>
-        <!-- 5m -->
-        <td style="color:var(--atm)">${d5 ? (d5.ts_start || '—') : '—'}</td>
-        <td>${d5 ? emaCrossLabel(d5) : '—'}</td>
-        <td style="color:var(--warn)">${d5 ? (d5.ts_pull || '—') : '—'}</td>
-        <td>${d5 ? contLabel(d5) : '—'}</td>
-        <td style="color:${d5 ? adxColor(d5.adx) : 'var(--text2)'};font-weight:700">${d5 ? (d5.adx || '—') : '—'}</td>
-        <td>${d5 ? stPill(d5.supertrend) : '—'}</td>
-        <td style="color:var(--text2);font-size:11px">${d5 ? (d5.ts_st || '—') : '—'}</td>
-    </tr>`;
-}
-
-// ── Augment existing render() to call new renderers ──────────────────────────
-// Stored prev spot for OI matrix calculation
-let prevSpot = 0;
-
-window.onload = () => {
-    try {
-        doFetch();
-    } catch(e) {
-        console.error("Initialization failed: ", e);
-    }
-};
-
-// Refresh when tab becomes visible again (browser had it in background)
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
         const diff = Math.floor((targetTime - Date.now()) / 1000);
-        // If we missed a cycle (negative time), fetch immediately
         if (diff <= 0) doFetch();
     }
 });
 
-// ✅ AUTO-REFRESH every 5 minutes — independent of snap cycle
-// This is the MAIN fix — without this, the page never updates on its own
 setInterval(() => {
-    if (!isSnapping) {
-        console.log('[AutoPoll] Fetching fresh data...');
-        doFetch();
-    }
-}, 300000); // 300000ms = 5 minutes, matches server CACHE_TTL
+    if (!isSnapping) { doFetch(); }
+}, 300000); 
 </script>
 </body>
 </html>
