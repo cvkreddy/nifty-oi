@@ -14,7 +14,6 @@ import requests
 app = Flask(__name__)
 CORS(app)
 
-
 @app.after_request
 def add_header(response):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -67,7 +66,6 @@ fetch_locks = {idx: threading.Lock() for idx in INDICES}
 background_started = False
 background_lock = threading.Lock()
 
-# 🚨 THE FIX: Gunicorn-safe background thread initialization
 @app.before_request
 def init_background():
     global background_started
@@ -131,8 +129,7 @@ def save_server_state():
             }
         with open(STATE_FILE, "w") as f: 
             json.dump(st, f)
-    except Exception as e: 
-        pass
+    except Exception: pass
 
 load_server_state()
 
@@ -141,10 +138,8 @@ def send_telegram_alert(message):
         return
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
-    try: 
-        requests.post(url, json=payload, timeout=5)
-    except Exception: 
-        pass
+    try: requests.post(url, json=payload, timeout=5)
+    except Exception: pass
 
 def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
     spot = data.get("spot", 0)
@@ -161,8 +156,7 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
     atm_v = {}
     for k, v in atm_strikes.items():
         if abs(float(k) - atm_float) < 0.1:
-            atm_v = v
-            break
+            atm_v = v; break
 
     s_curr = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
     s_decay = intel.get("straddle_decay", 0)
@@ -200,8 +194,7 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
         v = {}
         for k_str, val in atm_strikes.items():
             if abs(float(k_str) - s) < 0.1:
-                v = val
-                break
+                v = val; break
         marker = " ◄ ATM" if abs(s - atm) < 0.1 else ""
         c_ltp, c_ltp_5m, c_ltp_d = v.get("call_ltp", 0), v.get("call_ltp_chg", 0), v.get("call_ltp_chg_day", 0)
         c_oi_5m, c_oi_d = v.get("call_oi_chg", 0)/100000, v.get("call_oi_chg_day", 0)/100000
@@ -276,17 +269,24 @@ def hdrs():
     load_token()
     return {"Authorization": f"Bearer {token_store['access_token']}", "Accept": "application/json", "Api-Version": "2.0"}
 
+# 🚨 BULLETPROOF FALLBACK FIX FOR SYMBOL KEYS
 def fetch_spot(idx):
     sym = INDICES[idx]["key"]
-    try:
-        r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": sym}, headers=hdrs(), timeout=10)
-        d = r.json().get("data", {})
-        if not d and idx == "NIFTY":
-            r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": "NSE_INDEX|NIFTY 50"}, headers=hdrs(), timeout=10)
+    keys_to_try = [sym]
+    if idx == "NIFTY" and sym != "NSE_INDEX|NIFTY 50": keys_to_try.append("NSE_INDEX|NIFTY 50")
+    if idx == "BANKNIFTY" and sym != "NSE_INDEX|NIFTY BANK": keys_to_try.append("NSE_INDEX|NIFTY BANK")
+    
+    for key in keys_to_try:
+        try:
+            r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": key}, headers=hdrs(), timeout=10)
             d = r.json().get("data", {})
-        key = list(d.keys())[0] if d else None
-        return float(d[key].get("last_price", 0)) if key else 0
-    except Exception: return 0
+            if d:
+                k = list(d.keys())[0]
+                INDICES[idx]["key"] = key  # Permanently corrects INDICES for all future calls
+                return float(d[k].get("last_price", 0))
+        except Exception: 
+            pass
+    return 0
 
 def fetch_futures(spot, idx):
     now = date.today()
@@ -382,8 +382,9 @@ def resample_candles(candles_1m, tf):
 def fetch_chain_raw(idx, expiry):
     sym = INDICES[idx]["key"]
     keys_to_try = [sym]
-    if idx == "NIFTY" and sym != "NSE_INDEX|NIFTY 50":
-        keys_to_try.append("NSE_INDEX|NIFTY 50")
+    if idx == "NIFTY" and sym != "NSE_INDEX|NIFTY 50": keys_to_try.append("NSE_INDEX|NIFTY 50")
+    if idx == "BANKNIFTY" and sym != "NSE_INDEX|NIFTY BANK": keys_to_try.append("NSE_INDEX|NIFTY BANK")
+    
     for key in keys_to_try:
         try:
             r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": key, "expiry_date": expiry}, headers=hdrs(), timeout=5)
@@ -394,6 +395,30 @@ def fetch_chain_raw(idx, expiry):
                     return data
         except Exception: pass
     return []
+
+def get_expiry(idx):
+    sym = INDICES[idx]["key"]
+    keys_to_try = [sym]
+    if idx == "NIFTY" and sym != "NSE_INDEX|NIFTY 50": keys_to_try.append("NSE_INDEX|NIFTY 50")
+    if idx == "BANKNIFTY" and sym != "NSE_INDEX|NIFTY BANK": keys_to_try.append("NSE_INDEX|NIFTY BANK")
+    
+    for key in keys_to_try:
+        try:
+            r = requests.get("https://api.upstox.com/v2/option/contract", params={"instrument_key": key}, headers=hdrs(), timeout=10)
+            if r.status_code == 200:
+                items = r.json().get("data", [])
+                if items:
+                    INDICES[idx]["key"] = key
+                    exps = sorted([i if isinstance(i, str) else i.get("expiry") for i in items if i])
+                    today = datetime.today().strftime("%Y-%m-%d")
+                    for e in exps:
+                        if e and e >= today: return e
+        except Exception: 
+            pass
+    today = date.today()
+    days = (3 - today.weekday()) % 7
+    if days == 0: days = 7
+    return (today + timedelta(days=days)).strftime("%Y-%m-%d")
 
 def compute_max_pain(chain):
     strikes = sorted([float(k) for k in chain.keys()])
@@ -678,7 +703,6 @@ def process_chain(idx, raw, spot):
     prev_chain, prev2_chain = {}, {}
 
     if store["history"]:
-        # 🚨 THE FIX: Safe memory fallback ensures we NEVER compare current snapshot to itself!
         valid_5m = [h for h in store["history"] if 120 <= (now - h["ts"]) <= 480]
         if valid_5m: prev_chain = min(valid_5m, key=lambda x: abs(x["ts"] - target_5m)).get("chain", {})
         else:
@@ -797,7 +821,6 @@ def refresh(idx):
         debug_status["last_error"] = "Token missing. Please login."
         return
 
-    # Update cache heartbeat IMMEDIATELY so we don't trigger multiple UI pull-through threads
     oi_cache[idx]["last_fetch"] = time.time()
     store = STORE[idx]
     step = INDICES[idx]["step"]
@@ -805,7 +828,6 @@ def refresh(idx):
     try:
         spot = fetch_spot(idx)
         
-        # 🚨 THE FIX: Only fetch valid expiry directly from chain! No guessing!
         today_str = date.today().isoformat()
         cached_expiry = _EXPIRY_DAY_CACHE.get(f"{idx}_{today_str}")
         raw, expiry = [], cached_expiry
@@ -1038,14 +1060,13 @@ def gallery():
 @app.route('/static/screenshots/<filename>')
 def serve_screenshot(filename): return send_from_directory('static/screenshots', filename)
 
-# 🚨 THE FIX: Pull-through cache triggers refresh if loop dies
 @app.route("/oi/json")
 def oi_json():
     idx = request.args.get("idx", "NIFTY")
     if idx not in INDICES: idx = "NIFTY"
     
     last_fetch = oi_cache[idx].get("last_fetch", 0)
-    if time.time() - last_fetch > 240:  # Data is older than 4 minutes, force a background refresh
+    if time.time() - last_fetch > 240: 
         if fetch_locks[idx].acquire(blocking=False):
             def bg_ref():
                 try: refresh(idx)
