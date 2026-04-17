@@ -868,45 +868,45 @@ function render(d, hist) {
     });
 }
 
-// ✅ EMA Crossover History Table — shows ALL crossovers across all days, most recent first
+// Compact EMA crossover pills — only today's crosses, simple and clean
 function buildEmaCrossoverTable(crossovers) {
     if (!crossovers || crossovers.length === 0) {
-        return '<div style="margin-top:6px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:4px;font-size:10px;color:var(--text2)">EMA 7/15 crossover history: Building...</div>';
+        return '<div style="margin-top:5px;font-size:10px;color:var(--text2);font-family:var(--ui)">EMA crossover: Building history...</div>';
     }
-    // Only show actual crosses (exclude "Initial" label unless there are no real crosses)
-    const realCrosses = crossovers.filter(c => c.label !== 'Initial');
-    const toShow = realCrosses.length > 0 ? realCrosses : crossovers.slice(0, 1);
-
-    let rows = toShow.map(c => {
+    // Only show today's real crosses (not Initial)
+    const todayCrosses = crossovers.filter(c => c.is_today && c.label !== 'Initial');
+    
+    if (todayCrosses.length === 0) {
+        // Show most recent cross even if not today
+        const lastCross = crossovers.find(c => c.label !== 'Initial');
+        if (!lastCross) return '<div style="margin-top:5px;font-size:10px;color:var(--text2);font-family:var(--ui)">No EMA cross today — trend stable</div>';
+        const col = lastCross.dir === 'BULL' ? 'var(--bull)' : 'var(--bear)';
+        const icon = lastCross.dir === 'BULL' ? '🟢' : '🔴';
+        const label = lastCross.dir === 'BULL' ? 'Golden Cross' : 'Death Cross';
+        return `<div style="margin-top:5px;font-size:11px;color:var(--text2);font-family:var(--ui)">
+            ${icon} Last cross: <span style="color:${col};font-weight:700">${label}</span> @ <span style="color:var(--info)">${lastCross.time}</span>
+            <span style="font-size:10px;color:var(--text2)"> (₹${lastCross.close})</span>
+        </div>`;
+    }
+    
+    // Today's crosses as compact pills
+    const pills = todayCrosses.map(c => {
         const isBull = c.dir === 'BULL';
-        const col   = isBull ? 'var(--bull)' : 'var(--bear)';
-        const bg    = isBull ? 'rgba(0,255,136,0.08)' : 'rgba(255,59,87,0.08)';
-        const arrow = isBull ? '▲' : '▼';
-        const todayBadge = c.is_today ? '<span style="background:rgba(0,184,255,0.15);color:var(--info);font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px">TODAY</span>' : '';
-        return `<tr style="background:${bg}">
-            <td style="padding:3px 6px;font-size:11px;color:${col};font-weight:700;white-space:nowrap">${arrow} ${c.label}</td>
-            <td style="padding:3px 6px;font-size:11px;color:var(--info);font-weight:700;white-space:nowrap">${c.time}${todayBadge}</td>
-            <td style="padding:3px 6px;font-size:11px;color:var(--text2);text-align:right">Close: <span style="color:var(--text);font-weight:700">₹${c.close}</span></td>
-            <td style="padding:3px 6px;font-size:10px;color:var(--text2);text-align:right">E7: ${c.ema7} | E15: ${c.ema15}</td>
-        </tr>`;
+        const col  = isBull ? 'var(--bull)' : 'var(--bear)';
+        const bg   = isBull ? 'rgba(0,255,136,0.12)' : 'rgba(255,59,87,0.12)';
+        const icon = isBull ? '🟢' : '🔴';
+        const lbl  = isBull ? 'Golden Cross' : 'Death Cross';
+        return `<div style="display:inline-flex;align-items:center;gap:5px;background:${bg};border:1px solid ${col.replace(')',',0.3)')};border-radius:5px;padding:3px 9px;margin:2px 3px 2px 0">
+            <span style="font-size:12px">${icon}</span>
+            <span style="font-size:11px;font-weight:700;color:${col}">${lbl}</span>
+            <span style="font-size:11px;color:var(--info);font-weight:700">${c.time}</span>
+            <span style="font-size:10px;color:var(--text2)">₹${c.close}</span>
+        </div>`;
     }).join('');
-
-    return `<div style="margin-top:7px;border-top:1px solid rgba(255,255,255,0.05);padding-top:6px">
-        <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:5px">
-            EMA 7/15 CROSSOVER HISTORY
-        </div>
-        <table style="width:100%;border-collapse:collapse;border:1px solid rgba(255,255,255,0.06);border-radius:4px;overflow:hidden">
-            <thead>
-                <tr style="background:rgba(255,255,255,0.04)">
-                    <th style="padding:3px 6px;font-size:10px;color:var(--text2);text-align:left;font-weight:700;font-family:var(--ui)">Direction</th>
-                    <th style="padding:3px 6px;font-size:10px;color:var(--text2);text-align:left;font-weight:700;font-family:var(--ui)">Candle Time</th>
-                    <th style="padding:3px 6px;font-size:10px;color:var(--text2);text-align:right;font-weight:700;font-family:var(--ui)">Price</th>
-                    <th style="padding:3px 6px;font-size:10px;color:var(--text2);text-align:right;font-weight:700;font-family:var(--ui)">Values</th>
-                </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-        </table>
-        <div style="font-size:10px;color:var(--text2);margin-top:3px;font-style:italic">Candle close time when EMA 7 crossed EMA 15</div>
+    
+    return `<div style="margin-top:6px;border-top:1px solid rgba(255,255,255,0.05);padding-top:6px">
+        <div style="font-size:10px;color:var(--text2);letter-spacing:1px;font-family:var(--ui);font-weight:700;margin-bottom:5px">TODAY'S EMA CROSSES</div>
+        <div style="display:flex;flex-wrap:wrap">${pills}</div>
     </div>`;
 }
 
@@ -1136,24 +1136,61 @@ function renderGreeks(greeks) {
 }
 
 function renderGex(gex) {
-    sText('gex-flip-label', 'Flip zone: ' + (gex.flip_zone || '—'));
+    const flipZone = gex.flip_zone || '—';
+    const flipNum  = parseFloat(flipZone);
+    
+    // GEX interpretation
+    let flipDesc = '—';
+    if (!isNaN(flipNum)) {
+        flipDesc = `₹${Math.round(flipNum).toLocaleString('en-IN')} — when price crosses here, market-maker hedging REVERSES direction (acceleration point)`;
+    }
+    sHTML('gex-flip-label', `<span style="color:var(--warn);font-weight:700">⚡ Flip zone: ${flipZone}</span>`);
+    
+    // Add GEX explanation header
+    const explain = `<div style="padding:8px 14px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text2);font-family:var(--ui);line-height:1.6;background:rgba(255,255,255,0.02)">
+        <div style="font-size:11px;font-weight:700;color:var(--info);margin-bottom:4px">📖 HOW TO READ GEX (Gamma Exposure)</div>
+        <div><span style="color:var(--bear);font-weight:700">🔴 Positive GEX (red bars)</span> = Dealers are SHORT gamma → they <b>SELL</b> into rallies &amp; <b>BUY</b> dips = market STABILISES, lower volatility</div>
+        <div><span style="color:var(--bull);font-weight:700">🟢 Negative GEX (green bars)</span> = Dealers are LONG gamma → they <b>BUY</b> rallies &amp; <b>SELL</b> dips = market AMPLIFIES moves, higher vol</div>
+        <div style="margin-top:3px"><span style="color:var(--warn);font-weight:700">⚡ Flip zone ₹${isNaN(flipNum)?'—':Math.round(flipNum).toLocaleString('en-IN')}</span> = Price crossing here switches dealer hedging. <b>Expect acceleration</b> past this level.</div>
+        <div style="margin-top:2px;font-size:10px;color:var(--text2)">Largest absolute GEX strike = strongest magnet. Price tends to gravitate toward it on expiry day.</div>
+    </div>`;
+
     let p = gex.profile || [];
-    if (!p.length) return;
-    let maxG = Math.max(...p.map(x => Math.max(Math.abs(x.call_gex), Math.abs(x.put_gex))));
-    let html = p.map(x => {
-        let cw = (Math.abs(x.call_gex) / maxG) * 100;
-        let pw = (Math.abs(x.put_gex) / maxG) * 100;
-        return `<div class="gex-row">
-            <div class="gex-strike">${x.strike}</div>
-            <div class="gex-bar-wrap">
-                <div style="flex:1;display:flex;justify-content:flex-end"><div class="gex-pos" style="width:${cw}%"></div></div>
-                <div class="gex-mid"></div>
-                <div style="flex:1"><div class="gex-neg" style="width:${pw}%"></div></div>
+    if (!p.length) { sHTML('gex-panel', explain + '<div class="loading">Waiting for data...</div>'); return; }
+    
+    const maxG = Math.max(...p.map(x => Math.abs(x.net_gex))) || 1;
+    const flipS = parseFloat(flipZone);
+    
+    let rows = p.map(x => {
+        const ng  = x.net_gex || 0;
+        const pct = Math.round((Math.abs(ng) / maxG) * 100);
+        const isFlip = !isNaN(flipS) && Math.abs(x.strike - flipS) < 1;
+        const isPos  = ng > 0;
+        const col    = isPos ? 'var(--bear)' : 'var(--bull)';
+        const barBg  = isPos ? 'var(--bear)' : 'var(--bull)';
+        
+        // Interpretation per strike
+        let interp = '';
+        if (Math.abs(ng) / maxG > 0.5) {
+            interp = isPos ? '<span style="font-size:9px;color:var(--bear);margin-left:4px">strong magnet ↔ stabilises</span>'
+                          : '<span style="font-size:9px;color:var(--bull);margin-left:4px">amplifies move ⚡</span>';
+        }
+        
+        return `<div class="gex-row" style="${isFlip ? 'background:rgba(255,184,0,0.08);border-left:2px solid var(--warn)' : ''}">
+            <div class="gex-strike" style="color:${isFlip ? 'var(--warn)' : 'var(--text2)'}">
+                ${x.strike}${isFlip ? ' ⚡' : ''}
             </div>
-            <div class="gex-val">${fc(x.net_gex)}</div>
+            <div class="gex-bar-wrap">
+                ${isPos
+                    ? `<div style="flex:1;display:flex;justify-content:flex-end"><div class="gex-pos" style="width:${pct}%"></div></div><div class="gex-mid"></div><div style="flex:1"></div>`
+                    : `<div style="flex:1"></div><div class="gex-mid"></div><div style="flex:1"><div class="gex-neg" style="width:${pct}%"></div></div>`
+                }
+            </div>
+            <div class="gex-val" style="color:${col}">${ng >= 0 ? '+' : ''}${(ng/1000).toFixed(0)}K${interp}</div>
         </div>`;
     }).join('');
-    sHTML('gex-panel', html);
+    
+    sHTML('gex-panel', explain + rows);
 }
 
 function renderSkew(skew) {
@@ -1431,6 +1468,15 @@ window.onload = () => {
         console.error("Initialization failed: ", e);
     }
 };
+
+// Refresh when tab becomes visible again (browser had it in background)
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        const diff = Math.floor((targetTime - Date.now()) / 1000);
+        // If we missed a cycle (negative time), fetch immediately
+        if (diff <= 0) doFetch();
+    }
+});
 
 // ✅ AUTO-REFRESH every 5 minutes — independent of snap cycle
 // This is the MAIN fix — without this, the page never updates on its own

@@ -61,7 +61,7 @@ STORE = {idx: {
 } for idx in INDICES}
 
 oi_cache = {idx: {"data": None} for idx in INDICES}
-candle_cache_store = {idx: {"1m": [], "3m": [], "15m": []} for idx in INDICES}
+candle_cache_store = {idx: {"1m": [], "3m": [], "5m": [], "15m": [], "last_full_fetch": 0} for idx in INDICES}
 
 def reverse_engineer_baseline(idx):
     if len(STORE[idx]["baseline_oi"]) > 0: 
@@ -324,29 +324,70 @@ def fetch_vix():
         pass
     return 0
 
+def _parse_candles(raw_list):
+    unique = {}
+    for c in (raw_list or []):
+        if len(c) >= 5:
+            unique[c[0]] = {"time": c[0], "open": float(c[1]), "high": float(c[2]),
+                            "low": float(c[3]), "close": float(c[4]),
+                            "vol": float(c[5]) if len(c) > 5 else 0}
+    res = list(unique.values())
+    res.sort(key=lambda x: x["time"])
+    return res
+
 def fetch_base_1m_candles(idx):
+    """
+    Smart fetch: full historical on first call, then only intraday on subsequent calls.
+    This reduces per-cycle API time from 30-80s down to 3-5s.
+    """
+    safe_key = urllib.parse.quote(INDICES[idx]["key"])
+    store    = candle_cache_store[idx]
+    now_ts   = time.time()
+
+    # ── Intraday-only fetch (fast, ~2s) ────────────────────────────
     try:
-        safe_key = urllib.parse.quote(INDICES[idx]["key"])
-        to_date = date.today().strftime("%Y-%m-%d")
-        from_date = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
-        url_hist = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_date}/{from_date}"
-        r_hist = requests.get(url_hist, headers=hdrs(), timeout=10)
         url_intra = f"https://api.upstox.com/v2/historical-candle/intraday/{safe_key}/1minute"
-        r_intra = requests.get(url_intra, headers=hdrs(), timeout=10)
-        candles = []
-        if r_hist.status_code == 200: 
-            candles += r_hist.json().get("data", {}).get("candles", [])
-        if r_intra.status_code == 200: 
-            candles += r_intra.json().get("data", {}).get("candles", [])
-        unique = {}
-        for c in candles:
-            if len(c) >= 5: 
-                unique[c[0]] = {"time": c[0], "open": float(c[1]), "high": float(c[2]), "low": float(c[3]), "close": float(c[4]), "vol": float(c[5]) if len(c)>5 else 0}
-        res = list(unique.values())
-        res.sort(key=lambda x: x["time"])
-        return res
-    except Exception: 
-        return []
+        r = requests.get(url_intra, headers=hdrs(), timeout=15)
+        if r.status_code == 200:
+            today_candles = _parse_candles(r.json().get("data", {}).get("candles", []))
+        else:
+            today_candles = []
+    except Exception as e:
+        print(f"[{idx}] Intraday candle fetch failed: {e}")
+        today_candles = []
+
+    # ── Merge today's candles with cached historical ─────────────────
+    existing = store.get("1m", [])
+    today_str = date.today().isoformat()
+
+    # Remove today's old entries from cache, replace with fresh intraday
+    historical = [c for c in existing if c["time"][:10] != today_str]
+
+    # If cache is empty or stale (>24h since full fetch), do a full historical fetch once
+    if not historical or (now_ts - store.get("last_full_fetch", 0)) > 86400:
+        try:
+            to_dt   = date.today().strftime("%Y-%m-%d")
+            from_dt = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
+            url_h   = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_dt}/{from_dt}"
+            rh = requests.get(url_h, headers=hdrs(), timeout=20)
+            if rh.status_code == 200:
+                historical = [c for c in _parse_candles(rh.json().get("data",{}).get("candles",[])) if c["time"][:10] != today_str]
+                store["last_full_fetch"] = now_ts
+                print(f"[{idx}] Full historical candle fetch: {len(historical)} candles")
+        except Exception as e:
+            print(f"[{idx}] Historical candle fetch failed: {e}")
+            historical = [c for c in existing if c["time"][:10] != today_str]
+
+    # Combine historical + fresh intraday
+    all_candles = historical + today_candles
+    all_candles.sort(key=lambda x: x["time"])
+
+    # Keep last 5 days only
+    cutoff = (datetime.now() - timedelta(days=5)).isoformat()
+    all_candles = [c for c in all_candles if c["time"] >= cutoff]
+
+    store["1m"] = all_candles
+    return all_candles
 
 def resample_candles(candles_1m, tf):
     if not candles_1m: return []
@@ -834,19 +875,22 @@ def process_chain(idx, raw, spot):
     prev2_chain = {}
 
     if store["history"]:
-        valid_5m = [h for h in store["history"] if 240 <= (now - h["ts"]) <= 420]
+        # 5-min window: look for entry between 3-8 minutes ago (wider window for safety)
+        valid_5m = [h for h in store["history"] if 180 <= (now - h["ts"]) <= 480]
         if valid_5m:
             prev_record = min(valid_5m, key=lambda x: abs(x["ts"] - target_5m))
             prev_chain = prev_record.get("chain", {})
-        elif len(store["history"]) > 0:
-            prev_chain = store["history"][0].get("chain", {})
+        else:
+            # Fallback: use the oldest entry in history that is at least 60 seconds old
+            old_entries = [h for h in store["history"] if (now - h["ts"]) >= 60]
+            if old_entries:
+                prev_chain = old_entries[0].get("chain", {})
 
-        valid_10m = [h for h in store["history"] if 540 <= (now - h["ts"]) <= 720]
+        # 10-min window: look for entry between 7-14 minutes ago
+        valid_10m = [h for h in store["history"] if 420 <= (now - h["ts"]) <= 840]
         if valid_10m:
             prev2_record = min(valid_10m, key=lambda x: abs(x["ts"] - target_10m))
             prev2_chain = prev2_record.get("chain", {})
-        elif len(store["history"]) >= 2 and not valid_5m:
-            prev2_chain = store["history"][0].get("chain", {})
 
     base_chain = store["baseline_oi"]
     result = {}
@@ -1022,7 +1066,9 @@ def refresh(idx):
 
     try:
         spot   = fetch_spot(idx)
+        time.sleep(0.5)
         expiry = get_expiry(idx)
+        time.sleep(0.5)
         raw    = fetch_chain(idx, expiry)
         
         if not raw:
@@ -1055,8 +1101,11 @@ def refresh(idx):
         
         prev_pcr = store["history"][-1]["pcr"] if store["history"] else pcr
         pcr_chg  = round(pcr - prev_pcr, 3)
+        time.sleep(0.5)
         futures  = fetch_futures(spot, idx)
+        time.sleep(0.5)
         vix      = fetch_vix()
+        time.sleep(0.3)
         
         if store["baseline_vix"] is None and vix > 0: store["baseline_vix"] = vix
 
@@ -1064,9 +1113,12 @@ def refresh(idx):
         levels_data = extract_levels(candles_1m, spot)
         
         if candles_1m:
-            candle_cache_store[idx]["3m"] = resample_candles(candles_1m, 3)[-60:]
-            candle_cache_store[idx]["5m"] = resample_candles(candles_1m, 5)[-60:]
+            candle_cache_store[idx]["3m"]  = resample_candles(candles_1m, 3)[-60:]
+            candle_cache_store[idx]["5m"]  = resample_candles(candles_1m, 5)[-60:]
             candle_cache_store[idx]["15m"] = resample_candles(candles_1m, 15)[-40:]
+        elif candle_cache_store[idx].get("5m"):
+            # Use cached candles if fresh fetch returned nothing
+            print(f"[{idx}] Using cached candles: {len(candle_cache_store[idx]['5m'])} 5m candles")
 
         cum_put_add = sum(v["put_oi_chg_day"] for v in chain.values())
         cum_call_add = sum(v["call_oi_chg_day"] for v in chain.values())
@@ -1309,16 +1361,16 @@ def refresh(idx):
         else: oi_cache[idx]["data"] = {"backend_error": f"Crash: {str(e)}", "timestamp": datetime.now().isoformat()}
 
 def loop():
-    time.sleep(5) 
+    time.sleep(5)
     while True:
-        threads = []
+        # Run each index sequentially to avoid race conditions on history
+        # and avoid hammering Upstox API concurrently
         for idx in INDICES.keys():
-            t = threading.Thread(target=refresh, args=(idx,), daemon=True)
-            t.start()
-            threads.append(t)
-            time.sleep(1) 
-        for t in threads:
-            t.join(timeout=60) 
+            try:
+                refresh(idx)
+            except Exception as e:
+                print(f"[LOOP] Uncaught error in {idx}: {e}")
+            time.sleep(2)  # Brief pause between indices
         time.sleep(CACHE_TTL)
 
 threading.Thread(target=loop, daemon=True).start()
