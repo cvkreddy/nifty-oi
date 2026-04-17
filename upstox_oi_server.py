@@ -5,10 +5,11 @@
 ====================================================
 """
 
-import os, csv, time, math, threading, json, urllib.parse, traceback, glob
+import os, csv, time, math, threading, json, urllib.parse, traceback, glob, calendar
 from datetime import datetime, date, timedelta
 from flask import Flask, jsonify, request, redirect, send_file, send_from_directory
 from flask_cors import CORS
+from autosnap import start_auto_snapper
 import requests
 
 app = Flask(__name__)
@@ -72,6 +73,11 @@ def init_background():
     with background_lock:
         if not background_started:
             threading.Thread(target=loop, daemon=True).start()
+            try:
+                start_auto_snapper()
+                print("[INIT] Telegram Auto-Snapper successfully bound to worker.")
+            except Exception as e:
+                print(f"[INIT] Auto-snapper start failed: {e}")
             background_started = True
 
 def reverse_engineer_baseline(idx):
@@ -129,7 +135,8 @@ def save_server_state():
             }
         with open(STATE_FILE, "w") as f: 
             json.dump(st, f)
-    except Exception: pass
+    except Exception as e: 
+        pass
 
 load_server_state()
 
@@ -269,20 +276,22 @@ def hdrs():
     load_token()
     return {"Authorization": f"Bearer {token_store['access_token']}", "Accept": "application/json", "Api-Version": "2.0"}
 
-# 🚨 BULLETPROOF FALLBACK FIX FOR SYMBOL KEYS
 def fetch_spot(idx):
     sym = INDICES[idx]["key"]
     keys_to_try = [sym]
-    if idx == "NIFTY" and sym != "NSE_INDEX|NIFTY 50": keys_to_try.append("NSE_INDEX|NIFTY 50")
-    if idx == "BANKNIFTY" and sym != "NSE_INDEX|NIFTY BANK": keys_to_try.append("NSE_INDEX|NIFTY BANK")
+    if idx == "NIFTY": keys_to_try.extend(["NSE_INDEX|Nifty 50", "NSE_INDEX|NIFTY 50"])
+    elif idx == "BANKNIFTY": keys_to_try.extend(["NSE_INDEX|Nifty Bank", "NSE_INDEX|NIFTY BANK", "NSE_INDEX|BANKNIFTY"])
+    elif idx == "SENSEX": keys_to_try.extend(["BSE_INDEX|SENSEX", "BSE_INDEX|Sensex"])
+    
+    keys_to_try = list(dict.fromkeys(keys_to_try))
     
     for key in keys_to_try:
         try:
-            r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": key}, headers=hdrs(), timeout=10)
+            r = requests.get("https://api.upstox.com/v2/market-quote/ltp", params={"symbol": key}, headers=hdrs(), timeout=8)
             d = r.json().get("data", {})
             if d:
                 k = list(d.keys())[0]
-                INDICES[idx]["key"] = key  # Permanently corrects INDICES for all future calls
+                INDICES[idx]["key"] = key
                 return float(d[k].get("last_price", 0))
         except Exception: 
             pass
@@ -334,8 +343,12 @@ def fetch_base_1m_candles(idx):
     try:
         url_intra = f"https://api.upstox.com/v2/historical-candle/intraday/{safe_key}/1minute"
         r = requests.get(url_intra, headers=hdrs(), timeout=15)
-        today_candles = _parse_candles(r.json().get("data", {}).get("candles", [])) if r.status_code == 200 else []
-    except Exception: today_candles = []
+        if r.status_code == 200:
+            today_candles = _parse_candles(r.json().get("data", {}).get("candles", []))
+        else:
+            today_candles = []
+    except Exception:
+        today_candles = []
 
     existing = store.get("1m", [])
     today_str = date.today().isoformat()
@@ -378,16 +391,17 @@ def resample_candles(candles_1m, tf):
     if cg: res.append({"time": ct.isoformat(), "open": cg[0]["open"], "high": max(x["high"] for x in cg), "low": min(x["low"] for x in cg), "close": cg[-1]["close"], "vol": sum(x.get("vol", 0) for x in cg)})
     return res
 
-# 🚨 THE FIX: Bulletproof Expiry scanning
 def fetch_chain_raw(idx, expiry):
     sym = INDICES[idx]["key"]
     keys_to_try = [sym]
-    if idx == "NIFTY" and sym != "NSE_INDEX|NIFTY 50": keys_to_try.append("NSE_INDEX|NIFTY 50")
-    if idx == "BANKNIFTY" and sym != "NSE_INDEX|NIFTY BANK": keys_to_try.append("NSE_INDEX|NIFTY BANK")
+    if idx == "NIFTY": keys_to_try.extend(["NSE_INDEX|Nifty 50", "NSE_INDEX|NIFTY 50"])
+    elif idx == "BANKNIFTY": keys_to_try.extend(["NSE_INDEX|Nifty Bank", "NSE_INDEX|NIFTY BANK", "NSE_INDEX|BANKNIFTY"])
+    elif idx == "SENSEX": keys_to_try.extend(["BSE_INDEX|SENSEX", "BSE_INDEX|Sensex"])
+    keys_to_try = list(dict.fromkeys(keys_to_try))
     
     for key in keys_to_try:
         try:
-            r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": key, "expiry_date": expiry}, headers=hdrs(), timeout=5)
+            r = requests.get("https://api.upstox.com/v2/option/chain", params={"instrument_key": key, "expiry_date": expiry}, headers=hdrs(), timeout=6)
             if r.status_code == 200:
                 data = r.json().get("data", [])
                 if data:
@@ -396,11 +410,14 @@ def fetch_chain_raw(idx, expiry):
         except Exception: pass
     return []
 
+# 🚨 UPDATED: Exact Expiry Matcher based on precise rules (Nifty=Tue, Sensex=Thu, BankNifty=Last Tue)
 def get_expiry(idx):
     sym = INDICES[idx]["key"]
     keys_to_try = [sym]
-    if idx == "NIFTY" and sym != "NSE_INDEX|NIFTY 50": keys_to_try.append("NSE_INDEX|NIFTY 50")
-    if idx == "BANKNIFTY" and sym != "NSE_INDEX|NIFTY BANK": keys_to_try.append("NSE_INDEX|NIFTY BANK")
+    if idx == "NIFTY": keys_to_try.extend(["NSE_INDEX|Nifty 50", "NSE_INDEX|NIFTY 50"])
+    elif idx == "BANKNIFTY": keys_to_try.extend(["NSE_INDEX|Nifty Bank", "NSE_INDEX|NIFTY BANK", "NSE_INDEX|BANKNIFTY"])
+    elif idx == "SENSEX": keys_to_try.extend(["BSE_INDEX|SENSEX", "BSE_INDEX|Sensex"])
+    keys_to_try = list(dict.fromkeys(keys_to_try))
     
     for key in keys_to_try:
         try:
@@ -410,15 +427,49 @@ def get_expiry(idx):
                 if items:
                     INDICES[idx]["key"] = key
                     exps = sorted([i if isinstance(i, str) else i.get("expiry") for i in items if i])
-                    today = datetime.today().strftime("%Y-%m-%d")
+                    today_str = datetime.today().strftime("%Y-%m-%d")
                     for e in exps:
-                        if e and e >= today: return e
+                        if e and e >= today_str: return e
         except Exception: 
             pass
-    today = date.today()
-    days = (3 - today.weekday()) % 7
-    if days == 0: days = 7
-    return (today + timedelta(days=days)).strftime("%Y-%m-%d")
+
+    # Strict Mathematical Fallback (If API is completely unresponsive)
+    holidays = ["2026-01-15", "2026-01-26", "2026-03-03", "2026-03-26", "2026-03-31", "2026-04-03", "2026-04-14", "2026-05-01", "2026-05-28", "2026-06-26", "2026-09-14", "2026-10-02", "2026-10-20", "2026-11-10", "2026-11-24", "2026-12-25"]
+    today_dt = date.today()
+    ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    
+    def get_last_tuesday(y, m):
+        last_day = calendar.monthrange(y, m)[1]
+        d = date(y, m, last_day)
+        offset = (d.weekday() - 1) % 7 # 1 is Tuesday
+        return d - timedelta(days=offset)
+
+    if idx == "BANKNIFTY":
+        target_date = get_last_tuesday(today_dt.year, today_dt.month)
+        if today_dt > target_date or (today_dt == target_date and (ist_time.hour > 15 or (ist_time.hour == 15 and ist_time.minute > 30))):
+            nm = today_dt.month + 1 if today_dt.month < 12 else 1
+            ny = today_dt.year if today_dt.month < 12 else today_dt.year + 1
+            target_date = get_last_tuesday(ny, nm)
+        
+        while target_date.strftime("%Y-%m-%d") in holidays:
+            target_date -= timedelta(days=1)
+            
+        return target_date.strftime("%Y-%m-%d")
+        
+    else:
+        target = 1 if idx == "NIFTY" else 3 # NIFTY=Tue(1), SENSEX=Thu(3)
+        weekday = today_dt.weekday()
+        days_until = (target - weekday) % 7
+        
+        if days_until == 0 and (ist_time.hour > 15 or (ist_time.hour == 15 and ist_time.minute > 30)):
+            days_until = 7
+            
+        target_date = today_dt + timedelta(days=days_until)
+        
+        while target_date.strftime("%Y-%m-%d") in holidays:
+            target_date -= timedelta(days=1)
+            
+        return target_date.strftime("%Y-%m-%d")
 
 def compute_max_pain(chain):
     strikes = sorted([float(k) for k in chain.keys()])
@@ -703,19 +754,14 @@ def process_chain(idx, raw, spot):
     prev_chain, prev2_chain = {}, {}
 
     if store["history"]:
-        valid_5m = [h for h in store["history"] if 120 <= (now - h["ts"]) <= 480]
+        valid_5m = [h for h in store["history"] if 180 <= (now - h["ts"]) <= 480]
         if valid_5m: prev_chain = min(valid_5m, key=lambda x: abs(x["ts"] - target_5m)).get("chain", {})
         else:
-            old_entries = [h for h in store["history"] if (now - h["ts"]) >= 120]
-            if old_entries: prev_chain = min(old_entries, key=lambda x: abs(x["ts"] - target_5m)).get("chain", {})
-            elif len(store["history"]) > 0: prev_chain = store["history"][0].get("chain", {})
+            old_entries = [h for h in store["history"] if (now - h["ts"]) >= 60]
+            if old_entries: prev_chain = old_entries[0].get("chain", {})
 
-        valid_10m = [h for h in store["history"] if 480 <= (now - h["ts"]) <= 840]
+        valid_10m = [h for h in store["history"] if 420 <= (now - h["ts"]) <= 840]
         if valid_10m: prev2_chain = min(valid_10m, key=lambda x: abs(x["ts"] - target_10m)).get("chain", {})
-        else:
-            older = [h for h in store["history"] if (now - h["ts"]) >= 300]
-            if older: prev2_chain = min(older, key=lambda x: abs(x["ts"] - target_10m)).get("chain", {})
-            else: prev2_chain = prev_chain
 
     base_chain = store["baseline_oi"]
     result = {}
@@ -832,15 +878,14 @@ def refresh(idx):
         cached_expiry = _EXPIRY_DAY_CACHE.get(f"{idx}_{today_str}")
         raw, expiry = [], cached_expiry
         
-        if cached_expiry: raw = fetch_chain_raw(idx, cached_expiry)
+        if cached_expiry: 
+            raw = fetch_chain_raw(idx, cached_expiry)
+            
         if not raw:
-            for i in range(8):
-                test_date = (date.today() + timedelta(days=i)).strftime("%Y-%m-%d")
-                raw = fetch_chain_raw(idx, test_date)
-                if raw:
-                    expiry = test_date
-                    _EXPIRY_DAY_CACHE[f"{idx}_{today_str}"] = expiry
-                    break
+            expiry = get_expiry(idx)
+            if expiry:
+                raw = fetch_chain_raw(idx, expiry)
+                if raw: _EXPIRY_DAY_CACHE[f"{idx}_{today_str}"] = expiry
         
         if not raw:
             if os.path.exists(DATA_FILE):
@@ -1028,6 +1073,9 @@ def refresh(idx):
 
         debug_status["last_error"] = f"[{idx}] OK {datetime.now().strftime('%H:%M:%S')} Spot={spot} PCR={pcr}"
         
+        try: process_telegram_alerts(idx, alerts, data, atm_strikes, atm)
+        except Exception as e: print(f"Telegram Alert failed for {idx}: {e}")
+        
     except Exception as e:
         debug_status["last_error"] = f"CRASH in {idx}: {str(e)}"
         if oi_cache[idx].get("data"): oi_cache[idx]["data"]["backend_error"] = f"Crash: {str(e)}"
@@ -1038,7 +1086,7 @@ def loop():
         cycle_start = time.time()
         for idx in INDICES.keys():
             try: refresh(idx)
-            except: pass
+            except Exception as e: pass
             time.sleep(1)
         elapsed = time.time() - cycle_start
         time.sleep(max(10, CACHE_TTL - elapsed))
