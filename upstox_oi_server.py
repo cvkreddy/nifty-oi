@@ -150,14 +150,15 @@ def send_telegram_alert(message):
 
 def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
     spot = data.get("spot", 0)
-    pcr = data.get("pcr", 0)
+    pcr  = data.get("pcr", 0)
+    vix  = data.get("vix", 0)
     intel = data.get("intelligence", {})
     net_flow_l = intel.get("cumulative_net_flow_l", 0)
-    flow_bias = "🟢 BULLISH" if net_flow_l > 0 else "🔴 BEARISH" if net_flow_l < 0 else "⚪ NEUTRAL"
+    flow_bias  = "🟢 BULLISH" if net_flow_l > 0 else "🔴 BEARISH" if net_flow_l < 0 else "⚪ NEUTRAL"
     
     lvl = intel.get("levels", {})
-    orb_sig = "🟡" if "RANGE" in lvl.get("orb_status", "") else "🟢" if "BULLISH" in lvl.get("orb_status", "") else "🔴"
-    yest_sig = "🟡" if "RANGE" in lvl.get("yest_status", "") else "🟢" if "ABOVE" in lvl.get("yest_status", "") else "🔴"
+    orb_sig  = "🟡" if "RANGE"  in lvl.get("orb_status",  "") else "🟢" if "BULLISH" in lvl.get("orb_status",  "") else "🔴"
+    yest_sig = "🟡" if "RANGE"  in lvl.get("yest_status", "") else "🟢" if "ABOVE"   in lvl.get("yest_status", "") else "🔴"
 
     atm_float = float(atm)
     atm_v = {}
@@ -165,59 +166,94 @@ def generate_5min_summary(idx, data, atm_strikes, atm, is_boot=False):
         if abs(float(k) - atm_float) < 0.1:
             atm_v = v; break
 
-    s_curr = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
+    s_curr  = atm_v.get("call_ltp", 0) + atm_v.get("put_ltp", 0)
     s_decay = intel.get("straddle_decay", 0)
     vix_mat = intel.get("vix_matrix", {})
     boot_note = "<i>(Building baseline...)</i>" if is_boot else ""
-    
+
+    # PCR changes
+    pcr_5m   = intel.get("pcr_5m_chg",  0)
+    pcr_day  = intel.get("pcr_day_chg", 0)
+    pcr_5m_s = f"{pcr_5m:+.3f}" if pcr_5m else "—"
+    pcr_d_s  = f"{pcr_day:+.3f}" if pcr_day else "—"
+
+    # Combined OI Case
+    coi_lbl  = intel.get("combined_oi_label", "—")
+    coi_desc = intel.get("combined_oi_desc",  "—")
+
+    # Open=High/Low
+    oeh = intel.get("open_eq_high", False)
+    oel = intel.get("open_eq_low",  False)
+    oeh_note = " 🔶 OPEN=HIGH (Bearish bias — gap up & sell)" if oeh else ""
+    oel_note = " 🔷 OPEN=LOW (Bullish bias — gap down & buy)" if oel else ""
+
+    # VIX signal
+    vix_sig_map = {
+        "STRONG BULLISH": "📈 Price↑+VIX↑ | Breakout possible, don't short",
+        "WEAK BULLISH":   "📈 Price↑+VIX↓ | Weak rally, resistance may hold",
+        "STRONG BEARISH": "📉 Price↓+VIX↑ | Panic sell, support may break",
+        "WEAK BEARISH":   "📉 Price↓+VIX↓ | Normal correction, bounce likely",
+        "SIDEWAYS_UP":    "⚡ Sideways+VIX↑ | Big move loading",
+        "SIDEWAYS_DOWN":  "😴 Sideways+VIX↓ | Boring, theta decay",
+    }
+    vix_sig_txt = vix_sig_map.get(vix_mat.get("signal", ""), vix_mat.get("desc", "Need more data"))
+
     msg = (
         f"⏱ <b>5-MIN {idx} SCANNER</b>\n"
-        f"🎯 <b>Spot:</b> ₹{spot} | <b>Open:</b> ₹{lvl.get('today_open', '-')}\n"
-        f"{orb_sig} <b>ORB:</b> {lvl.get('orb_status', '-')} (Brk: {lvl.get('orb_time', '-')})\n"
-        f"{yest_sig} <b>Yest H/L:</b> {lvl.get('yest_status', '-')} (Brk: {lvl.get('yest_time', '-')})\n"
+        f"🎯 <b>Spot:</b> ₹{spot:,.0f} | <b>Open:</b> ₹{lvl.get('today_open', '-')}{oeh_note}{oel_note}\n"
+        f"📊 <b>VIX:</b> {vix:.2f} | <b>VIX Signal: {vix_mat.get('signal', 'WAITING')}</b>\n"
+        f"   ↳ {vix_sig_txt}\n"
+        f"{orb_sig} <b>ORB:</b> {lvl.get('orb_status', '-')} @ {lvl.get('orb_time', '-')}\n"
+        f"{yest_sig} <b>Yest H/L:</b> {lvl.get('yest_status', '-')} @ {lvl.get('yest_time', '-')}\n"
+        f"━━━━━━━━━━━━━━━━\n"
+        f"⚖️ <b>PCR:</b> {pcr:.2f} | 5m: {pcr_5m_s} | Day: {pcr_d_s}\n"
+        f"   ({'BULLISH' if pcr > 1.2 else 'BEARISH' if pcr < 0.8 else 'NEUTRAL'} zone)\n"
         f"⚖️ <b>Straddle:</b> ₹{s_curr:.1f} ({s_decay:+.1f}% Day)\n"
-        f"🔴 <b>ATM CE:</b> ₹{atm_v.get('call_ltp', 0):.1f} ({atm_v.get('call_ltp_chg', 0):+.1f} 5m) {boot_note}\n"
-        f"🟢 <b>ATM PE:</b> ₹{atm_v.get('put_ltp', 0):.1f} ({atm_v.get('put_ltp_chg', 0):+.1f} 5m) {boot_note}\n"
         f"🌊 <b>Smart Flow:</b> {flow_bias} ({net_flow_l:+.1f}L Net)\n"
-        f"📊 <b>VIX Matrix: {vix_mat.get('signal', 'WAITING')}</b>\n"
-        f"↳ <i>{vix_mat.get('desc', 'Need more data')}</i>\n"
+        f"━━━━━━━━━━━━━━━━\n"
+        f"📦 <b>Combined OI:</b> {coi_lbl}\n"
+        f"   ↳ {coi_desc}\n"
+        f"━━━━━━━━━━━━━━━━\n"
+        f"🔴 <b>ATM CE:</b> ₹{atm_v.get('call_ltp', 0):.1f} | 5m: {atm_v.get('call_ltp_chg', 0):+.1f} | Day: {atm_v.get('call_ltp_chg_day', 0):+.1f} {boot_note}\n"
+        f"🟢 <b>ATM PE:</b> ₹{atm_v.get('put_ltp', 0):.1f} | 5m: {atm_v.get('put_ltp_chg', 0):+.1f} | Day: {atm_v.get('put_ltp_chg_day', 0):+.1f} {boot_note}\n"
         f"━━━━━━━━━━━━━━━━\n\n"
     )
     
     def get_short_cond(flow):
         c = flow.get("condition", "")
         e = flow.get("emoji", "⚪")
-        if "LONG BUILDUP" in c: return f"Long Build {e}"
+        if "LONG BUILDUP"   in c: return f"Long Build {e}"
         if "SHORT COVERING" in c: return f"Short Cover 📈"
-        if "SHORT BUILDUP" in c or "WRITING" in c: return f"Writing {e}"
-        if "LONG UNWINDING" in c or "EXIT" in c: return f"Unwinding {e}"
-        if "FAKE" in c or "NO" in c: return f"Trap/Flat ⚠️"
-        if "ADDITION" in c: return f"Heavy Add {e}"
-        return f"Stable ⚪"
+        if "SHORT BUILDUP"  in c: return f"Writing {e}"
+        if "LONG UNWINDING" in c: return f"Unwinding {e}"
+        return "Stable ⚪"
 
     strikes_to_show = [float(k) for k in atm_strikes.keys()]
     for s in sorted(strikes_to_show, reverse=True):
         if abs(s - atm) > 2 * INDICES[idx]["step"]: continue
         v = {}
         for k_str, val in atm_strikes.items():
-            if abs(float(k_str) - s) < 0.1:
-                v = val; break
+            if abs(float(k_str) - s) < 0.1: v = val; break
         marker = " ◄ ATM" if abs(s - atm) < 0.1 else ""
-        c_ltp, c_ltp_5m, c_ltp_d = v.get("call_ltp", 0), v.get("call_ltp_chg", 0), v.get("call_ltp_chg_day", 0)
-        c_oi_5m, c_oi_d = v.get("call_oi_chg", 0)/100000, v.get("call_oi_chg_day", 0)/100000
+        c_ltp, c_5m, c_d = v.get("call_ltp",0), v.get("call_ltp_chg",0), v.get("call_ltp_chg_day",0)
+        c_oi5, c_oid      = v.get("call_oi_chg",0)/100000, v.get("call_oi_chg_day",0)/100000
         c_cond = get_short_cond(v.get("call_flow", {}))
-        
-        p_ltp, p_ltp_5m, p_ltp_d = v.get("put_ltp", 0), v.get("put_ltp_chg", 0), v.get("put_ltp_chg_day", 0)
-        p_oi_5m, p_oi_d = v.get("put_oi_chg", 0)/100000, v.get("put_oi_chg_day", 0)/100000
+        p_ltp, p_5m, p_d = v.get("put_ltp",0), v.get("put_ltp_chg",0), v.get("put_ltp_chg_day",0)
+        p_oi5, p_oid      = v.get("put_oi_chg",0)/100000, v.get("put_oi_chg_day",0)/100000
         p_cond = get_short_cond(v.get("put_flow", {}))
+        # Open=High/Low for this option
+        c_oeh = v.get("call_open",0) > 0 and c_ltp >= v.get("call_open",0)*0.999
+        p_oeh = v.get("put_open",0)  > 0 and p_ltp >= v.get("put_open",0)*0.999
+        c_oel = v.get("call_open",0) > 0 and c_ltp <= v.get("call_open",0)*0.97
+        p_oel = v.get("put_open",0)  > 0 and p_ltp <= v.get("put_open",0)*0.97
 
         msg += f"🎯 <b>{int(s)}{marker}</b>\n"
-        msg += f"🔴 <b>CE | {c_cond}</b>\n"
-        msg += f"LTP: ₹{c_ltp:.1f} (5m: {c_ltp_5m:+.1f} | Day: {c_ltp_d:+.1f})\n"
-        msg += f"OI : 5m: {c_oi_5m:+.2f}L | Day: {c_oi_d:+.2f}L\n\n"
-        msg += f"🟢 <b>PE | {p_cond}</b>\n"
-        msg += f"LTP: ₹{p_ltp:.1f} (5m: {p_ltp_5m:+.1f} | Day: {p_ltp_d:+.1f})\n"
-        msg += f"OI : 5m: {p_oi_5m:+.2f}L | Day: {p_oi_d:+.2f}L\n"
+        msg += f"🔴 <b>CE | {c_cond}</b>{' 🔶OEH' if c_oeh else ''}{' 🔷OEL' if c_oel else ''}\n"
+        msg += f"LTP: ₹{c_ltp:.1f} (5m: {c_5m:+.1f} | Day: {c_d:+.1f})\n"
+        msg += f"OI : 5m: {c_oi5:+.2f}L | Day: {c_oid:+.2f}L\n\n"
+        msg += f"🟢 <b>PE | {p_cond}</b>{' 🔶OEH' if p_oeh else ''}{' 🔷OEL' if p_oel else ''}\n"
+        msg += f"LTP: ₹{p_ltp:.1f} (5m: {p_5m:+.1f} | Day: {p_d:+.1f})\n"
+        msg += f"OI : 5m: {p_oi5:+.2f}L | Day: {p_oid:+.2f}L\n"
         msg += f"〰️〰️〰️〰️〰️〰️〰️〰️\n"
         
     return msg.strip()
@@ -979,6 +1015,14 @@ def refresh(idx):
         
         prev_pcr = store["history"][-1]["pcr"] if store["history"] else pcr
         pcr_chg  = round(pcr - prev_pcr, 3)
+        # PCR 5-min change (last entry vs 5-min-ago entry)
+        pcr_5m_chg = 0
+        if len(store["pcr_history"]) >= 2:
+            pcr_5m_chg = round(store["pcr_history"][-1]["pcr"] - store["pcr_history"][-2]["pcr"], 3)
+        # PCR day change (vs first entry of day)
+        pcr_day_chg = 0
+        if len(store["pcr_history"]) >= 1:
+            pcr_day_chg = round(pcr - store["pcr_history"][0]["pcr"], 3)
         futures  = fetch_futures(spot, idx)
         vix      = fetch_vix()
         
@@ -1008,7 +1052,43 @@ def refresh(idx):
         if morning_straddle is None and current_straddle > 0: morning_straddle = current_straddle
         straddle_decay = ((current_straddle - morning_straddle) / morning_straddle * 100) if morning_straddle and morning_straddle > 0 else 0
 
-        alerts = []
+        # ── Open = High / Open = Low detection (index level) ──────────────────
+        open_eq_high = open_eq_low = False
+        if candles_1m:
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            today_1m = [c for c in candles_1m if c["time"][:10] == today_str]
+            if today_1m:
+                day_open = today_1m[0]["open"]
+                day_high = max(c["high"] for c in today_1m)
+                day_low  = min(c["low"]  for c in today_1m)
+                open_eq_high = abs(day_open - day_high) <= step * 0.1
+                open_eq_low  = abs(day_open - day_low)  <= step * 0.1
+
+        # ── Combined OI Analysis (4 cases) ─────────────────────────────────
+        total_ce_chg_day = sum(v.get("call_oi_chg_day", 0) for v in chain.values())
+        total_pe_chg_day = sum(v.get("put_oi_chg_day",  0) for v in chain.values())
+        ce_up = total_ce_chg_day > 0
+        pe_up = total_pe_chg_day > 0
+        if ce_up and not pe_up:
+            combined_oi_case = 1
+            combined_oi_label = "CASE 1: CE↑ PE↓ — BEARISH"
+            combined_oi_desc  = "Resistance building, support collapsing. Strong Sell bias."
+            combined_oi_col   = "BEAR"
+        elif not ce_up and pe_up:
+            combined_oi_case = 2
+            combined_oi_label = "CASE 2: CE↓ PE↑ — BULLISH"
+            combined_oi_desc  = "Resistance breaking, support building. Strong Buy bias."
+            combined_oi_col   = "BULL"
+        elif ce_up and pe_up:
+            combined_oi_case = 3
+            combined_oi_label = "CASE 3: CE↑ PE↑ — RANGE BOUND"
+            combined_oi_desc  = "Both sides adding OI. Market trapped in range. Avoid directional trades."
+            combined_oi_col   = "NEUTRAL"
+        else:
+            combined_oi_case = 4
+            combined_oi_label = "CASE 4: CE↓ PE↓ — UNCERTAIN"
+            combined_oi_desc  = "Everyone exiting. Low conviction. Wait and watch."
+            combined_oi_col   = "WARN"
         for s_str,v in chain.items():
             s = float(s_str)
             dist = s - spot
@@ -1106,9 +1186,31 @@ def refresh(idx):
             "max_pain_signal": "BULLISH DRIFT" if (spot - max_pain) > (step * 0.5) else "BEARISH DRIFT" if (spot - max_pain) < -(step * 0.5) else "PINNED",
             "max_pain_desc": f"{abs(spot - max_pain):.1f} pts from MP",
             "index_technicals": ind_data["tech"], "cumulative_net_flow_l": round(cum_net_flow / 100000, 2), "morning_straddle": morning_straddle, "straddle_decay": round(straddle_decay, 2), "vix_matrix": vix_matrix, "migrations": get_migrations(atm_strikes), "activity": get_activity(atm_strikes, idx), "analysis": get_analysis(mkt_state, pcr, vix, round(cum_net_flow / 100000, 2)), "pin_risk": get_pin_risk(chain, atm), "wall_shifts": wall_shifts, "max_ce_strike": max_ce_strike, "max_pe_strike": max_pe_strike, "pcr_history": store["pcr_history"][-20:], "straddle_history": store["straddle_history"][-20:], "oi_analytics": oi_analytics,
+            # New additions
+            "pcr_5m_chg": pcr_5m_chg, "pcr_day_chg": pcr_day_chg,
+            "open_eq_high": open_eq_high, "open_eq_low": open_eq_low,
+            "combined_oi_case": combined_oi_case, "combined_oi_label": combined_oi_label,
+            "combined_oi_desc": combined_oi_desc, "combined_oi_col": combined_oi_col,
+            "total_ce_chg_day": round(total_ce_chg_day/100000, 2),
+            "total_pe_chg_day": round(total_pe_chg_day/100000, 2),
         }
         
-        greeks = {"delta": {"val": atm_v.get("call_delta", 0), "desc": "Call Delta"}, "gamma": {"val": atm_v.get("call_gamma", 0), "desc": "Call Gamma"}, "theta": {"val": atm_v.get("call_theta", 0), "desc": "Call Theta"}, "vega": {"val": atm_v.get("call_vega", 0), "desc": "Call Vega"}}
+        greeks = {
+            "delta_call": {"val": atm_v.get("call_delta", 0), "desc": "CE Delta"},
+            "delta_put":  {"val": atm_v.get("put_delta",  0), "desc": "PE Delta"},
+            "gamma":  {"val": atm_v.get("call_gamma", 0), "desc": "Gamma (CE=PE at ATM)"},
+            "theta":  {"val": atm_v.get("call_theta", 0), "desc": "Theta (daily decay ₹)"},
+            "vega":   {"val": atm_v.get("call_vega",  0), "desc": "Vega (IV sensitivity)"},
+            "ce_iv":  {"val": atm_v.get("call_iv", 0),   "desc": "CE Implied Volatility %"},
+            "pe_iv":  {"val": atm_v.get("put_iv",  0),   "desc": "PE Implied Volatility %"},
+        }
+        # Open=High/Low for ATM options
+        atm_ce_open_eq_high = atm_v.get("call_open", 0) > 0 and abs(atm_v.get("call_ltp", 0) - atm_v.get("call_open", 0)) < 0.5
+        atm_pe_open_eq_high = atm_v.get("put_open",  0) > 0 and abs(atm_v.get("put_ltp",  0) - atm_v.get("put_open",  0)) < 0.5
+        atm_ce_open_eq_low  = atm_v.get("call_open", 0) > 0 and atm_v.get("call_ltp", 0) <= atm_v.get("call_open", 0) * 0.98
+        atm_pe_open_eq_low  = atm_v.get("put_open",  0) > 0 and atm_v.get("put_ltp",  0) <= atm_v.get("put_open",  0) * 0.98
+        intelligence["atm_ce_open_eq_high"] = atm_v.get("call_ltp", 0) >= atm_v.get("call_open", 0) * 0.999 and atm_v.get("call_open", 0) > 0
+        intelligence["atm_pe_open_eq_high"] = atm_v.get("put_ltp", 0)  >= atm_v.get("put_open",  0) * 0.999 and atm_v.get("put_open",  0) > 0
         adx_top, pdi_top, ndi_top = calc_adx_full(candle_cache_store[idx]["5m"], 14)
         ind_data["adx"] = adx_top; ind_data["pdi"] = pdi_top; ind_data["ndi"] = ndi_top
 

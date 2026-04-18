@@ -58,42 +58,52 @@
 .alog-wrap{max-height:220px;overflow-y:auto;padding:6px 0;}.alog-wrap::-webkit-scrollbar{width:4px;}.alog-wrap::-webkit-scrollbar-track{background:var(--bg3);}.alog-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}.alog-row{display:flex;align-items:flex-start;gap:10px;padding:6px 14px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:12px;transition:background 0.1s;}.alog-row:hover{background:rgba(255,255,255,0.03);}.alog-time{color:var(--text2);font-size:10px;white-space:nowrap;margin-top:1px;font-family:var(--ui);min-width:56px;}.alog-type{font-weight:700;font-size:11px;padding:2px 6px;border-radius:4px;white-space:nowrap;font-family:var(--ui);}.alog-msg{color:var(--text2);font-size:11px;line-height:1.4;flex:1;}.alog-empty{padding:20px;text-align:center;color:var(--text2);font-size:12px;font-family:var(--ui);}.mini-spark{display:inline-block;vertical-align:middle;}.wall-shift-badge{background:rgba(255,184,0,0.15);color:var(--warn);border:1px solid rgba(255,184,0,0.4);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;font-family:var(--ui);animation:blink 1.4s infinite;}.open-tag { font-size:9px; padding:2px 4px; border-radius:3px; margin-left:4px; font-weight:700; }.open-up { background:rgba(0,255,136,0.1); color:var(--bull); border:1px solid rgba(0,255,136,0.3); }.open-dn { background:rgba(255,59,87,0.1); color:var(--bear); border:1px solid rgba(255,59,87,0.3); }.level-card { background:var(--bg2); padding:10px 14px; border-radius:8px; border:1px solid var(--border); }.level-hdr { font-size:10px; color:var(--text2); letter-spacing:1px; font-family:var(--ui); font-weight:700; margin-bottom:6px; }.level-val { font-size:14px; font-weight:700; display:flex; justify-content:space-between; }.range-gray { background:rgba(139,148,158,0.15); color:var(--text2); padding:4px 8px; border-radius:4px; font-size:11px; font-weight:700; border:1px solid rgba(139,148,158,0.3); }
 .pill{font-size:10px;padding:3px 10px;border-radius:4px;font-weight:700;font-family:var(--ui);white-space:nowrap;}
 
-/* Greeks enhanced grid */
+/* ── VIX + Price Matrix ─────────────────────────── */
+.vix-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 14px;}
+.vix-card{border-radius:8px;padding:9px 11px;border:1px solid transparent;transition:box-shadow .2s;}
+.vix-card:hover{box-shadow:0 0 8px rgba(255,255,255,.08);}
+.vix-num{font-size:11px;font-weight:700;font-family:var(--ui);margin-bottom:2px;}
+.vix-sub{font-size:9px;color:rgba(255,255,255,.65);line-height:1.5;font-family:var(--ui);}
+.vix-active{box-shadow:0 0 12px rgba(255,255,255,.2)!important;transform:scale(1.02);}
+
+/* ── Combined OI Analysis ───────────────────────── */
+.coi-bar{display:flex;gap:0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.coi-cell{flex:1;padding:10px 12px;border-right:1px solid var(--border);text-align:center;}
+.coi-cell:last-child{border-right:none;}
+.coi-num{font-size:11px;font-weight:700;font-family:var(--ui);margin-bottom:2px;}
+.coi-lbl{font-size:9px;color:var(--text2);font-family:var(--ui);margin-bottom:4px;}
+.coi-active{background:rgba(255,255,255,.06);}
+
+/* ── Open=High/Low badge ────────────────────────── */
+.oeh-badge{background:rgba(255,184,0,.15);color:var(--warn);border:1px solid rgba(255,184,0,.4);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;font-family:var(--ui);margin-left:6px;}
+.oel-badge{background:rgba(0,184,255,.15);color:var(--info);border:1px solid rgba(0,184,255,.4);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;font-family:var(--ui);margin-left:6px;}
+
+/* ── Greeks enhanced ────────────────────────────── */
 .grk-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
 .grk-cell{padding:12px 14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);}
 .grk-cell:nth-child(4n){border-right:none;}
 .grk-lbl{font-size:10px;color:var(--text2);letter-spacing:1px;margin-bottom:3px;font-family:var(--ui);font-weight:700;}
 .grk-val{font-size:17px;font-weight:700;margin-bottom:2px;}
-.grk-sub{font-size:11px;color:var(--text2);line-height:1.4;margin-bottom:4px;}
 .grk-bar{height:4px;border-radius:2px;background:var(--bg3);overflow:hidden;margin-top:4px;}
 .grk-bar-fill{height:100%;border-radius:2px;}
-.grk-hint{font-size:10px;color:var(--text2);font-family:var(--ui);margin-top:4px;line-height:1.5;font-style:italic;}
+.grk-interp{font-size:10px;color:var(--text2);font-family:var(--ui);margin-top:5px;line-height:1.6;border-top:1px solid rgba(255,255,255,.05);padding-top:5px;}
+.grk-action{font-size:10px;font-weight:700;font-family:var(--ui);margin-top:3px;}
 
-/* Price action legend */
-.pa-legend{display:flex;gap:8px;flex-wrap:wrap;padding:8px 14px;background:rgba(0,0,0,.25);border-bottom:1px solid var(--border);}
-.pa-leg-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2);font-family:var(--ui);}
-.pa-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+/* ── Global Clues ───────────────────────────────── */
+.glob-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:0;}
+.glob-cell{padding:9px 12px;border-right:1px solid var(--border);}
+.glob-cell:last-child{border-right:none;}
+.glob-lbl{font-size:10px;color:var(--text2);font-family:var(--ui);font-weight:700;letter-spacing:.5px;margin-bottom:3px;}
+.glob-val{font-size:13px;font-weight:700;margin-bottom:2px;}
+.glob-sig{font-size:10px;font-family:var(--ui);font-weight:700;padding:1px 6px;border-radius:3px;}
+.glob-note{font-size:9px;color:var(--text2);font-family:var(--ui);margin-top:2px;}
 
-/* Strike heat colors */
-.heat-strong-bull{background:rgba(0,255,136,.18)!important;}
-.heat-bull{background:rgba(0,255,136,.08)!important;}
-.heat-strong-bear{background:rgba(255,59,87,.18)!important;}
-.heat-bear{background:rgba(255,59,87,.08)!important;}
-.heat-neutral{background:rgba(255,184,0,.06)!important;}
+/* ── OI Velocity clear action ───────────────────── */
+.vel-action{font-size:10px;font-weight:700;font-family:var(--ui);margin-top:4px;padding:3px 8px;border-radius:4px;display:inline-block;}
 
-/* ADX strength meter */
-.adx-meter{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;}
-.adx-bar-wrap{width:48px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;}
-.adx-bar-fill{height:100%;border-radius:3px;}
-.adx-zones{font-size:9px;color:var(--text2);font-family:var(--ui);}
-
-/* Confluence scorecard */
-.conf-card{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-top:1px solid var(--border);}
-.conf-cell{padding:10px 12px;border-right:1px solid var(--border);text-align:center;}
-.conf-cell:last-child{border-right:none;}
-.conf-icon{font-size:18px;margin-bottom:3px;}
-.conf-lbl{font-size:9px;color:var(--text2);font-family:var(--ui);font-weight:700;letter-spacing:.5px;}
-.conf-val{font-size:11px;font-weight:700;font-family:var(--ui);margin-top:2px;}
+/* ── LTP change columns ─────────────────────────── */
+.ltp-chg-5m{color:var(--info);font-size:11px;}
+.ltp-chg-day{color:var(--warn);font-size:11px;}
 </style>
 </head>
 <body>
@@ -154,9 +164,92 @@
   <span class="no-alert" id="alerts-content">No alerts — OI stable</span>
 </div>
 
+<!-- ═══ VIX + PRICE MATRIX ═══ -->
+<div style="background:var(--bg2);border-bottom:1px solid var(--border)">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px 4px">
+    <span style="font-size:11px;font-weight:700;color:var(--warn);letter-spacing:1px;font-family:var(--ui)">⚡ VIX + PRICE MATRIX — 6 SCENARIOS (Fear Gauge × Direction)</span>
+    <span id="vix-price-live" style="font-size:13px;font-weight:700;font-family:var(--ui)">—</span>
+  </div>
+  <div class="vix-grid">
+    <div class="vix-card" id="vpm-1" style="background:rgba(0,255,136,.08);border-color:rgba(0,255,136,.25)">
+      <div class="vix-num" style="color:var(--bull)">① P↑ VIX↑ — STRONG BULLISH</div>
+      <div class="vix-sub">Rally + rising fear = explosive move. Resistance may break. Don't short.</div>
+    </div>
+    <div class="vix-card" id="vpm-2" style="background:rgba(0,255,136,.04);border-color:rgba(0,255,136,.15)">
+      <div class="vix-num" style="color:rgba(0,255,136,.7)">② P↑ VIX↓ — WEAK BULLISH</div>
+      <div class="vix-sub">Low-vol drift up. No urgency. Resistance likely to hold. Reversal expected.</div>
+    </div>
+    <div class="vix-card" id="vpm-3" style="background:rgba(255,59,87,.08);border-color:rgba(255,59,87,.25)">
+      <div class="vix-num" style="color:var(--bear)">③ P↓ VIX↑ — STRONG BEARISH</div>
+      <div class="vix-sub">Panic selling. Support may break. Don't buy dips blindly.</div>
+    </div>
+    <div class="vix-card" id="vpm-4" style="background:rgba(255,59,87,.04);border-color:rgba(255,59,87,.15)">
+      <div class="vix-num" style="color:rgba(255,59,87,.7)">④ P↓ VIX↓ — WEAK BEARISH</div>
+      <div class="vix-sub">Normal correction, not crash. Calm fall. Support likely to form. Bounce coming.</div>
+    </div>
+    <div class="vix-card" id="vpm-5" style="background:rgba(0,184,255,.08);border-color:rgba(0,184,255,.25)">
+      <div class="vix-num" style="color:var(--info)">⑤ Sideways VIX↑ — BIG MOVE LOADING</div>
+      <div class="vix-sub">Price stuck but tension building. Volatile breakout imminent. Wait for direction.</div>
+    </div>
+    <div class="vix-card" id="vpm-6" style="background:rgba(139,148,158,.06);border-color:rgba(139,148,158,.2)">
+      <div class="vix-num" style="color:var(--text2)">⑥ Sideways VIX↓ — BORING MARKET</div>
+      <div class="vix-sub">Price flat + VIX low = theta decay. Good for sellers, bad for buyers. No direction.</div>
+    </div>
+  </div>
+  <div style="padding:6px 18px 8px;font-size:11px;color:var(--text2);font-family:var(--ui)">
+    💡 <b style="color:var(--text)">VIX = India Fear Gauge.</b> Price tells direction. VIX tells power behind the move. Together = real signal.
+    &nbsp;|&nbsp; <b style="color:var(--warn)">Current:</b> <span id="vix-price-desc">—</span>
+  </div>
+</div>
+
+<!-- ═══ COMBINED OI ANALYSIS — 4 CASES ═══ -->
+<div style="background:var(--bg3);border-bottom:1px solid var(--border)">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px 4px">
+    <span style="font-size:11px;font-weight:700;color:var(--info);letter-spacing:1px;font-family:var(--ui)">📦 COMBINED OI ANALYSIS — 4 CASES (CE OI vs PE OI Direction)</span>
+    <span id="coi-active-label" style="font-size:13px;font-weight:700;font-family:var(--ui)">—</span>
+  </div>
+  <div class="coi-bar">
+    <div class="coi-cell" id="coi-c1">
+      <div class="coi-lbl">CASE 1</div>
+      <div class="coi-num" style="color:var(--bear)">CE↑ + PE↓</div>
+      <div style="font-size:10px;color:var(--bear);font-family:var(--ui);font-weight:700">BEARISH</div>
+      <div style="font-size:9px;color:var(--text2);font-family:var(--ui);margin-top:2px">Resistance building, support collapsing → Strong Sell</div>
+    </div>
+    <div class="coi-cell" id="coi-c2">
+      <div class="coi-lbl">CASE 2</div>
+      <div class="coi-num" style="color:var(--bull)">CE↓ + PE↑</div>
+      <div style="font-size:10px;color:var(--bull);font-family:var(--ui);font-weight:700">BULLISH</div>
+      <div style="font-size:9px;color:var(--text2);font-family:var(--ui);margin-top:2px">Resistance breaking, support building → Strong Buy</div>
+    </div>
+    <div class="coi-cell" id="coi-c3">
+      <div class="coi-lbl">CASE 3</div>
+      <div class="coi-num" style="color:var(--text2)">CE↑ + PE↑</div>
+      <div style="font-size:10px;color:var(--text2);font-family:var(--ui);font-weight:700">RANGE BOUND</div>
+      <div style="font-size:9px;color:var(--text2);font-family:var(--ui);margin-top:2px">Both sides trapping price → Avoid directional trades</div>
+    </div>
+    <div class="coi-cell" id="coi-c4">
+      <div class="coi-lbl">CASE 4</div>
+      <div class="coi-num" style="color:var(--text2)">CE↓ + PE↓</div>
+      <div style="font-size:10px;color:var(--warn);font-family:var(--ui);font-weight:700">UNCERTAIN</div>
+      <div style="font-size:9px;color:var(--text2);font-family:var(--ui);margin-top:2px">Everyone exiting, low conviction → Wait and Watch</div>
+    </div>
+  </div>
+  <div style="padding:6px 18px 8px;display:flex;gap:16px;align-items:center;font-size:11px;font-family:var(--ui)">
+    <span style="color:var(--text2)">Day CE OI Δ: <b id="coi-ce-day" style="color:var(--bear)">—</b></span>
+    <span style="color:var(--text2)">Day PE OI Δ: <b id="coi-pe-day" style="color:var(--bull)">—</b></span>
+    <span id="coi-desc" style="color:var(--warn);font-weight:700">—</span>
+  </div>
+</div>
+
 <div class="strip">
-  <div class="si"><span class="sl">SPOT</span><span class="sv" id="m-spot">—</span></div>
-  <div class="si"><span class="sl">OPEN (IDX)</span><span class="sv" id="m-open">—</span></div>
+  <div class="si" style="flex-direction:column;align-items:stretch;gap:3px;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="sl">SPOT</span><span class="sv" id="m-spot">—</span></div>
+    <div style="font-size:10px;color:var(--text2);font-family:var(--ui)" id="m-oeh-note"></div>
+  </div>
+  <div class="si" style="flex-direction:column;align-items:stretch;gap:3px;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="sl">OPEN (IDX)</span><span class="sv" id="m-open">—</span></div>
+    <div style="font-size:10px;font-family:var(--ui)" id="m-open-signal"></div>
+  </div>
   <div class="si"><span class="sl">FUTURES</span><span class="sv bull-glow" id="m-fut">—</span></div>
   <div class="si"><span class="sl">PREMIUM</span><span class="sv" id="m-prem">—</span></div>
   
@@ -169,12 +262,16 @@
     </div>
   </div>
   
-  <div class="si"><span class="sl">VIX</span><span class="sv warn" id="m-vix">—</span></div>
-  <div class="si">
-      <span class="sl">PCR</span>
-      <span style="display:flex; align-items:baseline; gap:6px;">
-          <span class="sv" id="m-pcr">—</span><span class="schg" id="m-pcr-chg" style="font-size:11px;"></span>
-      </span>
+  <div class="si" style="flex-direction:column;align-items:stretch;gap:3px;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="sl">VIX</span><span class="sv warn" id="m-vix">—</span></div>
+    <div style="font-size:10px;font-family:var(--ui)" id="m-vix-signal"></div>
+  </div>
+  <div class="si" style="flex-direction:column;align-items:stretch;gap:3px;">
+    <span class="sl">PCR</span>
+    <div style="display:flex;align-items:baseline;gap:5px;">
+      <span class="sv" id="m-pcr">—</span><span id="m-pcr-chg" style="font-size:11px;"></span>
+    </div>
+    <div style="font-size:10px;color:var(--text2);font-family:var(--ui)" id="m-pcr-changes"></div>
   </div>
   <div class="si"><span class="sl">ATM</span><span class="sv atmc" id="m-atm" style="text-shadow:0 0 10px rgba(188,140,255,0.6)">—</span></div>
 </div>
@@ -252,35 +349,6 @@
   <div class="ps-table-wrap" id="ps-table-wrap">
       <div class="loading" style="padding:20px;">Waiting for Technicals...</div>
   </div>
-  <!-- ADX + SuperTrend interpretation guide -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border);background:rgba(0,0,0,.2)">
-    <div style="padding:8px 14px;border-right:1px solid var(--border)">
-      <div style="font-size:10px;color:var(--info);font-family:var(--ui);font-weight:700;letter-spacing:1px;margin-bottom:5px">ADX READING GUIDE (Wilder's Method — matches TradingView)</div>
-      <div style="font-size:10px;color:var(--text2);font-family:var(--ui);line-height:1.7">
-        <span style="color:var(--bull);font-weight:700">ADX ≥ 25</span> = Strong trend (follow the trend, don't fade it) &nbsp;|&nbsp;
-        <span style="color:var(--warn);font-weight:700">ADX 20–25</span> = Developing trend (wait for confirmation) &nbsp;|&nbsp;
-        <span style="color:var(--text2);font-weight:700">ADX &lt; 20</span> = Weak/Ranging (avoid trend strategies, range trade instead)<br>
-        <span style="color:var(--bull);font-weight:700">+DI &gt; -DI</span> = Bullish pressure dominant &nbsp;|&nbsp; <span style="color:var(--bear);font-weight:700">-DI &gt; +DI</span> = Bearish pressure dominant
-      </div>
-    </div>
-    <div style="padding:8px 14px;">
-      <div style="font-size:10px;color:var(--atm);font-family:var(--ui);font-weight:700;letter-spacing:1px;margin-bottom:5px">SUPERTREND GUIDE (Period 7, Mult 3.0 — matches TradingView)</div>
-      <div style="font-size:10px;color:var(--text2);font-family:var(--ui);line-height:1.7">
-        <span style="color:var(--bull);font-weight:700">▲ BUY</span> = Price above SuperTrend line → trend is UP. Hold longs, avoid shorts. &nbsp;|&nbsp;
-        <span style="color:var(--bear);font-weight:700">▼ SELL</span> = Price below SuperTrend → trend is DOWN. Hold shorts, avoid longs.<br>
-        ST flip = high probability reversal point. Combine with ADX ≥ 25 for strong confirmation.
-      </div>
-    </div>
-  </div>
-  <!-- Multi-TF Confluence Score -->
-  <div style="padding:8px 14px;border-top:1px solid var(--border);background:rgba(0,184,255,.03);display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-    <span style="font-size:10px;color:var(--info);font-family:var(--ui);font-weight:700;letter-spacing:1px">MULTI-TF CONFLUENCE:</span>
-    <span id="conf-15m-ema" style="font-size:11px;font-family:var(--ui)">15m EMA: —</span>
-    <span id="conf-5m-ema"  style="font-size:11px;font-family:var(--ui)">5m EMA: —</span>
-    <span id="conf-15m-st"  style="font-size:11px;font-family:var(--ui)">15m ST: —</span>
-    <span id="conf-5m-st"   style="font-size:11px;font-family:var(--ui)">5m ST: —</span>
-    <span id="conf-overall" style="font-size:12px;font-weight:700;font-family:var(--ui);padding:3px 10px;border-radius:5px">—</span>
-  </div>
 </div>
 
 <div class="intel-row" style="margin-top:-14px;">
@@ -288,7 +356,11 @@
     <div class="ic-lbl">PCR ZONE</div>
     <div class="ic-val" id="pcr-zone">—</div>
     <div class="ic-sub" id="pcr-note">—</div>
-    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+    <div style="margin-top:6px;font-size:10px;font-family:var(--ui);color:var(--text2)">
+      5m Δ: <span id="pcr-5m-chg" style="font-weight:700">—</span> &nbsp;|&nbsp; Day Δ: <span id="pcr-day-chg" style="font-weight:700">—</span>
+    </div>
+    <div style="font-size:10px;color:var(--text2);font-family:var(--ui);margin-top:2px">PCR&gt;1.2=Bull | PCR&lt;0.8=Bear | Rising=Bull sentiment</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
       <svg class="pcr-spark" id="pcr-spark" viewBox="0 0 80 20"></svg>
       <span style="font-size:12px;font-weight:700;" id="pcr-trend-lbl">—</span>
     </div>
@@ -297,47 +369,62 @@
     <div class="ic-lbl">FUTURES BIAS</div>
     <div class="ic-val" id="sig-fut">—</div>
     <div class="ic-sub" id="sig-fut-s">—</div>
+    <div style="font-size:10px;color:var(--text2);font-family:var(--ui);margin-top:6px">+ve premium = longs dominant | -ve = shorts dominant</div>
   </div>
   <div class="ic">
     <div class="ic-lbl">MAX PAIN DRIFT</div>
     <div class="ic-val" id="sig-mp">—</div>
     <div class="ic-sub" id="sig-mp-s">—</div>
+    <div style="font-size:10px;color:var(--text2);font-family:var(--ui);margin-top:6px">Price gravitates to Max Pain on expiry. Bearish Drift = price likely to fall to MP.</div>
+  </div>
+</div>
+
+<!-- ═══ GLOBAL CLUES SECTION ═══ -->
+<div class="card" style="border-radius:0;border-left:none;border-right:none;margin-bottom:14px;">
+  <div class="ch">
+    <span class="ct" style="color:var(--info)">🌍 GLOBAL CLUES — MARKET BIAS FACTORS</span>
+    <span id="global-overall" style="font-size:13px;font-weight:700;font-family:var(--ui)">—</span>
+  </div>
+  <div class="glob-grid" id="global-grid">
+    <!-- JS renders this -->
+    <div class="loading" style="grid-column:1/-1">Loading global signals...</div>
+  </div>
+  <div style="padding:6px 14px 8px;border-top:1px solid var(--border);font-size:10px;color:var(--text2);font-family:var(--ui);line-height:1.7">
+    💡 <b style="color:var(--text)">How to read:</b> GIFT Nifty gap &gt;+80 = Bullish open. VIX &lt;13 = calm, &gt;18 = panic.
+    USD/INR falling = Bullish (FII inflows). Crude &gt;+1% = Bearish (import costs). 
+    Nasdaq/DJI positive = Global risk-on = Nifty bullish bias.
   </div>
 </div>
 
 <div class="grid">
   <div class="card">
-    <div class="ch"><span class="ct bear">CALL SIDE — RESISTANCE (ATM ±5)</span>
-      <span style="font-size:10px;color:var(--text2);font-family:var(--ui)">OI↑ = more resistance building | OI↓ = resistance weakening</span>
+    <div class="ch"><span class="ct bear">🔴 CALL SIDE — RESISTANCE (ATM ±5)</span>
+      <span style="font-size:10px;color:var(--text2);font-family:var(--ui)">CE OI↑+Price↓ = Short Build (Bearish) | CE OI↓+Price↑ = Short Cover (Weak Bull)</span>
     </div>
     <table>
-      <thead>
-        <tr>
-          <th class="th-s">STRIKE</th><th>LTP (vs Open)</th><th>LTP Δ</th><th>OI</th><th>5m OI Δ</th><th>Vel</th><th>Day OI Δ</th><th>IV%</th>
-        </tr>
-      </thead>
-      <tbody id="call-tbody"><tr><td colspan="8" class="loading">Waiting...</td></tr></tbody>
+      <thead><tr>
+        <th class="th-s">STRIKE</th><th>LTP</th><th style="color:var(--info)">5m LTP Δ</th><th style="color:var(--warn)">Day LTP Δ</th><th>OI</th><th>5m OI Δ</th><th>Vel</th><th>Day OI Δ</th><th>IV%</th>
+      </tr></thead>
+      <tbody id="call-tbody"><tr><td colspan="9" class="loading">Waiting...</td></tr></tbody>
     </table>
-    <div style="border-top:1px solid var(--border);padding:8px 14px;background:rgba(255,59,87,.03)">
-      <div style="font-size:10px;color:var(--bear);font-family:var(--ui);font-weight:700;letter-spacing:1px;margin-bottom:5px">🔴 CE OI MATRIX READING (per strike)</div>
+    <div style="border-top:1px solid var(--border);padding:6px 14px;background:rgba(255,59,87,.03)">
+      <div style="font-size:10px;color:var(--bear);font-family:var(--ui);font-weight:700;margin-bottom:4px">🔴 CE OI MATRIX READING</div>
       <div id="call-oi-interp" style="font-size:11px;color:var(--text2);font-family:var(--ui);line-height:1.8">—</div>
     </div>
   </div>
 
   <div class="card">
-    <div class="ch"><span class="ct bull">PUT SIDE — SUPPORT (ATM ±5)</span>
-      <span style="font-size:10px;color:var(--text2);font-family:var(--ui)">OI↑ = more support building | OI↓ = support weakening</span>
+    <div class="ch"><span class="ct bull">🟢 PUT SIDE — SUPPORT (ATM ±5)</span>
+      <span style="font-size:10px;color:var(--text2);font-family:var(--ui)">PE OI↑+Price↑ = Long Build (Bullish) | PE OI↓+Price↓ = Long Unwind (Weak Bear)</span>
     </div>
     <table>
-      <thead>
-        <tr>
-          <th class="th-s">STRIKE</th><th>LTP (vs Open)</th><th>LTP Δ</th><th>OI</th><th>5m OI Δ</th><th>Vel</th><th>Day OI Δ</th><th>IV%</th>
-        </tr>
-      </thead>
-      <tbody id="put-tbody"><tr><td colspan="8" class="loading">Waiting...</td></tr></tbody>
+      <thead><tr>
+        <th class="th-s">STRIKE</th><th>LTP</th><th style="color:var(--info)">5m LTP Δ</th><th style="color:var(--warn)">Day LTP Δ</th><th>OI</th><th>5m OI Δ</th><th>Vel</th><th>Day OI Δ</th><th>IV%</th>
+      </tr></thead>
+      <tbody id="put-tbody"><tr><td colspan="9" class="loading">Waiting...</td></tr></tbody>
     </table>
-    <div style="border-top:1px solid var(--border);padding:8px 14px;background:rgba(0,255,136,.03)">
-      <div style="font-size:10px;color:var(--bull);font-family:var(--ui);font-weight:700;letter-spacing:1px;margin-bottom:5px">🟢 PE OI MATRIX READING (per strike)</div>
+    <div style="border-top:1px solid var(--border);padding:6px 14px;background:rgba(0,255,136,.03)">
+      <div style="font-size:10px;color:var(--bull);font-family:var(--ui);font-weight:700;margin-bottom:4px">🟢 PE OI MATRIX READING</div>
       <div id="put-oi-interp" style="font-size:11px;color:var(--text2);font-family:var(--ui);line-height:1.8">—</div>
     </div>
   </div>
@@ -392,53 +479,8 @@
   </div>
 
   <div class="card full">
-    <div class="ch">
-      <span class="ct atmc">🔬 OPTIONS GREEKS — ATM SNAPSHOT + TRADING IMPLICATIONS</span>
-      <span class="cs" id="atm-lbl" style="font-size:12px;color:var(--atm)">ATM: —</span>
-    </div>
-    <!-- Greeks explanation header -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border);background:rgba(163,113,247,.04)">
-      <div style="padding:7px 12px;border-right:1px solid var(--border)">
-        <span style="color:var(--atm);font-weight:700;font-size:10px;font-family:var(--ui)">Δ DELTA</span>
-        <span style="font-size:10px;color:var(--text2);margin-left:6px;font-family:var(--ui)">How much option price moves per ₹1 spot move. CE: 0→1 | PE: -1→0</span>
-      </div>
-      <div style="padding:7px 12px;border-right:1px solid var(--border)">
-        <span style="color:var(--info);font-weight:700;font-size:10px;font-family:var(--ui)">Γ GAMMA</span>
-        <span style="font-size:10px;color:var(--text2);margin-left:6px;font-family:var(--ui)">Rate of Delta change. High = Delta accelerates fast. ATM = highest Gamma.</span>
-      </div>
-      <div style="padding:7px 12px;border-right:1px solid var(--border)">
-        <span style="color:var(--warn);font-weight:700;font-size:10px;font-family:var(--ui)">Θ THETA</span>
-        <span style="font-size:10px;color:var(--text2);margin-left:6px;font-family:var(--ui)">Daily time decay. Negative = premium loses value each day. Seller earns this.</span>
-      </div>
-      <div style="padding:7px 12px;">
-        <span style="color:var(--bull);font-weight:700;font-size:10px;font-family:var(--ui)">ν VEGA</span>
-        <span style="font-size:10px;color:var(--text2);margin-left:6px;font-family:var(--ui)">Sensitivity to IV change. High VIX → options expensive → sell premium.</span>
-      </div>
-    </div>
-    <div class="grk-grid" id="greeks"><div class="loading" style="grid-column:1/-1">Waiting...</div></div>
-    <!-- Confluence scorecard -->
-    <div class="conf-card" id="greeks-confluence">
-      <div class="conf-cell">
-        <div class="conf-lbl">GAMMA RISK</div>
-        <div class="conf-val" id="gc-gamma">—</div>
-      </div>
-      <div class="conf-cell">
-        <div class="conf-lbl">THETA DECAY</div>
-        <div class="conf-val" id="gc-theta">—</div>
-      </div>
-      <div class="conf-cell">
-        <div class="conf-lbl">VEGA REGIME</div>
-        <div class="conf-val" id="gc-vega">—</div>
-      </div>
-      <div class="conf-cell">
-        <div class="conf-lbl">DELTA BIAS</div>
-        <div class="conf-val" id="gc-delta">—</div>
-      </div>
-      <div class="conf-cell">
-        <div class="conf-lbl">STRATEGY HINT</div>
-        <div class="conf-val" id="gc-strategy" style="font-size:10px">—</div>
-      </div>
-    </div>
+    <div class="ch"><span class="ct atmc">GREEKS — ATM SNAPSHOT</span><span class="cs" id="atm-lbl">ATM: —</span></div>
+    <div class="gg" id="greeks"><div class="loading" style="grid-column:1/-1">Waiting...</div></div>
   </div>
 
   <div class="card full">
@@ -908,6 +950,30 @@ function render(d, hist) {
         pe.className = 'sv ' + (premium >= 0 ? 'bull-glow' : 'bear-glow');
     }
     sText('m-vix', vix ? vix.toFixed(2) : '—');
+
+    // VIX signal label
+    const vixSigEl = g('m-vix-signal');
+    if (vixSigEl) {
+        const vixMat = intel.vix_matrix || {};
+        const vs = vixMat.signal || '';
+        const vsCol = vs.includes('STRONG BULL') ? 'var(--bull)' : vs.includes('WEAK BULL') ? 'rgba(0,255,136,.6)' :
+                      vs.includes('STRONG BEAR') ? 'var(--bear)' : vs.includes('WEAK BEAR') ? 'rgba(255,59,87,.6)' : 'var(--text2)';
+        vixSigEl.innerHTML = `<span style="color:${vsCol};font-weight:700">${vs||'—'}</span>`;
+    }
+
+    // Open=High/Low for index
+    const oehNote = g('m-oeh-note');
+    const openSig = g('m-open-signal');
+    if (oehNote) {
+        const oeh = intel.open_eq_high, oel = intel.open_eq_low;
+        oehNote.innerHTML = oeh ? '<span class="oeh-badge">🔶 Open=High — Bearish Bias</span>' :
+                             oel ? '<span class="oel-badge">🔷 Open=Low — Bullish Bias</span>' : '';
+    }
+    if (openSig) {
+        const oeh = intel.open_eq_high, oel = intel.open_eq_low;
+        openSig.innerHTML = oeh ? '<span style="color:var(--warn);font-size:10px">Gap-up & Sell zone</span>' :
+                             oel ? '<span style="color:var(--info);font-size:10px">Gap-down & Buy zone</span>' : '';
+    }
     
     const pcrEl = g('m-pcr');
     if (pcrEl) {
@@ -920,6 +986,22 @@ function render(d, hist) {
         pcrChgEl.textContent = (pcr_chg > 0 ? '▲+' : '▼') + Math.abs(pcr_chg).toFixed(3);
         pcrChgEl.style.color = pcr_chg > 0 ? 'var(--bull)' : 'var(--bear)';
     }
+
+    // PCR 5m + Day changes
+    const pcr5m  = intel.pcr_5m_chg  || 0;
+    const pcrDay = intel.pcr_day_chg || 0;
+    const pcrChgsEl = g('m-pcr-changes');
+    if (pcrChgsEl) {
+        const c5  = pcr5m  >= 0 ? 'var(--bull)' : 'var(--bear)';
+        const cD  = pcrDay >= 0 ? 'var(--bull)' : 'var(--bear)';
+        pcrChgsEl.innerHTML = `5m: <b style="color:${c5}">${pcr5m>=0?'+':''}${pcr5m.toFixed(3)}</b> | Day: <b style="color:${cD}">${pcrDay>=0?'+':''}${pcrDay.toFixed(3)}</b>`;
+    }
+
+    // PCR zone card updates
+    const pcr5mEl  = g('pcr-5m-chg');
+    const pcrDayEl = g('pcr-day-chg');
+    if (pcr5mEl)  { pcr5mEl.textContent  = (pcr5m  >= 0 ? '+' : '') + pcr5m.toFixed(3);  pcr5mEl.style.color  = pcr5m  >= 0 ? 'var(--bull)' : 'var(--bear)'; }
+    if (pcrDayEl) { pcrDayEl.textContent = (pcrDay >= 0 ? '+' : '') + pcrDay.toFixed(3); pcrDayEl.style.color = pcrDay >= 0 ? 'var(--bull)' : 'var(--bear)'; }
     sText('m-atm', '₹' + Math.round(atm).toLocaleString('en-IN'));
     
     const netFlowL = intel.cumulative_net_flow_l || 0;
@@ -1032,21 +1114,20 @@ function render(d, hist) {
     if (intel.migrations) renderMig(intel.migrations);
     if (intel.pin_risk) renderPin(intel.pin_risk);
     if (hist.length) renderHist(hist, atm);
-    if (d.greeks) renderGreeks(d.greeks);
-    // GEX removed — replaced with OI+Price Deep Analysis
+    if (d.greeks) renderGreeks(d.greeks, vix);
     if (intel.skew) renderSkew(intel.skew);
     if (intel.activity) renderActivity(intel.activity);
     if (intel.analysis) renderAnalysis(intel.analysis);
-
     if (intel.pcr_history) renderPCRHistory(intel.pcr_history);
     if (intel.straddle_history) renderStraddleHistory(intel.straddle_history);
     renderWallShifts(intel.wall_shifts || [], intel.max_ce_strike, intel.max_pe_strike);
     if (intel.oi_analytics) renderOIAnalytics(intel.oi_analytics, d.indicators || {});
-
-    // ── NEW: OI+Price analysis renderers ────────────────────────────────────
-    renderOIPriceTable(d.atm_strikes, atm);
+    if (intel.oi_analytics) renderOIPriceTable(d.atm_strikes, atm);
     renderOptionsOIInterp(d.chain, atm, spot);
     updateVerdict(intel, idxAction, idxCol);
+    renderVIXPriceMatrix(intel.vix_matrix, vix, spot, mem.prevSpot);
+    renderCombinedOI(intel);
+    renderGlobalClues(vix, d);
 
     Object.keys(d.chain).forEach(k => {
         mem.prevOIChg[k] = { call_chg: d.chain[k].call_oi_chg, put_chg: d.chain[k].put_oi_chg };
@@ -1122,35 +1203,6 @@ function renderPSTechTable(tech) {
     </table>
     `;
     sHTML('ps-table-wrap', tableHtml);
-
-    // ── Multi-TF Confluence bar ──────────────────────────────────────────────
-    const ema15Bull = t15.ema7_above_ema15;
-    const ema5Bull  = t5.ema7_above_ema15;
-    const st15Bull  = t15.supertrend === 'BULLISH';
-    const st5Bull   = t5.supertrend  === 'BULLISH';
-    const adx15Strong = parseFloat(t15.adx) >= 25;
-    const adx5Strong  = parseFloat(t5.adx)  >= 25;
-
-    function confPill(cond, trueLabel, falseLabel) {
-        const col = cond ? 'var(--bull)' : 'var(--bear)';
-        const bg  = cond ? 'rgba(0,255,136,.15)' : 'rgba(255,59,87,.15)';
-        return `<span style="background:${bg};color:${col};border:1px solid ${col.replace(')',',0.3)')};padding:2px 8px;border-radius:4px;font-weight:700;font-family:var(--ui);font-size:11px">${cond ? trueLabel : falseLabel}</span>`;
-    }
-
-    const bullCount = [ema15Bull, ema5Bull, st15Bull, st5Bull].filter(Boolean).length;
-    let confLabel = '—', confCol = 'var(--text2)', confBg = 'rgba(139,148,158,.1)';
-    if (bullCount === 4) { confLabel = '🚀 FULL BULL CONFLUENCE'; confCol = 'var(--bull)'; confBg = 'rgba(0,255,136,.12)'; }
-    else if (bullCount === 3) { confLabel = '📈 MOSTLY BULLISH'; confCol = 'var(--bull)'; confBg = 'rgba(0,255,136,.08)'; }
-    else if (bullCount === 2) { confLabel = '⚖ MIXED — WAIT'; confCol = 'var(--warn)'; confBg = 'rgba(255,184,0,.08)'; }
-    else if (bullCount === 1) { confLabel = '📉 MOSTLY BEARISH'; confCol = 'var(--bear)'; confBg = 'rgba(255,59,87,.08)'; }
-    else { confLabel = '🔻 FULL BEAR CONFLUENCE'; confCol = 'var(--bear)'; confBg = 'rgba(255,59,87,.12)'; }
-
-    sHTML('conf-15m-ema', confPill(ema15Bull, '15m EMA ▲', '15m EMA ▼'));
-    sHTML('conf-5m-ema',  confPill(ema5Bull,  '5m EMA ▲',  '5m EMA ▼'));
-    sHTML('conf-15m-st',  confPill(st15Bull,  '15m ST ▲',  '15m ST ▼'));
-    sHTML('conf-5m-st',   confPill(st5Bull,   '5m ST ▲',   '5m ST ▼'));
-    const confEl = g('conf-overall');
-    if (confEl) { confEl.innerHTML = `<span style="color:${confCol};font-weight:700;background:${confBg};padding:3px 10px;border-radius:5px;border:1px solid ${confCol.replace(')',',0.3)')}">${confLabel}</span>`; }
 }
 
 function getOpenTag(ltp, open) {
@@ -1165,39 +1217,68 @@ function renderChain(chain, atm, spot) {
     let atmIdx = strikes.indexOf(atm);
     if (atmIdx === -1) return;
     let start = Math.max(0, atmIdx - 5);
-    let end = Math.min(strikes.length, atmIdx + 6);
+    let end   = Math.min(strikes.length, atmIdx + 6);
     let visible = strikes.slice(start, end);
+
+    // colour helpers
+    const chg5Col  = n => n >= 0 ? 'var(--info)'  : 'var(--bear)';
+    const chgDCol  = n => n >= 0 ? 'var(--warn)'  : 'var(--bear)';
+    const oiChgCol = (n, isCE) => n >= 0 ? (isCE ? 'var(--bear)' : 'var(--bull)') : (isCE ? 'var(--bull)' : 'var(--bear)');
+
+    // scenario pill (inline, no external function needed)
+    function scenPill(ltpChg, oiChg) {
+        const P=0.5, O=2000;
+        const pU=ltpChg>P, pD=ltpChg<-P, oU=oiChg>O, oD=oiChg<-O;
+        if(pU&&oU) return `<span style="background:rgba(0,255,136,.15);color:var(--bull);border:1px solid rgba(0,255,136,.3);padding:1px 5px;border-radius:3px;font-size:9px;font-family:var(--ui);font-weight:700">①L-BUILD</span>`;
+        if(pD&&oU) return `<span style="background:rgba(255,59,87,.15);color:var(--bear);border:1px solid rgba(255,59,87,.3);padding:1px 5px;border-radius:3px;font-size:9px;font-family:var(--ui);font-weight:700">②S-BUILD</span>`;
+        if(pU&&oD) return `<span style="background:rgba(163,113,247,.15);color:var(--atm);border:1px solid rgba(163,113,247,.3);padding:1px 5px;border-radius:3px;font-size:9px;font-family:var(--ui);font-weight:700">③S-COVER</span>`;
+        if(pD&&oD) return `<span style="background:rgba(255,184,0,.15);color:var(--warn);border:1px solid rgba(255,184,0,.3);padding:1px 5px;border-radius:3px;font-size:9px;font-family:var(--ui);font-weight:700">④L-UNWIND</span>`;
+        if(!pU&&!pD&&oU) return `<span style="background:rgba(0,184,255,.12);color:var(--info);border:1px solid rgba(0,184,255,.3);padding:1px 5px;border-radius:3px;font-size:9px;font-family:var(--ui);font-weight:700">⑤BUILD</span>`;
+        return `<span style="color:var(--text2);font-size:9px;font-family:var(--ui)">STABLE</span>`;
+    }
+
+    // Open=High/Low tag
+    function oehTag(ltp, open) {
+        if (!open || open === 0) return '';
+        if (ltp >= open * 0.999) return `<span style="background:rgba(255,184,0,.12);color:var(--warn);font-size:8px;padding:1px 3px;border-radius:2px;margin-left:2px">OEH</span>`;
+        if (ltp <= open * 0.97)  return `<span style="background:rgba(0,184,255,.12);color:var(--info);font-size:8px;padding:1px 3px;border-radius:2px;margin-left:2px">OEL</span>`;
+        return `<span style="color:var(--text2);font-size:9px;margin-left:3px">O:${open.toFixed(0)}</span>`;
+    }
 
     visible.forEach(k => {
         let v = chain[k];
         let isAtm = Math.abs(k - atm) < 0.1;
         let cCls = isAtm ? 'sk-a' : k < spot ? 'sk-c' : '';
         let pCls = isAtm ? 'sk-a' : k > spot ? 'sk-p' : '';
-        
+        const c5 = v.call_ltp_chg || 0, cd = v.call_ltp_chg_day || 0;
+        const p5 = v.put_ltp_chg  || 0, pd = v.put_ltp_chg_day  || 0;
+
         cHtml += `<tr class="${isAtm ? 'ar' : ''}">
             <td class="td-s ${cCls}">${k}</td>
-            <td>₹${(v.call_ltp || 0).toFixed(1)} ${getOpenTag(v.call_ltp, v.call_open)}</td>
-            <td>${dimZ(v.call_ltp_chg, (n) => (n >= 0 ? '+' : '') + n.toFixed(1), v.call_ltp_chg >= 0 ? 'var(--bull)' : 'var(--bear)')}</td>
-            <td>${fc(v.call_oi || 0)}</td>
-            <td>${dimZ(v.call_oi_chg, fc, v.call_oi_chg >= 0 ? 'var(--bull)' : 'var(--bear)')}</td>
+            <td>₹${(v.call_ltp||0).toFixed(1)} ${scenPill(c5, v.call_oi_chg||0)}</td>
+            <td style="color:${chg5Col(c5)};font-weight:700">${c5>=0?'+':''}${c5.toFixed(1)}</td>
+            <td style="color:${chgDCol(cd)};font-weight:700">${cd>=0?'+':''}${cd.toFixed(1)} ${oehTag(v.call_ltp||0, v.call_open||0)}</td>
+            <td>${fc(v.call_oi||0)}</td>
+            <td>${dimZ(v.call_oi_chg, fc, oiChgCol(v.call_oi_chg,true))}</td>
             <td>${velArrow(k, true, v.call_oi_chg)}</td>
-            <td>${dimZ(v.call_oi_chg_day, fc, v.call_oi_chg_day >= 0 ? 'var(--bull)' : 'var(--bear)')}</td>
-            <td>${(v.call_iv || 0).toFixed(1)}%</td>
+            <td>${dimZ(v.call_oi_chg_day, fc, oiChgCol(v.call_oi_chg_day,true))}</td>
+            <td>${(v.call_iv||0).toFixed(1)}%</td>
         </tr>`;
 
         pHtml += `<tr class="${isAtm ? 'ar' : ''}">
             <td class="td-s ${pCls}">${k}</td>
-            <td>₹${(v.put_ltp || 0).toFixed(1)} ${getOpenTag(v.put_ltp, v.put_open)}</td>
-            <td>${dimZ(v.put_ltp_chg, (n) => (n >= 0 ? '+' : '') + n.toFixed(1), v.put_ltp_chg >= 0 ? 'var(--bull)' : 'var(--bear)')}</td>
-            <td>${fc(v.put_oi || 0)}</td>
-            <td>${dimZ(v.put_oi_chg, fc, v.put_oi_chg >= 0 ? 'var(--bull)' : 'var(--bear)')}</td>
+            <td>₹${(v.put_ltp||0).toFixed(1)} ${scenPill(p5, v.put_oi_chg||0)}</td>
+            <td style="color:${chg5Col(p5)};font-weight:700">${p5>=0?'+':''}${p5.toFixed(1)}</td>
+            <td style="color:${chgDCol(pd)};font-weight:700">${pd>=0?'+':''}${pd.toFixed(1)} ${oehTag(v.put_ltp||0, v.put_open||0)}</td>
+            <td>${fc(v.put_oi||0)}</td>
+            <td>${dimZ(v.put_oi_chg, fc, oiChgCol(v.put_oi_chg,false))}</td>
             <td>${velArrow(k, false, v.put_oi_chg)}</td>
-            <td>${dimZ(v.put_oi_chg_day, fc, v.put_oi_chg_day >= 0 ? 'var(--bull)' : 'var(--bear)')}</td>
-            <td>${(v.put_iv || 0).toFixed(1)}%</td>
+            <td>${dimZ(v.put_oi_chg_day, fc, oiChgCol(v.put_oi_chg_day,false))}</td>
+            <td>${(v.put_iv||0).toFixed(1)}%</td>
         </tr>`;
     });
-    sHTML('call-tbody', cHtml || '<tr><td colspan="8" class="loading">No data</td></tr>');
-    sHTML('put-tbody', pHtml || '<tr><td colspan="8" class="loading">No data</td></tr>');
+    sHTML('call-tbody', cHtml || '<tr><td colspan="9" class="loading">No data</td></tr>');
+    sHTML('put-tbody',  pHtml || '<tr><td colspan="9" class="loading">No data</td></tr>');
 }
 
 // ✅ NEW: The strictly applied 6 Rules logic for Options Flow
@@ -1275,182 +1356,146 @@ function renderPin(pin) {
 function renderHist(hist, atm) {
     if (!hist.length) return;
     let maxOI = Math.max(...hist.map(h => Math.max(h.call_oi, h.put_oi)));
-
-    // Find max CE and PE strikes (walls)
-    let maxCe = hist.reduce((a,b) => (b.call_oi > a.call_oi ? b : a), hist[0]);
-    let maxPe = hist.reduce((a,b) => (b.put_oi  > a.put_oi  ? b : a), hist[0]);
-    let totalCe = hist.reduce((a,b) => a + b.call_oi, 0);
-    let totalPe = hist.reduce((a,b) => a + b.put_oi,  0);
-    let peBias   = totalPe > totalCe ? 'BULLISH (PE > CE)' : 'BEARISH (CE > PE)';
-    let biasCol  = totalPe > totalCe ? 'var(--bull)' : 'var(--bear)';
-
-    let html = `<div style="padding:6px 14px 4px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,.04)">
-        <span style="font-size:11px;font-weight:700;color:${biasCol};font-family:var(--ui)">${peBias}</span>
-        <span style="font-size:10px;color:var(--bear);font-family:var(--ui)">🔴 CE WALL: <b>${maxCe.strike}</b> (${fcAbs(maxCe.call_oi)})</span>
-        <span style="font-size:10px;color:var(--bull);font-family:var(--ui)">🟢 PE WALL: <b>${maxPe.strike}</b> (${fcAbs(maxPe.put_oi)})</span>
-        <span style="font-size:9px;color:var(--text2);font-family:var(--ui)">🔴=Calls(Resistance) &nbsp; 🟢=Puts(Support) &nbsp; ★=ATM</span>
-    </div>`;
-    html += `<div style="display:flex;align-items:flex-end;gap:3px;height:130px;padding:10px 14px 0;overflow-x:auto">`;
-
+    let html = `<div style="display:flex;align-items:flex-end;gap:4px;height:120px;padding-top:10px;">`;
     hist.forEach(h => {
         let cH = (h.call_oi / maxOI) * 100;
         let pH = (h.put_oi / maxOI) * 100;
-        let isAtm    = Math.abs(h.strike - atm) < 0.1;
-        let isCeWall = h.strike === maxCe.strike;
-        let isPeWall = h.strike === maxPe.strike;
-        let ceGlow   = isCeWall ? ';box-shadow:0 0 6px var(--bear)' : '';
-        let peGlow   = isPeWall ? ';box-shadow:0 0 6px var(--bull)' : '';
-        html += `<div style="flex:1;min-width:22px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px">
-            <div style="display:flex;gap:2px;align-items:flex-end;width:100%;justify-content:center;height:95px">
-                <div title="CE OI: ${fcAbs(h.call_oi)}" style="width:11px;height:${Math.max(2,cH)}%;background:var(--bear);border-radius:2px 2px 0 0;opacity:${isAtm||isCeWall ? 1 : 0.65}${ceGlow}"></div>
-                <div title="PE OI: ${fcAbs(h.put_oi)}"  style="width:11px;height:${Math.max(2,pH)}%;background:var(--bull);border-radius:2px 2px 0 0;opacity:${isAtm||isPeWall ? 1 : 0.65}${peGlow}"></div>
+        let isAtm = Math.abs(h.strike - atm) < 0.1;
+        html += `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px">
+            <div style="display:flex;gap:2px;align-items:flex-end;width:100%;justify-content:center;height:90px">
+                <div style="width:12px;height:${cH}%;background:var(--bear);border-radius:2px 2px 0 0;opacity:${isAtm ? 1 : 0.7}"></div>
+                <div style="width:12px;height:${pH}%;background:var(--bull);border-radius:2px 2px 0 0;opacity:${isAtm ? 1 : 0.7}"></div>
             </div>
-            <div style="font-size:8px;color:${isAtm ? 'var(--atm)' : isCeWall || isPeWall ? 'var(--warn)' : 'var(--text2)'};font-family:var(--ui);font-weight:700;transform:rotate(-45deg);margin-top:6px;white-space:nowrap">${h.strike}${isAtm?' ★':''}</div>
+            <div style="font-size:9px;color:${isAtm ? 'var(--atm)' : 'var(--text2)'};font-family:var(--ui);font-weight:700;transform:rotate(-45deg);margin-top:8px">${h.strike}</div>
         </div>`;
     });
     html += `</div>`;
     sHTML('histogram', html);
 }
 
-function renderGreeks(greeks) {
-    const gKeys = Object.keys(greeks);
-    if (!gKeys.length) { sHTML('greeks', '<div class="loading">No data</div>'); return; }
+function renderGreeks(greeks, vix) {
+    if (!greeks || !Object.keys(greeks).length) { sHTML('greeks', '<div class="loading">No Greeks data</div>'); return; }
 
-    // Greek trading implication helpers
-    function deltaHint(val, type) {
-        const v = Math.abs(val || 0);
-        if (type === 'CE') {
-            if (v > 0.6) return { txt: 'Deep ITM — moves almost 1:1 with spot', col: 'var(--bull)' };
-            if (v > 0.45) return { txt: 'Near ATM — very sensitive to spot movement', col: 'var(--bull)' };
-            if (v > 0.3)  return { txt: 'Slightly OTM — moderate spot sensitivity', col: 'var(--warn)' };
-            return { txt: 'OTM — low spot sensitivity, high leverage', col: 'var(--text2)' };
-        } else {
-            if (v > 0.6) return { txt: 'Deep ITM Put — near 1:1 inverse move', col: 'var(--bull)' };
-            if (v > 0.45) return { txt: 'Near ATM Put — very sensitive', col: 'var(--bull)' };
-            if (v > 0.3)  return { txt: 'Slightly OTM Put — moderate', col: 'var(--warn)' };
-            return { txt: 'OTM Put — cheap but low prob', col: 'var(--text2)' };
+    // ── Greek interpretation engine ──────────────────────────────────────────
+    const INTERP = {
+        delta_call: v => {
+            const a = Math.abs(v);
+            const interp = a > 0.65 ? {txt:'Deep ITM — moves almost ₹1 per ₹1 spot move', col:'var(--bull)'} :
+                           a > 0.5  ? {txt:'ATM — 50/50 chance ITM, high spot sensitivity', col:'var(--bull)'} :
+                           a > 0.35 ? {txt:'Slightly OTM — ideal range 0.35–0.65 for buyers', col:'var(--warn)'} :
+                                      {txt:'Far OTM — low probability, mostly time value', col:'var(--text2)'};
+            const action = a >= 0.35 && a <= 0.65 ? '✅ Buy Zone (0.35–0.65 ideal)' :
+                           a < 0.35 ? '⚠ Too cheap — low prob of profit' : '⚠ Expensive — mostly intrinsic';
+            return {...interp, action};
+        },
+        delta_put: v => {
+            const a = Math.abs(v);
+            const interp = a > 0.65 ? {txt:'Deep ITM Put — inverse 1:1 with spot', col:'var(--bull)'} :
+                           a > 0.5  ? {txt:'ATM Put — balanced, high sensitivity', col:'var(--bull)'} :
+                           a > 0.35 ? {txt:'OTM Put — moderate downside hedge', col:'var(--warn)'} :
+                                      {txt:'Far OTM Put — cheap downside protection', col:'var(--text2)'};
+            const action = a >= 0.35 && a <= 0.65 ? '✅ Buy Zone (0.35–0.65 ideal)' : '⚠ Outside ideal range';
+            return {...interp, action};
+        },
+        gamma: v => {
+            const a = Math.abs(v);
+            const interp = a > 0.003 ? {txt:'HIGH Gamma — Delta changing fast. ATM. Big moves amplify quickly.', col:'var(--bear)'} :
+                           a > 0.001 ? {txt:'MEDIUM Gamma — Delta accelerating moderately', col:'var(--warn)'} :
+                                       {txt:'LOW Gamma — Delta stable, less explosive', col:'var(--bull)'};
+            const action = a > 0.003 ? '⚡ Use for breakout trades — profit accelerates' :
+                           a > 0.001 ? '⚠ Use spreads — Gamma risk manageable' :
+                                       '✅ Safe for sellers — low Gamma exposure';
+            return {...interp, action};
+        },
+        theta: v => {
+            const a = Math.abs(v);
+            const interp = a > 50  ? {txt:`₹${Math.abs(v).toFixed(1)}/day decay — Fast theta. Near expiry or ATM.`, col:'var(--warn)'} :
+                           a > 20  ? {txt:`₹${Math.abs(v).toFixed(1)}/day decay — Moderate. Sellers earning well.`, col:'var(--bull)'} :
+                                     {txt:`₹${Math.abs(v).toFixed(1)}/day decay — Slow decay. Time value remains.`, col:'var(--text2)'};
+            const action = a > 50 ? '⚠ Buyers: time working against you fast!' :
+                           a > 20 ? '✅ Sellers: Theta working in your favour' :
+                                    '⚪ Time decay not dominant factor yet';
+            return {...interp, action};
+        },
+        vega: v => {
+            const ivLvl = vix || 0;
+            const a = Math.abs(v);
+            const interp = a > 30 ? {txt:`High Vega — Option price very sensitive to IV. VIX=${ivLvl?.toFixed(1)}`, col:'var(--bear)'} :
+                           a > 15 ? {txt:`Medium Vega — Moderate IV sensitivity`, col:'var(--warn)'} :
+                                    {txt:`Low Vega — IV changes have small effect`, col:'var(--bull)'};
+            const action = ivLvl > 18 ? '⚠ HIGH VIX: Options expensive. Sell premium, not buy.' :
+                           ivLvl < 13 ? '✅ LOW VIX: Options cheap. Buy premium, use spreads.' :
+                                        '⚖ NORMAL VIX: Balanced. Directional trade ok.';
+            return {...interp, action};
+        },
+        ce_iv: v => {
+            const interp = v > 25 ? {txt:`CE IV ${v.toFixed(1)}% — Very expensive calls. Market pricing big upside fear.`, col:'var(--bear)'} :
+                           v > 15 ? {txt:`CE IV ${v.toFixed(1)}% — Normal call pricing`, col:'var(--warn)'} :
+                                    {txt:`CE IV ${v.toFixed(1)}% — Cheap calls. Low fear of upside.`, col:'var(--bull)'};
+            const action = v > 20 ? '⚠ SELL CE premium (IV too high, sell straddle/strangle)' :
+                           v < 12 ? '✅ BUY CE if bullish (IV cheap)' : '⚖ Neutral IV on calls';
+            return {...interp, action};
+        },
+        pe_iv: v => {
+            const interp = v > 25 ? {txt:`PE IV ${v.toFixed(1)}% — Very expensive puts. Market pricing panic.`, col:'var(--bear)'} :
+                           v > 15 ? {txt:`PE IV ${v.toFixed(1)}% — Normal put pricing`, col:'var(--warn)'} :
+                                    {txt:`PE IV ${v.toFixed(1)}% — Cheap puts. Low downside fear.`, col:'var(--bull)'};
+            const action = v > 20 ? '⚠ SELL PE premium (panic priced in, sell puts)' :
+                           v < 12 ? '✅ BUY PE if bearish (IV cheap)' : '⚖ Neutral IV on puts';
+            return {...interp, action};
         }
-    }
-    function gammaHint(val) {
-        const v = Math.abs(val || 0);
-        if (v > 0.003) return { txt: '⚡ HIGH — Delta changing fast. ATM zone. Big moves amplify.', col: 'var(--bear)' };
-        if (v > 0.001) return { txt: '⚠ MEDIUM — Moderate acceleration', col: 'var(--warn)' };
-        return { txt: '✓ LOW — Stable delta, less volatile', col: 'var(--bull)' };
-    }
-    function thetaHint(val) {
-        const v = val || 0;
-        if (Math.abs(v) > 50)  return { txt: '🔥 Fast decay — seller profits accelerating near expiry', col: 'var(--warn)' };
-        if (Math.abs(v) > 20)  return { txt: '⏱ Moderate decay — theta working for sellers', col: 'var(--bull)' };
-        return { txt: 'Slow decay — still time value remaining', col: 'var(--text2)' };
-    }
-    function vegaHint(val, vix) {
-        const v = Math.abs(val || 0);
-        if (v > 30) return { txt: 'HIGH Vega — expensive if IV rises (buy spreads, not naked)', col: 'var(--bear)' };
-        if (v > 15) return { txt: 'MEDIUM Vega — moderate IV sensitivity', col: 'var(--warn)' };
-        return { txt: 'LOW Vega — IV changes have little effect', col: 'var(--bull)' };
-    }
-    function barPct(val, max) { return Math.min(100, Math.abs((val||0)/max)*100); }
-
-    const colorMap = {
-        'delta_call': 'var(--bull)', 'delta_put': 'var(--bear)',
-        'gamma': 'var(--warn)', 'theta': 'var(--atm)', 'vega': 'var(--info)',
-        'rho': 'var(--text2)', 'iv': 'var(--info)'
     };
 
+    const KEY_LABELS = {
+        delta_call:'Δ DELTA (CE)', delta_put:'Δ DELTA (PE)',
+        gamma:'Γ GAMMA', theta:'Θ THETA', vega:'ν VEGA',
+        ce_iv:'CE IV %', pe_iv:'PE IV %'
+    };
+    const KEY_COLORS = {
+        delta_call:'var(--bull)', delta_put:'var(--bear)',
+        gamma:'var(--warn)', theta:'var(--atm)', vega:'var(--info)',
+        ce_iv:'var(--bear)', pe_iv:'var(--bull)'
+    };
+    const KEY_MAX = { delta_call:1, delta_put:1, gamma:0.005, theta:100, vega:50, ce_iv:50, pe_iv:50 };
+
     let html = '';
-    let deltaCall = 0, deltaPut = 0, gammaVal = 0, thetaVal = 0, vegaVal = 0, ivVal = 0;
-
-    gKeys.forEach(k => {
-        const g = greeks[k];
-        const val = g.val || 0;
-        const col = colorMap[k] || 'var(--text2)';
-        let hint = { txt: g.desc || '', col: 'var(--text2)' };
-        let barMax = 1;
-
-        if (k === 'delta_call') { deltaCall = val; hint = deltaHint(val, 'CE'); barMax = 1; }
-        else if (k === 'delta_put') { deltaPut = val; hint = deltaHint(val, 'PE'); barMax = 1; }
-        else if (k === 'gamma') { gammaVal = val; hint = gammaHint(val); barMax = 0.005; }
-        else if (k === 'theta') { thetaVal = val; hint = thetaHint(val); barMax = 100; }
-        else if (k === 'vega')  { vegaVal  = val; hint = vegaHint(val); barMax = 50; }
-        else if (k === 'iv')    { ivVal    = val; barMax = 50; hint.txt = val > 20 ? 'HIGH IV — options expensive. Sell premium.' : val > 12 ? 'NORMAL IV' : 'LOW IV — options cheap. Buy premium.'; hint.col = val > 20 ? 'var(--bear)' : val > 12 ? 'var(--warn)' : 'var(--bull)'; }
-
-        const pct = barPct(val, barMax);
+    Object.keys(greeks).forEach(k => {
+        const g_data = greeks[k];
+        const val = g_data.val || 0;
+        const col = KEY_COLORS[k] || 'var(--text2)';
+        const interp = INTERP[k] ? INTERP[k](val) : {txt: g_data.desc||'', col:'var(--text2)', action:'—'};
+        const pct = Math.min(100, Math.abs(val / (KEY_MAX[k]||1)) * 100);
 
         html += `<div class="grk-cell">
-            <div class="grk-lbl">${k.toUpperCase().replace('_', ' ')}</div>
-            <div class="grk-val" style="color:${col}">${val.toFixed(3)}</div>
+            <div class="grk-lbl">${KEY_LABELS[k]||k.toUpperCase()}</div>
+            <div class="grk-val" style="color:${col}">${typeof val === 'number' ? val.toFixed(3) : val}</div>
             <div class="grk-bar"><div class="grk-bar-fill" style="width:${pct}%;background:${col}"></div></div>
-            <div class="grk-hint" style="color:${hint.col}">${hint.txt}</div>
+            <div class="grk-interp" style="color:${interp.col}">${interp.txt}</div>
+            <div class="grk-action" style="color:${interp.col}">${interp.action||''}</div>
         </div>`;
     });
-
     sHTML('greeks', html);
-    sText('atm-lbl', 'ATM: ' + (greeks[gKeys[0]] ? '—' : '—'));
-
-    // Confluence scorecard
-    const absDelta = Math.abs(deltaCall);
-    const gammaRisk = Math.abs(gammaVal) > 0.003 ? { txt: '⚡ HIGH', col: 'var(--bear)' } : Math.abs(gammaVal) > 0.001 ? { txt: '⚠ MEDIUM', col: 'var(--warn)' } : { txt: '✓ LOW', col: 'var(--bull)' };
-    const thetaDecay = Math.abs(thetaVal) > 50 ? { txt: '🔥 FAST', col: 'var(--warn)' } : Math.abs(thetaVal) > 20 ? { txt: '⏱ MODERATE', col: 'var(--info)' } : { txt: '✓ SLOW', col: 'var(--bull)' };
-    const vegaRegime = ivVal > 20 ? { txt: '📈 SELL IV', col: 'var(--bear)' } : ivVal > 12 ? { txt: '⚖ NORMAL', col: 'var(--warn)' } : { txt: '📉 BUY IV', col: 'var(--bull)' };
-    const deltaBias = deltaCall > 0.5 ? { txt: '🟢 BULLISH', col: 'var(--bull)' } : absDelta < 0.4 ? { txt: '🔴 BEARISH', col: 'var(--bear)' } : { txt: '⚪ NEUTRAL', col: 'var(--text2)' };
-
-    let strategy = '—';
-    if (ivVal > 20 && Math.abs(thetaVal) > 30) strategy = 'SELL STRADDLE/STRANGLE';
-    else if (ivVal < 12) strategy = 'BUY CALLS/PUTS (cheap IV)';
-    else if (Math.abs(gammaVal) > 0.003) strategy = 'SHORT-DATED SPREADS';
-    else strategy = 'DIRECTIONAL (IV NORMAL)';
-
-    const gcEl = g('greeks-confluence');
-    if (gcEl) {
-        sHTML('gc-gamma',    `<span style="color:${gammaRisk.col};font-weight:700">${gammaRisk.txt}</span>`);
-        sHTML('gc-theta',    `<span style="color:${thetaDecay.col};font-weight:700">${thetaDecay.txt}</span>`);
-        sHTML('gc-vega',     `<span style="color:${vegaRegime.col};font-weight:700">${vegaRegime.txt}</span>`);
-        sHTML('gc-delta',    `<span style="color:${deltaBias.col};font-weight:700">${deltaBias.txt}</span>`);
-        sHTML('gc-strategy', `<span style="color:var(--info);font-weight:700">${strategy}</span>`);
-    }
 }
 
-
 function renderSkew(skew) {
-    const signal = skew.signal || '—';
-    const skewEl = g('skew-signal');
-    if (skewEl) {
-        const skewCol = signal.includes('CALL') ? 'var(--bear)' : signal.includes('PUT') ? 'var(--bull)' : 'var(--text2)';
-        skewEl.innerHTML = `<span style="color:${skewCol};font-weight:700">${signal}</span>`;
-    }
-
+    sText('skew-signal', skew.signal || '—');
     let s = skew.data || [];
     if (!s.length) return;
     let maxIv = Math.max(...s.map(x => Math.max(x.call_iv, x.put_iv)));
-
-    // Skew interpretation
-    const avgCeIv = s.reduce((a,x) => a + x.call_iv, 0) / s.length;
-    const avgPeIv = s.reduce((a,x) => a + x.put_iv, 0)  / s.length;
-    const skewBias = avgCeIv > avgPeIv ? 'CALL SKEW (bearish fear — market expects up move & sellers pricing higher calls)' :
-                     avgPeIv > avgCeIv ? 'PUT SKEW (downside fear — market pricing in crash protection)' : 'FLAT SKEW (balanced fear)';
-    const skewBiasCol = avgCeIv > avgPeIv ? 'var(--bear)' : avgPeIv > avgCeIv ? 'var(--bull)' : 'var(--text2)';
-
-    let html = `<div style="padding:6px 14px 4px;font-size:10px;color:${skewBiasCol};font-family:var(--ui);font-weight:700">📊 ${skewBias}</div>`;
-    html += `<div style="padding:0 14px 4px;font-size:10px;color:var(--text2);font-family:var(--ui)">
-        Avg CE IV: <b style="color:var(--bear)">${avgCeIv.toFixed(1)}%</b> &nbsp;vs&nbsp; Avg PE IV: <b style="color:var(--bull)">${avgPeIv.toFixed(1)}%</b>
-        &nbsp;— High IV side = expensive. Sell that side.</div>`;
-
-    html += s.map(x => {
+    let html = s.map(x => {
         let p1 = (Math.min(x.call_iv, x.put_iv) / maxIv) * 100;
         let p2 = (Math.abs(x.call_iv - x.put_iv) / maxIv) * 100;
         let diffColor = x.call_iv > x.put_iv ? 'var(--bear)' : 'var(--bull)';
-        let skewNote = x.call_iv > x.put_iv + 2 ? '← CE costlier' : x.put_iv > x.call_iv + 2 ? '← PE costlier' : '';
         return `<div class="skew-row">
-            <div style="width:52px;text-align:right;font-size:12px;font-weight:700;color:var(--text2)">${x.strike}</div>
+            <div style="width:50px;text-align:right;font-size:12px;font-weight:700">${x.strike}</div>
             <div class="skew-bar">
                 <div style="display:flex;height:100%">
                     <div class="skew-fill" style="width:${p1}%;background:var(--border2)"></div>
                     <div class="skew-fill" style="width:${p2}%;background:${diffColor}"></div>
                 </div>
             </div>
-            <div style="width:90px;font-size:11px;">
-                <span style="color:var(--bear)">${x.call_iv.toFixed(1)}</span><span style="color:var(--text2)"> / </span><span style="color:var(--bull)">${x.put_iv.toFixed(1)}</span>
-                <span style="font-size:9px;color:${diffColor};margin-left:3px">${skewNote}</span>
+            <div style="width:70px;font-size:11px;color:var(--text2)">
+                <span style="color:var(--bear)">${x.call_iv.toFixed(1)}</span> | <span style="color:var(--bull)">${x.put_iv.toFixed(1)}</span>
             </div>
         </div>`;
     }).join('');
@@ -1458,37 +1503,15 @@ function renderSkew(skew) {
 }
 
 function renderActivity(acts) {
-    if (!acts || !acts.length) { sHTML('activity', '<div class="loading" style="grid-column:1/-1">No significant activity</div>'); return; }
-
-    function actHint(type, oiChg, ltp, trend) {
-        const isCall = type === 'CE';
-        if (isCall) {
-            if (oiChg > 0 && trend === 'UP')   return { label:'② SHORT BUILD-UP', col:'var(--bear)',  note:'Sellers entering at resistance — strong cap' };
-            if (oiChg < 0 && trend === 'UP')   return { label:'③ SHORT COVERING', col:'var(--warn)',  note:'Short squeeze — bears exiting calls' };
-            if (oiChg > 0 && trend === 'DOWN') return { label:'② CALL UNWINDING', col:'var(--text2)', note:'Call writers exiting — resistance weakening' };
-            return { label:'OI STABLE', col:'var(--text2)', note:'No significant call activity' };
-        } else {
-            if (oiChg > 0 && trend === 'DOWN') return { label:'② LONG BUILD-UP', col:'var(--bull)',  note:'Buyers adding puts — strong support' };
-            if (oiChg < 0 && trend === 'DOWN') return { label:'④ LONG UNWIND',   col:'var(--warn)',  note:'Put buyers exiting — support weakening' };
-            if (oiChg > 0 && trend === 'UP')   return { label:'① PE PROTECTION',  col:'var(--info)',  note:'Put buying on rally — hedging risk' };
-            return { label:'OI STABLE', col:'var(--text2)', note:'No significant put activity' };
-        }
-    }
-
-    let html = acts.map(a => {
-        const hint = actHint(a.type, a.oi_chg, a.ltp, a.trend || '');
-        return `<div class="ac">
-            <div class="at2" style="color:${msColor(a.trend)}">${a.strike} ${a.type}
-                <span style="float:right;font-size:9px;background:${hint.col.replace(')',',0.15)')};color:${hint.col};padding:1px 5px;border-radius:3px">${hint.label}</span>
-            </div>
-            <div class="arow"><span class="ast" style="color:var(--text2)">LTP</span><span class="aoi">₹${a.ltp.toFixed(1)}</span></div>
-            <div class="arow"><span class="ast" style="color:var(--text2)">OI Δ</span><span class="aoi" style="color:${a.oi_chg >= 0 ? (a.type === 'CE' ? 'var(--bear)' : 'var(--bull)') : (a.type === 'CE' ? 'var(--bull)' : 'var(--bear)')}">${fc(a.oi_chg)}</span></div>
-            <div class="anote" style="color:${hint.col}">${hint.note}</div>
-            <div class="anote" style="color:var(--text2);margin-top:2px">${a.note || ''}</div>
-        </div>`;
-    }).join('');
-    sHTML('activity', html);
-    sText('act-time', new Date().toLocaleTimeString('en-IN'));
+    let html = acts.map(a => `
+        <div class="ac">
+            <div class="at2" style="color:${msColor(a.trend)}">${a.strike} ${a.type}</div>
+            <div class="arow"><span class="ast">LTP</span><span class="aoi">₹${a.ltp.toFixed(1)}</span></div>
+            <div class="arow"><span class="ast">OI CHG</span><span class="aoi" style="color:${a.oi_chg >= 0 ? (a.type === 'CE' ? 'var(--bear)' : 'var(--bull)') : (a.type === 'CE' ? 'var(--bull)' : 'var(--bear)')}">${fc(a.oi_chg)}</span></div>
+            <div class="anote">${a.note}</div>
+        </div>
+    `).join('');
+    sHTML('activity', html || '<div class="loading" style="grid-column:1/-1">No activity</div>');
 }
 
 function renderAnalysis(anls) {
@@ -1850,6 +1873,322 @@ setInterval(() => {
     const s = diff % 60;
     sText('timer', m + ':' + (s < 10 ? '0' : '') + s);
 }, 1000);
+
+// ═══════════════════════════════════════════════════════════════════
+// VIX + PRICE MATRIX — Highlight active scenario
+// ═══════════════════════════════════════════════════════════════════
+function renderVIXPriceMatrix(vixMat, vix, spot, prevSpot) {
+    if (!vixMat) return;
+    const sig = vixMat.signal || '';
+    const sigMap = {
+        'STRONG BULLISH': {n:1, col:'var(--bull)', bg:'rgba(0,255,136,.15)'},
+        'WEAK BULLISH':   {n:2, col:'rgba(0,255,136,.7)', bg:'rgba(0,255,136,.08)'},
+        'STRONG BEARISH': {n:3, col:'var(--bear)', bg:'rgba(255,59,87,.15)'},
+        'WEAK BEARISH':   {n:4, col:'rgba(255,59,87,.7)', bg:'rgba(255,59,87,.08)'},
+        'SIDEWAYS_UP':    {n:5, col:'var(--info)', bg:'rgba(0,184,255,.12)'},
+        'SIDEWAYS_DOWN':  {n:6, col:'var(--text2)', bg:'rgba(139,148,158,.08)'},
+    };
+    const active = sigMap[sig];
+
+    // Update all 6 cards
+    for (let i = 1; i <= 6; i++) {
+        const card = g('vpm-' + i);
+        if (!card) continue;
+        if (active && active.n === i) {
+            card.classList.add('vix-active');
+            card.style.opacity = '1';
+        } else {
+            card.classList.remove('vix-active');
+            card.style.opacity = active ? '0.45' : '1';
+        }
+    }
+
+    // Update live label
+    const liveEl = g('vix-price-live');
+    if (liveEl && active) {
+        liveEl.innerHTML = `<span style="color:${active.col};background:${active.bg};padding:3px 12px;border-radius:5px;border:1px solid ${active.col.replace(')',',0.3)')}">${sig}</span>`;
+    }
+    const descEl = g('vix-price-desc');
+    if (descEl) {
+        descEl.innerHTML = `<span style="color:${active?active.col:'var(--text2)'}">${vixMat.desc||'—'}</span>`;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// COMBINED OI ANALYSIS — 4 Cases
+// ═══════════════════════════════════════════════════════════════════
+function renderCombinedOI(intel) {
+    const caseNum  = intel.combined_oi_case  || 0;
+    const label    = intel.combined_oi_label || '—';
+    const desc     = intel.combined_oi_desc  || '—';
+    const col_map  = {BULL:'var(--bull)', BEAR:'var(--bear)', NEUTRAL:'var(--text2)', WARN:'var(--warn)'};
+    const colKey   = intel.combined_oi_col   || 'NEUTRAL';
+    const col      = col_map[colKey] || 'var(--text2)';
+
+    // Highlight active case
+    for (let i = 1; i <= 4; i++) {
+        const cell = g('coi-c' + i);
+        if (!cell) continue;
+        if (i === caseNum) {
+            cell.style.background = 'rgba(255,255,255,.07)';
+            cell.style.boxShadow  = '0 0 0 1px ' + col;
+        } else {
+            cell.style.background = '';
+            cell.style.boxShadow  = '';
+            cell.style.opacity    = caseNum ? '0.5' : '1';
+        }
+    }
+
+    const lblEl = g('coi-active-label');
+    if (lblEl) lblEl.innerHTML = `<span style="color:${col};font-weight:700">${label}</span>`;
+
+    const ceDay = intel.total_ce_chg_day || 0;
+    const peDay = intel.total_pe_chg_day || 0;
+    const ceDEl = g('coi-ce-day');
+    const peDEl = g('coi-pe-day');
+    if (ceDEl) { ceDEl.textContent = (ceDay>=0?'+':'') + ceDay.toFixed(2) + 'L'; ceDEl.style.color = ceDay > 0 ? 'var(--bear)' : 'var(--bull)'; }
+    if (peDEl) { peDEl.textContent = (peDay>=0?'+':'') + peDay.toFixed(2) + 'L'; peDEl.style.color = peDay > 0 ? 'var(--bull)' : 'var(--bear)'; }
+    const descEl = g('coi-desc');
+    if (descEl) { descEl.textContent = desc; descEl.style.color = col; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GLOBAL CLUES — Derived from available data (VIX, PCR, Futures, Spot)
+// ═══════════════════════════════════════════════════════════════════
+function renderGlobalClues(vix, d) {
+    const el = g('global-grid');
+    if (!el) return;
+    const intel = d.intelligence || {};
+    const pcr = d.pcr || 0;
+    const spot = d.spot || 0;
+    const futures = d.futures || spot;
+    const lvl = intel.levels || {};
+    const vixMat = intel.vix_matrix || {};
+
+    function globCell(lbl, val, sig, note, col, bg) {
+        return `<div class="glob-cell">
+            <div class="glob-lbl">${lbl}</div>
+            <div class="glob-val" style="color:${col}">${val}</div>
+            <div class="glob-sig" style="background:${bg};color:${col}">${sig}</div>
+            <div class="glob-note">${note}</div>
+        </div>`;
+    }
+
+    // VIX interpretation
+    const vixSig  = vix > 20 ? '▼ PANIC' : vix > 15 ? '⚠ ELEVATED' : vix < 12 ? '✅ CALM' : '⚪ NORMAL';
+    const vixCol  = vix > 20 ? 'var(--bear)' : vix > 15 ? 'var(--warn)' : vix < 12 ? 'var(--bull)' : 'var(--text2)';
+    const vixBg   = vix > 20 ? 'rgba(255,59,87,.12)' : vix > 15 ? 'rgba(255,184,0,.12)' : vix < 12 ? 'rgba(0,255,136,.1)' : 'rgba(139,148,158,.08)';
+    const vixNote = vix > 20 ? 'High fear — sell premiums, expect big move' : vix > 15 ? 'Elevated fear — options expensive' : vix < 12 ? 'Low fear — buy options (cheap IV)' : 'Normal volatility';
+
+    // PCR interpretation
+    const pcrSig  = pcr > 1.2 ? '▲ BULLISH' : pcr < 0.8 ? '▼ BEARISH' : '⚪ NEUTRAL';
+    const pcrCol  = pcr > 1.2 ? 'var(--bull)' : pcr < 0.8 ? 'var(--bear)' : 'var(--text2)';
+    const pcrBg   = pcr > 1.2 ? 'rgba(0,255,136,.1)' : pcr < 0.8 ? 'rgba(255,59,87,.12)' : 'rgba(139,148,158,.08)';
+    const pcrNote = pcr > 1.2 ? 'More puts than calls — put writers bullish' : pcr < 0.8 ? 'More calls — call writers bearish' : 'Balanced. No strong directional bias.';
+
+    // Futures premium
+    const fPrem  = futures - spot;
+    const fSig   = fPrem >  30 ? '▲ BULLISH' : fPrem < -20 ? '▼ BEARISH' : '⚪ NEUTRAL';
+    const fCol   = fPrem >  30 ? 'var(--bull)' : fPrem < -20 ? 'var(--bear)' : 'var(--text2)';
+    const fBg    = fPrem >  30 ? 'rgba(0,255,136,.1)' : fPrem < -20 ? 'rgba(255,59,87,.12)' : 'rgba(139,148,158,.08)';
+    const fNote  = fPrem >  30 ? 'Long positions heavy — bullish expectation' : fPrem < -20 ? 'Short build in futures — bearish' : 'Neutral future stance';
+
+    // ORB status
+    const orbSt  = lvl.orb_status || 'WAITING';
+    const orbSig = orbSt.includes('ABOVE') ? '▲ BULLISH' : orbSt.includes('BELOW') ? '▼ BEARISH' : '⚪ INSIDE';
+    const orbCol = orbSt.includes('ABOVE') ? 'var(--bull)' : orbSt.includes('BELOW') ? 'var(--bear)' : 'var(--text2)';
+    const orbBg  = orbSt.includes('ABOVE') ? 'rgba(0,255,136,.1)' : orbSt.includes('BELOW') ? 'rgba(255,59,87,.12)' : 'rgba(139,148,158,.08)';
+    const orbNote = orbSt.includes('ABOVE') ? 'Price broke above opening range — buy on dips' : orbSt.includes('BELOW') ? 'Price broke below ORB — sell on rises' : 'Inside first 15min range — wait';
+
+    // VIX+Price matrix
+    const vpmSig  = vixMat.signal || 'WAITING';
+    const vpmCol  = vpmSig.includes('STRONG BULL') ? 'var(--bull)' : vpmSig.includes('WEAK BULL') ? 'rgba(0,255,136,.7)' :
+                    vpmSig.includes('STRONG BEAR') ? 'var(--bear)' : vpmSig.includes('WEAK BEAR') ? 'rgba(255,59,87,.7)' : 'var(--text2)';
+    const vpmBg   = vpmSig.includes('BULL') ? 'rgba(0,255,136,.1)' : vpmSig.includes('BEAR') ? 'rgba(255,59,87,.12)' : 'rgba(139,148,158,.08)';
+    const vpmNote = vixMat.desc || 'Computing...';
+
+    el.innerHTML =
+        globCell('INDIA VIX', vix ? vix.toFixed(2) : '—', vixSig, vixNote, vixCol, vixBg) +
+        globCell('PCR', pcr ? pcr.toFixed(2) : '—', pcrSig, pcrNote, pcrCol, pcrBg) +
+        globCell('FUTURES PREM', (fPrem >= 0 ? '+' : '') + fPrem.toFixed(1) + ' pts', fSig, fNote, fCol, fBg) +
+        globCell('ORB STATUS', orbSt.replace('(BULLISH)','').replace('(BEARISH)',''), orbSig, orbNote, orbCol, orbBg) +
+        globCell('VIX+PRICE', vpmSig, vpmSig.includes('BULL')?'▲':vpmSig.includes('BEAR')?'▼':'⚪', vpmNote, vpmCol, vpmBg);
+
+    const ov = g('global-overall');
+    if (ov) {
+        const bullCount = [pcr>1.2, fPrem>30, orbSt.includes('ABOVE'), vpmSig.includes('BULL')].filter(Boolean).length;
+        const bearCount = [pcr<0.8, fPrem<-20, orbSt.includes('BELOW'), vpmSig.includes('BEAR')].filter(Boolean).length;
+        let overall, oCol;
+        if (bullCount >= 3) { overall = '🚀 BULLISH BIAS'; oCol = 'var(--bull)'; }
+        else if (bearCount >= 3) { overall = '🔻 BEARISH BIAS'; oCol = 'var(--bear)'; }
+        else if (bullCount > bearCount) { overall = '📈 LEAN BULL'; oCol = 'rgba(0,255,136,.7)'; }
+        else if (bearCount > bullCount) { overall = '📉 LEAN BEAR'; oCol = 'rgba(255,59,87,.7)'; }
+        else { overall = '⚖ NEUTRAL'; oCol = 'var(--text2)'; }
+        ov.innerHTML = `<span style="color:${oCol};font-weight:700">${overall}</span>`;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// OI ANALYTICS — Enhanced with OI Velocity clear action
+// ═══════════════════════════════════════════════════════════════════
+function renderOIAnalytics(oa, ind) {
+    const el = g('oi-analytics-body');
+    if (!el) return;
+    sText('oi-analytics-time', new Date().toLocaleTimeString('en-IN'));
+
+    const bull = 'var(--bull)', bear = 'var(--bear)', warn = 'var(--warn)', info = 'var(--info)', text2 = 'var(--text2)';
+    const concCol = v => v > 60 ? bull : v > 40 ? warn : text2;
+    const biasCol = v => v === 'BULLISH' ? bull : v === 'BEARISH' ? bear : warn;
+
+    const adxVal = ind.adx, pdi = ind.pdi, ndi = ind.ndi;
+    const adxSig = !adxVal ? 'N/A' : adxVal >= 25 ? ((pdi||0)>(ndi||0)?'STRONG BULL':'STRONG BEAR') : adxVal>=20?'DEVELOPING':'RANGING';
+    const adxCol = !adxVal ? text2 : adxVal>=25 ? bull : adxVal>=20 ? warn : text2;
+    const adxW   = adxVal ? Math.min(100, adxVal*2) : 0;
+    const adxBar = `<div style="width:50px;height:4px;background:var(--bg3);border-radius:2px;display:inline-block;vertical-align:middle;margin:0 4px;overflow:hidden"><div style="width:${adxW}%;height:100%;background:${adxCol};border-radius:2px"></div></div>`;
+
+    // OI Velocity clear action
+    const velSig  = oa.oi_accel_signal || '—';
+    const velCol  = velSig === 'ACCELERATING' ? warn : bull;
+    const velAction = velSig === 'ACCELERATING'
+        ? '⚡ OI building faster → big move likely. Look for breakout/breakdown. Buy options directionally.'
+        : '📉 OI slowing → move losing steam. Avoid fresh entries. Sellers/buyers running out. Reversal possible.';
+
+    function cell(lbl, val, col, desc) {
+        return `<div style="padding:12px 14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:5px">${lbl}</div>
+            <div style="font-size:15px;font-weight:700;color:${col||'var(--text)'};margin-bottom:3px">${val}</div>
+            <div style="font-size:11px;color:var(--text2);line-height:1.4">${desc}</div>
+        </div>`;
+    }
+
+    el.innerHTML =
+        cell('CE CONCENTRATION', (oa.ce_concentration_pct||0)+'%', concCol(oa.ce_concentration_pct||0),
+            'Top 3 CE strikes hold this % of total CE OI. >60% = very strong resistance wall at a few strikes.') +
+        cell('PE CONCENTRATION', (oa.pe_concentration_pct||0)+'%', concCol(oa.pe_concentration_pct||0),
+            'Top 3 PE strikes hold this % of total PE OI. >60% = very strong support concentration.') +
+        cell('CE WALL STRENGTH', 'Strike '+(oa.top_ce_strike||'—')+' → '+(oa.ce_wall_pct||0)+'%',
+            oa.ce_wall_pct>20?bear:text2,
+            `Single biggest resistance. ${oa.ce_wall_pct>20?'⚠ VERY STRONG WALL — break is rare. Sell calls near it.':'Moderate — can be broken with momentum.'}`) +
+        cell('PE WALL STRENGTH', 'Strike '+(oa.top_pe_strike||'—')+' → '+(oa.pe_wall_pct||0)+'%',
+            oa.pe_wall_pct>20?bull:text2,
+            `Single biggest support. ${oa.pe_wall_pct>20?'✅ VERY STRONG FLOOR — breakdown rare. Sell puts near it.':'Moderate — watch for breakdown.'}`) +
+        cell('NET DELTA EXPOSURE', (oa.net_delta>0?'+':'')+(oa.net_delta||0).toFixed(0)+' → '+(oa.delta_bias||'—'),
+            biasCol(oa.delta_bias||''),
+            '+ve = Call writers dominate (bullish). −ve = Put writers dominate (bearish). Follow the larger side.') +
+        `<div style="padding:12px 14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--text2);letter-spacing:1.5px;font-family:var(--ui);font-weight:700;margin-bottom:5px">OI VELOCITY</div>
+            <div style="font-size:15px;font-weight:700;color:${velCol};margin-bottom:3px">${velSig}</div>
+            <div style="font-size:11px;color:var(--text2);line-height:1.4;margin-bottom:5px">Rate of OI change vs last cycle.</div>
+            <div style="background:rgba(255,255,255,.04);border-radius:5px;padding:5px 8px;font-size:11px;color:${velCol};font-family:var(--ui);font-weight:700;line-height:1.5">${velAction}</div>
+        </div>` +
+        cell('ADX STRENGTH', (adxVal?adxVal.toFixed(1):'—')+adxBar+adxSig, adxCol,
+            `+DI <span style="color:var(--bull);font-weight:700">${pdi||'—'}</span> −DI <span style="color:var(--bear);font-weight:700">${ndi||'—'}</span> | ≥25=Strong trend (follow it). <20=Ranging (range trade).`) +
+        cell('PCR TREND', (oa.pcr_trend||'—')+(oa.pcr_trend==='RISING'?' ▲':oa.pcr_trend==='FALLING'?' ▼':' →'),
+            oa.pcr_trend==='RISING'?bull:oa.pcr_trend==='FALLING'?bear:text2,
+            'Rising PCR = more put writing = bullish sentiment growing. Falling PCR = call writers dominant = bearish.') +
+        cell('SMART MONEY FLOW', (oa.sm_flow_bias||'—')+' | Bulls +'+(oa.sm_bull_flow_l||0)+'L Bears +'+(oa.sm_bear_flow_l||0)+'L',
+            biasCol(oa.sm_flow_bias||''),
+            'Bull = PE writers adding (support). Bear = CE writers adding (resistance). Follow who is writing more.') +
+        cell('STRADDLE vs OPEN', (oa.straddle_vs_open>=0?'+':'')+(oa.straddle_vs_open||0)+' pts',
+            oa.straddle_vs_open>0?bear:oa.straddle_vs_open<0?bull:text2,
+            '+ve = Premium expanded (fear rising → avoid buying). −ve = Premium decayed (calm → theta sellers winning).') +
+        cell('VOL/OI RATIO', 'CE '+(oa.mkt_vol_oi_ce||0).toFixed(2)+' · PE '+(oa.mkt_vol_oi_pe||0).toFixed(2),
+            oa.mkt_vol_oi_ce>1?warn:text2,
+            '>1.0 = High intraday speculation (retail). <0.5 = Positional (smart money). Low = institutions writing.') +
+        cell('ATM ZONE OI CHANGE', 'CE '+(oa.total_ce_chg_atm>=0?'+':'')+(oa.total_ce_chg_atm||0)+'L · PE '+(oa.total_pe_chg_atm>=0?'+':'')+(oa.total_pe_chg_atm||0)+'L',
+            (oa.total_pe_chg_atm||0)>(oa.total_ce_chg_atm||0)?bull:bear,
+            'Net OI change at ATM ±2 strikes this 5-min cycle. PE > CE adding = bullish ATM pressure. CE > PE = bearish.');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// OPTIONS OI INTERPRETATION — per-strike for call/put panels
+// ═══════════════════════════════════════════════════════════════════
+function renderOptionsOIInterp(chain, atm, spot) {
+    const strikes = Object.keys(chain).map(Number).sort((a,b)=>a-b);
+    const atmIdx  = strikes.indexOf(atm);
+    if (atmIdx === -1) return;
+    const visible = strikes.slice(Math.max(0,atmIdx-3), Math.min(strikes.length,atmIdx+4));
+
+    const SCEN = [
+        {cond:(p,o)=>p>0.5&&o>2000,  lbl:'①Long Build-Up',   col:'var(--bull)', action:'Buyers entering. Trend strong. Hold longs.'},
+        {cond:(p,o)=>p<-0.5&&o>2000, lbl:'②Short Build-Up',  col:'var(--bear)', action:'Sellers entering. Trend strong. Hold shorts.'},
+        {cond:(p,o)=>p>0.5&&o<-2000, lbl:'③Short Covering',  col:'var(--atm)',  action:'Shorts exiting. Weak rally. Reversal possible.'},
+        {cond:(p,o)=>p<-0.5&&o<-2000,lbl:'④Long Unwinding',  col:'var(--warn)', action:'Longs exiting. Weak fall. Bounce possible.'},
+        {cond:(p,o)=>Math.abs(p)<=0.5&&o>2000, lbl:'⑤Pos Building', col:'var(--info)', action:'Sideways + OI rising. Big move loading.'},
+    ];
+    function getScen(ltpChg, oiChg) {
+        return SCEN.find(s=>s.cond(ltpChg,oiChg)) || {lbl:'STABLE', col:'var(--text2)', action:'No significant activity.'};
+    }
+
+    let ceHtml = '', peHtml = '';
+    visible.forEach(k => {
+        const v = chain[k];
+        const isAtm = Math.abs(k-atm) < 0.1;
+        const ceSc  = getScen(v.call_ltp_chg||0, v.call_oi_chg||0);
+        const peSc  = getScen(v.put_ltp_chg||0,  v.put_oi_chg||0);
+        const sTag  = `<span style="display:inline-block;width:48px;text-align:right;font-weight:700;color:${isAtm?'var(--atm)':'var(--text2)'};margin-right:6px">${k}${isAtm?' ★':''}</span>`;
+        ceHtml += `<div style="padding:2px 0">${sTag}<span style="background:${ceSc.col.replace(')',',0.12)')};color:${ceSc.col};border:1px solid ${ceSc.col.replace(')',',0.3)')};padding:1px 7px;border-radius:3px;font-size:10px;font-weight:700;font-family:var(--ui)">${ceSc.lbl}</span><span style="font-size:10px;color:var(--text2);margin-left:5px">${ceSc.action}</span></div>`;
+        peHtml += `<div style="padding:2px 0">${sTag}<span style="background:${peSc.col.replace(')',',0.12)')};color:${peSc.col};border:1px solid ${peSc.col.replace(')',',0.3)')};padding:1px 7px;border-radius:3px;font-size:10px;font-weight:700;font-family:var(--ui)">${peSc.lbl}</span><span style="font-size:10px;color:var(--text2);margin-left:5px">${peSc.action}</span></div>`;
+    });
+    sHTML('call-oi-interp', ceHtml || '—');
+    sHTML('put-oi-interp',  peHtml || '—');
+}
+
+// Stubs for functions expected by render() that may not exist yet
+function renderOIPriceTable(atmStrikes, atm) {
+    const el = g('oi-price-tbody');
+    if (!el) return;
+    sText('oi-price-time', new Date().toLocaleTimeString('en-IN'));
+    const strikes = Object.keys(atmStrikes).map(Number).sort((a,b)=>a-b);
+    function scPill(ltpChg, oiChg) {
+        const P=0.5,O=2000, pU=ltpChg>P,pD=ltpChg<-P,oU=oiChg>O,oDn=oiChg<-O;
+        if(pU&&oU) return `<span style="background:rgba(0,255,136,.12);color:var(--bull);border:1px solid rgba(0,255,136,.3);padding:1px 6px;border-radius:3px;font-size:10px;font-family:var(--ui);font-weight:700">①LONG BUILD</span>`;
+        if(pD&&oU) return `<span style="background:rgba(255,59,87,.12);color:var(--bear);border:1px solid rgba(255,59,87,.3);padding:1px 6px;border-radius:3px;font-size:10px;font-family:var(--ui);font-weight:700">②SHORT BUILD</span>`;
+        if(pU&&oDn) return `<span style="background:rgba(163,113,247,.12);color:var(--atm);border:1px solid rgba(163,113,247,.3);padding:1px 6px;border-radius:3px;font-size:10px;font-family:var(--ui);font-weight:700">③SHORT COVER</span>`;
+        if(pD&&oDn) return `<span style="background:rgba(255,184,0,.12);color:var(--warn);border:1px solid rgba(255,184,0,.3);padding:1px 6px;border-radius:3px;font-size:10px;font-family:var(--ui);font-weight:700">④LONG UNWIND</span>`;
+        if(!pU&&!pD&&oU) return `<span style="background:rgba(0,184,255,.12);color:var(--info);border:1px solid rgba(0,184,255,.3);padding:1px 6px;border-radius:3px;font-size:10px;font-family:var(--ui);font-weight:700">⑤POS BUILD</span>`;
+        return `<span style="color:var(--text2);font-size:10px;font-family:var(--ui)">STABLE</span>`;
+    }
+    let html = '';
+    strikes.forEach(k => {
+        const v = atmStrikes[k];
+        const isAtm = Math.abs(k-atm)<0.1;
+        const netFlow = (v.put_oi_chg||0)-(v.call_oi_chg||0);
+        const nfCol = netFlow>2000?'var(--bull)':netFlow<-2000?'var(--bear)':'var(--text2)';
+        const nfLbl = netFlow>2000?'🟢 BULLISH':netFlow<-2000?'🔴 BEARISH':'⚪ NEUTRAL';
+        html += `<tr style="${isAtm?'background:rgba(163,113,247,.08);':''}">
+            <td style="text-align:center;font-weight:700;color:${isAtm?'var(--atm)':'var(--text)'};font-size:${isAtm?'15':'13'}px">${k}${isAtm?' ★':''}</td>
+            <td style="text-align:center">${scPill(v.call_ltp_chg||0,v.call_oi_chg||0)}</td>
+            <td style="text-align:right;color:${(v.call_ltp_chg||0)>=0?'var(--info)':'var(--bear)'};font-weight:700">${(v.call_ltp_chg||0)>=0?'+':''}${(v.call_ltp_chg||0).toFixed(1)}</td>
+            <td style="text-align:right;font-weight:700;color:${(v.call_oi_chg||0)>0?'var(--bear)':'var(--bull)'}">${fc(v.call_oi_chg||0)}</td>
+            <td style="text-align:center;color:var(--text2)">${(v.call_iv||0).toFixed(1)}%</td>
+            <td style="text-align:center;font-weight:700;color:${nfCol}">${nfLbl}<br><span style="font-size:9px;opacity:.7">${fc(netFlow)}</span></td>
+            <td style="text-align:center;color:var(--text2)">${(v.put_iv||0).toFixed(1)}%</td>
+            <td style="text-align:right;font-weight:700;color:${(v.put_oi_chg||0)>0?'var(--bull)':'var(--bear)'}">${fc(v.put_oi_chg||0)}</td>
+            <td style="text-align:right;color:${(v.put_ltp_chg||0)>=0?'var(--bull)':'var(--bear)'};font-weight:700">${(v.put_ltp_chg||0)>=0?'+':''}${(v.put_ltp_chg||0).toFixed(1)}</td>
+            <td style="text-align:center">${scPill(v.put_ltp_chg||0,v.put_oi_chg||0)}</td>
+        </tr>`;
+    });
+    el.innerHTML = html || '<tr><td colspan="10" class="loading">No data</td></tr>';
+}
+
+function updateVerdict(intel, idxAction, idxCol) {
+    const wallEl    = g('wall-display');
+    const verdictEl = g('verdict-val');
+    const vdescEl   = g('verdict-desc');
+    if (wallEl && intel.max_ce_strike) {
+        wallEl.innerHTML = `<span style="color:var(--bear)">🔴 CE: ${intel.max_ce_strike}</span> &nbsp;|&nbsp; <span style="color:var(--bull)">🟢 PE: ${intel.max_pe_strike||'—'}</span>`;
+    }
+    const mxSig = intel.oi_matrix_signal || '';
+    let verdict = idxAction, vCol = idxCol, vDesc = intel.oi_matrix_desc || '—';
+    if (idxAction.includes('LONG BUILD') && mxSig.includes('BULL'))   { verdict='🚀 STRONG BULL'; vCol='var(--bull)'; vDesc='Index+ATM both confirming bullish. Buy dips.'; }
+    else if (idxAction.includes('SHORT BUILD') && mxSig.includes('BEAR')) { verdict='🔻 STRONG BEAR'; vCol='var(--bear)'; vDesc='Index+ATM both confirming bearish. Sell rallies.'; }
+    else if (idxAction.includes('SHORT COVER')) { verdict='⚠️ WEAK RALLY'; vCol='var(--warn)'; vDesc='Shorts exiting but no new buyers. Caution on longs.'; }
+    else if (idxAction.includes('LONG UNWIND')) { verdict='⚠️ WEAK FALL'; vCol='var(--warn)'; vDesc='Longs exiting. Bounce likely. No strong sellers yet.'; }
+    else if (idxAction.includes('POSITIONS') || idxAction.includes('POS BUILD')) { verdict='⚡ BREAKOUT SETUP'; vCol='var(--info)'; vDesc='OI accumulating. Big move loading. Wait for direction.'; }
+    if (verdictEl) { verdictEl.textContent = verdict; verdictEl.style.color = vCol; }
+    if (vdescEl)   { vdescEl.textContent   = vDesc; }
+}
 
 window.onload = () => { doFetch(); };
 
