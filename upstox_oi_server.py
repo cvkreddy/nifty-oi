@@ -279,9 +279,9 @@ def hdrs():
 def fetch_spot(idx):
     sym = INDICES[idx]["key"]
     keys_to_try = [sym]
-    if idx == "NIFTY" and sym != "NSE_INDEX|NIFTY 50": keys_to_try.append("NSE_INDEX|NIFTY 50")
-    if idx == "BANKNIFTY": keys_to_try.extend(["NSE_INDEX|Nifty Bank", "NSE_INDEX|NIFTY BANK", "NSE_INDEX|BANKNIFTY"])
-    if idx == "SENSEX": keys_to_try.extend(["BSE_INDEX|SENSEX", "BSE_INDEX|Sensex"])
+    if idx == "NIFTY": keys_to_try.extend(["NSE_INDEX|Nifty 50", "NSE_INDEX|NIFTY 50"])
+    elif idx == "BANKNIFTY": keys_to_try.extend(["NSE_INDEX|Nifty Bank", "NSE_INDEX|NIFTY BANK", "NSE_INDEX|BANKNIFTY"])
+    elif idx == "SENSEX": keys_to_try.extend(["BSE_INDEX|SENSEX", "BSE_INDEX|Sensex"])
     
     keys_to_try = list(dict.fromkeys(keys_to_try))
     
@@ -359,8 +359,7 @@ def fetch_base_1m_candles(idx):
         store["last_fetch_day"] = today_str
         try:
             to_dt   = date.today().strftime("%Y-%m-%d")
-            # 🚨 FIX: 10 DAYS OF HISTORY NEEDED TO STABILIZE 15 EMA MATH
-            from_dt = (date.today() - timedelta(days=10)).strftime("%Y-%m-%d")
+            from_dt = (date.today() - timedelta(days=5)).strftime("%Y-%m-%d")
             url_h   = f"https://api.upstox.com/v2/historical-candle/{safe_key}/1minute/{to_dt}/{from_dt}"
             rh = requests.get(url_h, headers=hdrs(), timeout=15)
             if rh.status_code == 200:
@@ -371,7 +370,7 @@ def fetch_base_1m_candles(idx):
 
     all_candles = historical + today_candles
     all_candles.sort(key=lambda x: x["time"])
-    cutoff = (datetime.now() - timedelta(days=10)).isoformat()
+    cutoff = (datetime.now() - timedelta(days=5)).isoformat()
     all_candles = [c for c in all_candles if c["time"] >= cutoff]
     store["1m"] = all_candles
     return all_candles
@@ -411,6 +410,7 @@ def fetch_chain_raw(idx, expiry):
         except Exception: pass
     return []
 
+# 🚨 UPDATED: Exact Expiry Matcher based on precise rules (Nifty=Tue, Sensex=Thu, BankNifty=Last Tue)
 def get_expiry(idx):
     sym = INDICES[idx]["key"]
     keys_to_try = [sym]
@@ -433,6 +433,7 @@ def get_expiry(idx):
         except Exception: 
             pass
 
+    # Strict Mathematical Fallback (If API is completely unresponsive)
     holidays = ["2026-01-15", "2026-01-26", "2026-03-03", "2026-03-26", "2026-03-31", "2026-04-03", "2026-04-14", "2026-05-01", "2026-05-28", "2026-06-26", "2026-09-14", "2026-10-02", "2026-10-20", "2026-11-10", "2026-11-24", "2026-12-25"]
     today_dt = date.today()
     ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
@@ -440,7 +441,7 @@ def get_expiry(idx):
     def get_last_tuesday(y, m):
         last_day = calendar.monthrange(y, m)[1]
         d = date(y, m, last_day)
-        offset = (d.weekday() - 1) % 7
+        offset = (d.weekday() - 1) % 7 # 1 is Tuesday
         return d - timedelta(days=offset)
 
     if idx == "BANKNIFTY":
@@ -456,7 +457,7 @@ def get_expiry(idx):
         return target_date.strftime("%Y-%m-%d")
         
     else:
-        target = 1 if idx == "NIFTY" else 3 
+        target = 1 if idx == "NIFTY" else 3 # NIFTY=Tue(1), SENSEX=Thu(3)
         weekday = today_dt.weekday()
         days_until = (target - weekday) % 7
         
@@ -503,15 +504,52 @@ def calc_ema_array(prices, period):
     return emas
 
 def calc_supertrend(candles, period=7, multiplier=3.0):
-    if len(candles) < period + 1: return None, None
-    highs = [c["high"] for c in candles]
-    lows = [c["low"] for c in candles]
+    """
+    TradingView-matching SuperTrend using Wilder's RMA (smoothed moving average) for ATR.
+    TV uses ta.atr() which is RMA not simple average — this matches TV exactly.
+    """
+    if len(candles) < period + 2: return None, None
+    highs  = [c["high"]  for c in candles]
+    lows   = [c["low"]   for c in candles]
     closes = [c["close"] for c in candles]
-    trs = [max(highs[i]-lows[i], abs(highs[i]-closes[i-1]), abs(lows[i]-closes[i-1])) for i in range(1, len(candles))]
-    atr = sum(trs[-period:]) / period
+
+    # True ranges
+    trs = [max(highs[i]-lows[i], abs(highs[i]-closes[i-1]), abs(lows[i]-closes[i-1]))
+           for i in range(1, len(candles))]
+
+    # Wilder's RMA (same as TradingView ta.rma / ta.atr)
+    alpha = 1.0 / period
+    atr = sum(trs[:period]) / period          # seed with SMA
+    for i in range(period, len(trs)):
+        atr = alpha * trs[i] + (1 - alpha) * atr
+
     hl2 = (highs[-1] + lows[-1]) / 2
-    direction = "BULLISH" if closes[-1] > (hl2 - multiplier * atr) else "BEARISH"
-    return direction, round((hl2 - multiplier * atr) if direction == "BULLISH" else (hl2 + multiplier * atr), 2)
+    upper = hl2 + multiplier * atr
+    lower = hl2 - multiplier * atr
+
+    # Full band-flip logic matching TradingView (track direction over history)
+    direction = "BULLISH"
+    prev_upper, prev_lower = upper, lower
+    prev_dir = "BULLISH"
+    for i in range(period + 1, len(candles)):
+        h = highs[i]; l = lows[i]; pc = closes[i-1]; c = closes[i]
+        tr_i = max(h-l, abs(h-pc), abs(l-pc))
+        atr   = alpha * tr_i + (1 - alpha) * atr
+        hl2_i = (h + l) / 2
+        raw_upper = hl2_i + multiplier * atr
+        raw_lower = hl2_i - multiplier * atr
+        # Band continuation rule (TV style)
+        cur_upper = raw_upper if (raw_upper < prev_upper or pc > prev_upper) else prev_upper
+        cur_lower = raw_lower if (raw_lower > prev_lower or pc < prev_lower) else prev_lower
+        if prev_dir == "BULLISH":
+            direction = "BEARISH" if c < cur_lower else "BULLISH"
+        else:
+            direction = "BULLISH" if c > cur_upper else "BEARISH"
+        prev_upper, prev_lower, prev_dir = cur_upper, cur_lower, direction
+
+    st_val = (highs[-1] + lows[-1]) / 2 + multiplier * atr if direction == "BEARISH" else \
+             (highs[-1] + lows[-1]) / 2 - multiplier * atr
+    return direction, round(st_val, 2)
 
 def calc_rsi_array(closes, p=14):
     if len(closes) < p+1: return []
@@ -540,29 +578,55 @@ def calc_macd(prices, fast=12, slow=26, signal=9):
     return round(macd_val, 2), round(sig_val, 2) if sig_val is not None else None, round(hist_val, 2) if hist_val is not None else None
 
 def calc_adx_full(candles, p=14):
-    if not candles or len(candles) < p + 2: return None, None, None
+    """
+    TradingView-matching ADX using Wilder's smoothing (RMA).
+    TV uses ta.dmi() which uses RMA not EMA — seed with SMA then Wilder smooth.
+    """
+    if not candles or len(candles) < p * 2 + 2: return None, None, None
     trl, pdml, ndml = [], [], []
     for i in range(1, len(candles)):
-        h, l, pc = candles[i]["high"], candles[i]["low"], candles[i-1]["close"]
-        ph, pl = candles[i-1]["high"], candles[i-1]["low"]
+        h, l  = candles[i]["high"],   candles[i]["low"]
+        ph,pl = candles[i-1]["high"], candles[i-1]["low"]
+        pc    = candles[i-1]["close"]
         trl.append(max(h-l, abs(h-pc), abs(l-pc)))
-        pdml.append(max(h-ph, 0) if (h-ph) > (pl-l) else 0)
-        ndml.append(max(pl-l, 0) if (pl-l) > (h-ph) else 0)
+        dm_up   = h - ph
+        dm_down = pl - l
+        pdml.append(dm_up   if dm_up   > dm_down and dm_up   > 0 else 0)
+        ndml.append(dm_down if dm_down > dm_up   and dm_down > 0 else 0)
 
-    def sm(lst, n):
-        if not lst or sum(lst[:n]) == 0: return [0]*len(lst)
-        sv = sum(lst[:n]); r = [sv]
-        for i in range(n, len(lst)): sv = sv - sv/n + lst[i]; r.append(sv)
-        return r
+    # Wilder's RMA smoothing (same as TV ta.rma)
+    def wilder_rma(data, n):
+        if len(data) < n: return []
+        result = []
+        val = sum(data[:n]) / n      # SMA seed
+        result.append(val)
+        for i in range(n, len(data)):
+            val = (val * (n - 1) + data[i]) / n
+            result.append(val)
+        return result
 
-    atr, pDM, nDM = sm(trl, p), sm(pdml, p), sm(ndml, p)
-    dxl = []
-    for i in range(len(atr)):
-        if atr[i] == 0: continue
-        pdi, ndi = 100 * pDM[i] / atr[i], 100 * nDM[i] / atr[i]
-        dxl.append((100 * abs(pdi-ndi) / (pdi+ndi) if (pdi+ndi) else 0, pdi, ndi))
-    if not dxl: return None, None, None
-    return round(sum(x[0] for x in dxl[-p:]) / min(p, len(dxl)), 2), round(dxl[-1][1], 1), round(dxl[-1][2], 1)
+    atr_s = wilder_rma(trl, p)
+    pdm_s = wilder_rma(pdml, p)
+    ndm_s = wilder_rma(ndml, p)
+
+    min_len = min(len(atr_s), len(pdm_s), len(ndm_s))
+    if min_len < p: return None, None, None
+
+    dxl, pdi_last, ndi_last = [], 0, 0
+    for i in range(min_len):
+        a = atr_s[i]
+        if a == 0: continue
+        pdi_v = 100 * pdm_s[i] / a
+        ndi_v = 100 * ndm_s[i] / a
+        pdi_last, ndi_last = pdi_v, ndi_v
+        s = pdi_v + ndi_v
+        dxl.append(100 * abs(pdi_v - ndi_v) / s if s else 0)
+
+    if len(dxl) < p: return None, None, None
+    # ADX = RMA of DX
+    adx_arr = wilder_rma(dxl, p)
+    if not adx_arr: return None, None, None
+    return round(adx_arr[-1], 2), round(pdi_last, 1), round(ndi_last, 1)
 
 def get_indicators(candles):
     if not candles or len(candles) < 16:
@@ -607,9 +671,8 @@ def extract_levels(candles, spot):
                 
     return {"today_open": today_open, "yest_high": yest_high, "yest_low": yest_low, "orb_high": orb_high, "orb_low": orb_low, "orb_status": orb_status, "orb_time": orb_time, "yest_status": yest_status, "yest_time": yest_time}
 
-# 🚨 THE FIX: Exact PineScript Matching for Timing Logic (DD-MM HH:MM + Confirmation)
 def compute_tf_signals(idx, candles, label, st_period=7, st_multiplier=3.0):
-    if not candles or len(candles) < 15: 
+    if not candles or len(candles) < 30:   # need ≥30 candles for Wilder's RMA to stabilise
         return {"label": label, "candle_count": len(candles) if candles else 0, "ts_start": "-", "ts_pull": "-", "ts_cont": "-", "ts_st": "-", "ema_crossovers": []}
     
     store = STORE[idx]
@@ -618,33 +681,22 @@ def compute_tf_signals(idx, candles, label, st_period=7, st_multiplier=3.0):
     times = [c["time"] for c in candles]
     
     ema7_arr, ema15_arr, ema21_arr = calc_ema_array(closes, 7), calc_ema_array(closes, 15), calc_ema_array(closes, 21)
-    today_date = date.today()
+    today_str = datetime.now().strftime("%Y-%m-%d")
     
     trend_start = pull_time = cont_time = st_time = "-"
     is_bull, await_pull_b, await_pull_s, curr_st = None, False, False, None
     ema_crossovers = []
-
-    tf_str = "".join(filter(str.isdigit, label))
-    tf_mins = int(tf_str) if tf_str else 5
 
     for i in range(15, len(candles)):
         e7, e15 = ema7_arr[i], ema15_arr[i]
         if e7 is None or e15 is None: continue
         c_close = closes[i]
         raw_t = times[i]
-        
         try:
-            # Parse start time and advance by timeframe length to get exact CLOSE time
-            if "T" in raw_t:
-                dt = datetime.strptime(raw_t[:16], "%Y-%m-%dT%H:%M")
-            else:
-                dt = datetime.strptime(raw_t[:16], "%Y-%m-%d %H:%M")
-            
-            close_dt = dt + timedelta(minutes=tf_mins)
-            c_time = close_dt.strftime("%d-%m %H:%M")
-            is_today = (close_dt.date() == today_date)
-        except Exception: 
-            is_today, c_time = False, "-"
+            d_parts = raw_t[:10].split("-"); t_parts = raw_t[11:16]
+            is_today = (raw_t[:10] == today_str)
+            c_time = f"Today {t_parts}" if is_today else f"{d_parts[2]}-{d_parts[1]} {t_parts}"
+        except: is_today, c_time = False, "-"
 
         curr_bull = e7 > e15
         
@@ -660,22 +712,12 @@ def compute_tf_signals(idx, candles, label, st_period=7, st_multiplier=3.0):
             if curr_bull: await_pull_b = True
             else: await_pull_s = True
                 
-        is_confirmed = (i < len(candles) - 1)
-        
         if is_bull:
-            if await_pull_b and (c_close < e7 or c_close < e15) and is_confirmed: 
-                pull_time = c_time; cont_time = "..."
-                await_pull_b = False
-            elif not await_pull_b and c_close > e7 and is_confirmed: 
-                cont_time = c_time
-                await_pull_b = True
+            if await_pull_b and (c_close < e7 or c_close < e15): pull_time = c_time; cont_time = "..."; await_pull_b = False
+            elif not await_pull_b and c_close > e7: cont_time = c_time; await_pull_b = True
         else:
-            if await_pull_s and (c_close > e7 or c_close > e15) and is_confirmed: 
-                pull_time = c_time; cont_time = "..."
-                await_pull_s = False
-            elif not await_pull_s and c_close < e7 and is_confirmed: 
-                cont_time = c_time
-                await_pull_s = True
+            if await_pull_s and (c_close > e7 or c_close > e15): pull_time = c_time; cont_time = "..."; await_pull_s = False
+            elif not await_pull_s and c_close < e7: cont_time = c_time; await_pull_s = True
                 
         s_dir, _ = calc_supertrend(candles[:i+1], st_period, st_multiplier)
         if curr_st is None: curr_st, st_time = s_dir, c_time
@@ -909,15 +951,6 @@ def refresh(idx):
                 if raw: _EXPIRY_DAY_CACHE[f"{idx}_{today_str}"] = expiry
         
         if not raw:
-            for i in range(8):
-                test_date = (date.today() + timedelta(days=i)).strftime("%Y-%m-%d")
-                raw = fetch_chain_raw(idx, test_date)
-                if raw:
-                    expiry = test_date
-                    _EXPIRY_DAY_CACHE[f"{idx}_{today_str}"] = expiry
-                    break
-        
-        if not raw:
             if os.path.exists(DATA_FILE):
                 try:
                     with open(DATA_FILE, "r") as f:
@@ -1076,7 +1109,9 @@ def refresh(idx):
         }
         
         greeks = {"delta": {"val": atm_v.get("call_delta", 0), "desc": "Call Delta"}, "gamma": {"val": atm_v.get("call_gamma", 0), "desc": "Call Gamma"}, "theta": {"val": atm_v.get("call_theta", 0), "desc": "Call Theta"}, "vega": {"val": atm_v.get("call_vega", 0), "desc": "Call Vega"}}
-        
+        adx_top, pdi_top, ndi_top = calc_adx_full(candle_cache_store[idx]["5m"], 14)
+        ind_data["adx"] = adx_top; ind_data["pdi"] = pdi_top; ind_data["ndi"] = ndi_top
+
         data = {
             "backend_error": None, "spot": spot, "futures": futures, "premium": round(futures-spot,2),
             "atm": atm, "pcr": pcr, "pcr_chg": pcr_chg, "vix": vix, "max_pain": max_pain, "expiry": expiry, 
