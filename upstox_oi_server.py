@@ -1052,11 +1052,21 @@ def refresh(idx):
         if morning_straddle is None and current_straddle > 0: morning_straddle = current_straddle
         straddle_decay = ((current_straddle - morning_straddle) / morning_straddle * 100) if morning_straddle and morning_straddle > 0 else 0
 
+        # ── alerts MUST be defined before any code that uses it ───────────────
+        alerts = []
+        for s_str,v in chain.items():
+            s = float(s_str)
+            dist = s - spot
+            if 0 < dist <= (step*3) and v["call_oi_chg"] < 0 and abs(v["call_oi_chg"]) > v["call_oi"]*0.05:
+                alerts.append({"type":"BREAKOUT UP","icon":"⚡","message":"Res OI dropping"})
+            if -(step*3) <= dist < 0 and v["put_oi_chg"] < 0 and abs(v["put_oi_chg"]) > v["put_oi"]*0.05:
+                alerts.append({"type":"BREAKOUT DOWN","icon":"⚡","message":"Sup OI dropping"})
+
         # ── Open = High / Open = Low detection (index level) ──────────────────
         open_eq_high = open_eq_low = False
         if candles_1m:
-            today_str = datetime.now().strftime("%Y-%m-%d")
-            today_1m = [c for c in candles_1m if c["time"][:10] == today_str]
+            today_str_d = datetime.now().strftime("%Y-%m-%d")
+            today_1m = [c for c in candles_1m if c["time"][:10] == today_str_d]
             if today_1m:
                 day_open = today_1m[0]["open"]
                 day_high = max(c["high"] for c in today_1m)
@@ -1070,30 +1080,32 @@ def refresh(idx):
         ce_up = total_ce_chg_day > 0
         pe_up = total_pe_chg_day > 0
         if ce_up and not pe_up:
-            combined_oi_case = 1
-            combined_oi_label = "CASE 1: CE↑ PE↓ — BEARISH"
-            combined_oi_desc  = "Resistance building, support collapsing. Strong Sell bias."
-            combined_oi_col   = "BEAR"
+            combined_oi_case = 1; combined_oi_label = "CASE 1: CE↑ PE↓ — BEARISH"
+            combined_oi_desc = "Resistance building, support collapsing. Strong Sell bias."; combined_oi_col = "BEAR"
         elif not ce_up and pe_up:
-            combined_oi_case = 2
-            combined_oi_label = "CASE 2: CE↓ PE↑ — BULLISH"
-            combined_oi_desc  = "Resistance breaking, support building. Strong Buy bias."
-            combined_oi_col   = "BULL"
+            combined_oi_case = 2; combined_oi_label = "CASE 2: CE↓ PE↑ — BULLISH"
+            combined_oi_desc = "Resistance breaking, support building. Strong Buy bias."; combined_oi_col = "BULL"
         elif ce_up and pe_up:
-            combined_oi_case = 3
-            combined_oi_label = "CASE 3: CE↑ PE↑ — RANGE BOUND"
-            combined_oi_desc  = "Both sides adding OI. Market trapped in range. Avoid directional trades."
-            combined_oi_col   = "NEUTRAL"
+            combined_oi_case = 3; combined_oi_label = "CASE 3: CE↑ PE↑ — RANGE BOUND"
+            combined_oi_desc = "Both sides adding OI. Market trapped in range. Avoid directional trades."; combined_oi_col = "NEUTRAL"
         else:
-            combined_oi_case = 4
-            combined_oi_label = "CASE 4: CE↓ PE↓ — UNCERTAIN"
-            combined_oi_desc  = "Everyone exiting. Low conviction. Wait and watch."
-            combined_oi_col   = "WARN"
-        for s_str,v in chain.items():
-            s = float(s_str)
-            dist = s - spot
-            if 0 < dist <= (step*3) and v["call_oi_chg"] < 0 and abs(v["call_oi_chg"]) > v["call_oi"]*0.05: alerts.append({"type":"BREAKOUT UP","icon":"⚡","message":f"Res OI dropping"})
-            if -(step*3) <= dist < 0 and v["put_oi_chg"] < 0 and abs(v["put_oi_chg"]) > v["put_oi"]*0.05: alerts.append({"type":"BREAKOUT DOWN","icon":"⚡","message":f"Sup OI dropping"})
+            combined_oi_case = 4; combined_oi_label = "CASE 4: CE↓ PE↓ — UNCERTAIN"
+            combined_oi_desc = "Everyone exiting. Low conviction. Wait and watch."; combined_oi_col = "WARN"
+
+        # ── Vega tracking per ATM strike (for Vega history table) ─────────────
+        ist_hm = (datetime.utcnow() + timedelta(hours=5, minutes=30)).strftime("%H:%M")
+        atm_vega_row = {
+            "time": ist_hm,
+            "call_vega": round(atm_v.get("call_vega", 0), 2),
+            "put_vega":  round(atm_v.get("put_vega",  0), 2),
+            "diff":      round(atm_v.get("call_vega", 0) - abs(atm_v.get("put_vega", 0)), 2),
+        }
+        # Store vega history (last 30 entries)
+        if "vega_history" not in store: store["vega_history"] = []
+        # Only append if time changed
+        if not store["vega_history"] or store["vega_history"][-1]["time"] != ist_hm:
+            store["vega_history"].append(atm_vega_row)
+            store["vega_history"] = store["vega_history"][-30:]
 
         prev_spot = store["history"][-1]["spot"] if store["history"] else spot
         oi_cond, oi_signal, oi_desc = price_oi_matrix(spot, prev_spot, chain, atm, idx)
@@ -1177,6 +1189,23 @@ def refresh(idx):
         ind_data["tech"]["confluence"] = "Aligned" if mkt_state.startswith("BULL") or mkt_state.startswith("BEAR") else "Mixed"
         fut_prem = futures - spot
 
+        # ── Vega Trend outcome ─────────────────────────────────────────────
+        vega_hist = store.get("vega_history", [])
+        vega_trend_label = "WAITING"
+        vega_trend_col   = "NEUTRAL"
+        if len(vega_hist) >= 2:
+            cv_now = vega_hist[-1]["call_vega"]
+            pv_now = abs(vega_hist[-1]["put_vega"])
+            diff_now  = vega_hist[-1]["diff"]
+            diff_prev = vega_hist[-2]["diff"]
+            # Call Vega > Put Vega → more call premium → bullish expectation
+            if diff_now < -20:
+                vega_trend_label = "BULLISH"; vega_trend_col = "BULL"
+            elif diff_now > 20:
+                vega_trend_label = "BEARISH"; vega_trend_col = "BEAR"
+            else:
+                vega_trend_label = "NEUTRAL"; vega_trend_col = "NEUTRAL"
+
         intelligence = {
             "cycle_count": len(store["history"]), "market_state": mkt_state, "oi_matrix_condition": oi_cond, "oi_matrix_signal": oi_signal, "oi_matrix_desc": oi_desc,
             "pcr_zone": "BULLISH" if pcr > 1.2 else "BEARISH" if pcr < 0.8 else "NEUTRAL", "levels": levels_data, "alerts": alerts, 
@@ -1193,8 +1222,18 @@ def refresh(idx):
             "combined_oi_desc": combined_oi_desc, "combined_oi_col": combined_oi_col,
             "total_ce_chg_day": round(total_ce_chg_day/100000, 2),
             "total_pe_chg_day": round(total_pe_chg_day/100000, 2),
+            # Vega history + trend
+            "vega_history": vega_hist[-20:],
+            "vega_trend_label": vega_trend_label,
+            "vega_trend_col": vega_trend_col,
         }
         
+        # Add vega values to atm_strikes for per-option display
+        for s_str, v in atm_strikes.items():
+            v["call_vega_val"] = round(v.get("call_vega", 0), 3)
+            v["put_vega_val"]  = round(v.get("put_vega",  0), 3)
+            v["vega_diff"]     = round(v.get("call_vega", 0) - abs(v.get("put_vega", 0)), 3)
+
         greeks = {
             "delta_call": {"val": atm_v.get("call_delta", 0), "desc": "CE Delta"},
             "delta_put":  {"val": atm_v.get("put_delta",  0), "desc": "PE Delta"},

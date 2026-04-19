@@ -167,8 +167,24 @@
 <!-- ═══ VIX + PRICE MATRIX ═══ -->
 <div style="background:var(--bg2);border-bottom:1px solid var(--border)">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px 4px">
-    <span style="font-size:11px;font-weight:700;color:var(--warn);letter-spacing:1px;font-family:var(--ui)">⚡ VIX + PRICE MATRIX — 6 SCENARIOS (Fear Gauge × Direction)</span>
-    <span id="vix-price-live" style="font-size:13px;font-weight:700;font-family:var(--ui)">—</span>
+    <span style="font-size:11px;font-weight:700;color:var(--warn);letter-spacing:1px;font-family:var(--ui)">⚡ VIX + PRICE — CURRENT OUTCOME (Fear Gauge × Direction)</span>
+    <span style="font-size:10px;color:var(--text2);font-family:var(--ui)">Price shows direction · VIX shows power · Together = real signal</span>
+  </div>
+  <!-- LIVE OUTCOME BOX -->
+  <div id="vix-outcome-box" style="margin:4px 18px 8px;padding:10px 16px;border-radius:8px;border:2px solid var(--border);background:var(--bg3);display:flex;align-items:center;gap:20px;flex-wrap:wrap;transition:all .3s">
+    <div style="font-size:24px">—</div>
+    <div>
+      <div style="font-size:10px;color:var(--text2);font-family:var(--ui);font-weight:700;letter-spacing:1px;margin-bottom:2px">CURRENT SIGNAL</div>
+      <div id="vix-live-signal" style="font-size:18px;font-weight:700;font-family:var(--ui)">—</div>
+    </div>
+    <div style="flex:1;border-left:1px solid var(--border);padding-left:16px">
+      <div style="font-size:10px;color:var(--text2);font-family:var(--ui);font-weight:700;letter-spacing:1px;margin-bottom:2px">WHAT THIS MEANS</div>
+      <div id="vix-live-desc" style="font-size:13px;font-weight:600;font-family:var(--ui)">Waiting for data...</div>
+    </div>
+    <div style="border-left:1px solid var(--border);padding-left:16px">
+      <div style="font-size:10px;color:var(--text2);font-family:var(--ui);font-weight:700;letter-spacing:1px;margin-bottom:2px">ACTION</div>
+      <div id="vix-live-action" style="font-size:12px;font-weight:700;font-family:var(--ui)">—</div>
+    </div>
   </div>
   <div class="vix-grid">
     <div class="vix-card" id="vpm-1" style="background:rgba(0,255,136,.08);border-color:rgba(0,255,136,.25)">
@@ -185,7 +201,7 @@
     </div>
     <div class="vix-card" id="vpm-4" style="background:rgba(255,59,87,.04);border-color:rgba(255,59,87,.15)">
       <div class="vix-num" style="color:rgba(255,59,87,.7)">④ P↓ VIX↓ — WEAK BEARISH</div>
-      <div class="vix-sub">Normal correction, not crash. Calm fall. Support likely to form. Bounce coming.</div>
+      <div class="vix-sub">Normal correction, not crash. Support likely to form. Bounce coming.</div>
     </div>
     <div class="vix-card" id="vpm-5" style="background:rgba(0,184,255,.08);border-color:rgba(0,184,255,.25)">
       <div class="vix-num" style="color:var(--info)">⑤ Sideways VIX↑ — BIG MOVE LOADING</div>
@@ -193,20 +209,35 @@
     </div>
     <div class="vix-card" id="vpm-6" style="background:rgba(139,148,158,.06);border-color:rgba(139,148,158,.2)">
       <div class="vix-num" style="color:var(--text2)">⑥ Sideways VIX↓ — BORING MARKET</div>
-      <div class="vix-sub">Price flat + VIX low = theta decay. Good for sellers, bad for buyers. No direction.</div>
+      <div class="vix-sub">Price flat + VIX low = theta decay. Good for sellers, bad for buyers.</div>
     </div>
-  </div>
-  <div style="padding:6px 18px 8px;font-size:11px;color:var(--text2);font-family:var(--ui)">
-    💡 <b style="color:var(--text)">VIX = India Fear Gauge.</b> Price tells direction. VIX tells power behind the move. Together = real signal.
-    &nbsp;|&nbsp; <b style="color:var(--warn)">Current:</b> <span id="vix-price-desc">—</span>
   </div>
 </div>
 
 <!-- ═══ COMBINED OI ANALYSIS — 4 CASES ═══ -->
 <div style="background:var(--bg3);border-bottom:1px solid var(--border)">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 18px 4px">
-    <span style="font-size:11px;font-weight:700;color:var(--info);letter-spacing:1px;font-family:var(--ui)">📦 COMBINED OI ANALYSIS — 4 CASES (CE OI vs PE OI Direction)</span>
-    <span id="coi-active-label" style="font-size:13px;font-weight:700;font-family:var(--ui)">—</span>
+    <span style="font-size:11px;font-weight:700;color:var(--info);letter-spacing:1px;font-family:var(--ui)">📦 CE OI vs PE OI — COMBINED OUTCOME (Day Change Direction)</span>
+    <span style="font-size:10px;color:var(--text2);font-family:var(--ui)">Who is building positions and who is exiting</span>
+  </div>
+  <!-- LIVE OUTCOME BOX -->
+  <div id="coi-outcome-box" style="margin:4px 18px 8px;padding:10px 16px;border-radius:8px;border:2px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:20px;flex-wrap:wrap;transition:all .3s">
+    <div>
+      <div style="font-size:10px;color:var(--text2);font-family:var(--ui);font-weight:700;letter-spacing:1px;margin-bottom:2px">CURRENT CASE</div>
+      <div id="coi-active-label" style="font-size:18px;font-weight:700;font-family:var(--ui)">—</div>
+    </div>
+    <div style="flex:1;border-left:1px solid var(--border);padding-left:16px">
+      <div style="font-size:10px;color:var(--text2);font-family:var(--ui);font-weight:700;letter-spacing:1px;margin-bottom:2px">WHAT THIS MEANS</div>
+      <div id="coi-desc" style="font-size:13px;font-weight:600;font-family:var(--ui)">Waiting for data...</div>
+    </div>
+    <div style="border-left:1px solid var(--border);padding-left:16px">
+      <div style="font-size:10px;color:var(--text2);font-family:var(--ui);font-weight:700;letter-spacing:1px;margin-bottom:2px">CE DAY OI Δ</div>
+      <div id="coi-ce-day" style="font-size:14px;font-weight:700">—</div>
+    </div>
+    <div style="border-left:1px solid var(--border);padding-left:16px">
+      <div style="font-size:10px;color:var(--text2);font-family:var(--ui);font-weight:700;letter-spacing:1px;margin-bottom:2px">PE DAY OI Δ</div>
+      <div id="coi-pe-day" style="font-size:14px;font-weight:700">—</div>
+    </div>
   </div>
   <div class="coi-bar">
     <div class="coi-cell" id="coi-c1">
@@ -233,11 +264,6 @@
       <div style="font-size:10px;color:var(--warn);font-family:var(--ui);font-weight:700">UNCERTAIN</div>
       <div style="font-size:9px;color:var(--text2);font-family:var(--ui);margin-top:2px">Everyone exiting, low conviction → Wait and Watch</div>
     </div>
-  </div>
-  <div style="padding:6px 18px 8px;display:flex;gap:16px;align-items:center;font-size:11px;font-family:var(--ui)">
-    <span style="color:var(--text2)">Day CE OI Δ: <b id="coi-ce-day" style="color:var(--bear)">—</b></span>
-    <span style="color:var(--text2)">Day PE OI Δ: <b id="coi-pe-day" style="color:var(--bull)">—</b></span>
-    <span id="coi-desc" style="color:var(--warn);font-weight:700">—</span>
   </div>
 </div>
 
@@ -479,8 +505,47 @@
   </div>
 
   <div class="card full">
-    <div class="ch"><span class="ct atmc">GREEKS — ATM SNAPSHOT</span><span class="cs" id="atm-lbl">ATM: —</span></div>
-    <div class="gg" id="greeks"><div class="loading" style="grid-column:1/-1">Waiting...</div></div>
+    <div class="ch">
+      <span class="ct atmc">🔬 OPTIONS GREEKS — ATM SNAPSHOT</span>
+      <span class="cs" id="atm-lbl" style="font-size:11px;color:var(--atm)">ATM: —</span>
+    </div>
+    <!-- Greek header explanations -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border);background:rgba(163,113,247,.03)">
+      <div style="padding:6px 12px;border-right:1px solid var(--border)"><span style="color:var(--bull);font-weight:700;font-size:10px;font-family:var(--ui)">Δ DELTA</span><span style="font-size:10px;color:var(--text2);margin-left:5px;font-family:var(--ui)">₹1 spot → how much option moves. CE: 0→1 | PE: -1→0</span></div>
+      <div style="padding:6px 12px;border-right:1px solid var(--border)"><span style="color:var(--warn);font-weight:700;font-size:10px;font-family:var(--ui)">Γ GAMMA</span><span style="font-size:10px;color:var(--text2);margin-left:5px;font-family:var(--ui)">How fast Delta changes. ATM = highest. Big move = profits accelerate.</span></div>
+      <div style="padding:6px 12px;border-right:1px solid var(--border)"><span style="color:var(--atm);font-weight:700;font-size:10px;font-family:var(--ui)">Θ THETA</span><span style="font-size:10px;color:var(--text2);margin-left:5px;font-family:var(--ui)">₹ lost per day (time decay). Negative = bad for buyers, good for sellers.</span></div>
+      <div style="padding:6px 12px;"><span style="color:var(--info);font-weight:700;font-size:10px;font-family:var(--ui)">ν VEGA</span><span style="font-size:10px;color:var(--text2);margin-left:5px;font-family:var(--ui)">Sensitivity to IV change. High VIX → expensive options → sell premium.</span></div>
+    </div>
+    <div class="grk-grid" id="greeks"><div class="loading" style="grid-column:1/-1">Waiting...</div></div>
+
+    <!-- Vega History Table (like images 3,4,5) -->
+    <div style="border-top:2px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px 4px;background:rgba(0,184,255,.04)">
+        <span style="font-size:11px;font-weight:700;color:var(--info);font-family:var(--ui);letter-spacing:1px">ν VEGA HISTORY — ATM (Call Vega vs Put Vega × Time)</span>
+        <span id="vega-trend-badge" style="font-size:12px;font-weight:700;font-family:var(--ui)">—</span>
+      </div>
+      <div style="padding:4px 14px 6px;font-size:10px;color:var(--text2);font-family:var(--ui)">
+        Call Vega &gt; |Put Vega| → <span style="color:var(--bull)">Bullish expectation</span> (call premium more sensitive).
+        |Put Vega| &gt; Call Vega → <span style="color:var(--bear)">Bearish expectation</span> (put premium more sensitive = downside fear).
+        Difference → sign of smart money.
+      </div>
+      <div style="overflow-x:auto;max-height:200px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead style="position:sticky;top:0">
+            <tr style="background:var(--bg3)">
+              <th style="padding:6px 12px;text-align:left;font-family:var(--ui);font-weight:700;color:var(--text2);border-bottom:1px solid var(--border)">TIME</th>
+              <th style="padding:6px 12px;text-align:right;font-family:var(--ui);font-weight:700;color:var(--bear);border-bottom:1px solid var(--border)">CALL VEGA</th>
+              <th style="padding:6px 12px;text-align:right;font-family:var(--ui);font-weight:700;color:var(--bull);border-bottom:1px solid var(--border)">PUT VEGA</th>
+              <th style="padding:6px 12px;text-align:right;font-family:var(--ui);font-weight:700;color:var(--info);border-bottom:1px solid var(--border)">DIFFERENCE</th>
+              <th style="padding:6px 12px;text-align:center;font-family:var(--ui);font-weight:700;color:var(--text2);border-bottom:1px solid var(--border)">TREND</th>
+            </tr>
+          </thead>
+          <tbody id="vega-hist-tbody">
+            <tr><td colspan="5" class="loading">Waiting for vega data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <div class="card full">
@@ -1128,6 +1193,7 @@ function render(d, hist) {
     renderVIXPriceMatrix(intel.vix_matrix, vix, spot, mem.prevSpot);
     renderCombinedOI(intel);
     renderGlobalClues(vix, d);
+    if (intel.vega_history) renderVegaHistory(intel.vega_history, intel.vega_trend_label, intel.vega_trend_col);
 
     Object.keys(d.chain).forEach(k => {
         mem.prevOIChg[k] = { call_chg: d.chain[k].call_oi_chg, put_chg: d.chain[k].put_oi_chg };
@@ -1880,17 +1946,59 @@ setInterval(() => {
 function renderVIXPriceMatrix(vixMat, vix, spot, prevSpot) {
     if (!vixMat) return;
     const sig = vixMat.signal || '';
-    const sigMap = {
-        'STRONG BULLISH': {n:1, col:'var(--bull)', bg:'rgba(0,255,136,.15)'},
-        'WEAK BULLISH':   {n:2, col:'rgba(0,255,136,.7)', bg:'rgba(0,255,136,.08)'},
-        'STRONG BEARISH': {n:3, col:'var(--bear)', bg:'rgba(255,59,87,.15)'},
-        'WEAK BEARISH':   {n:4, col:'rgba(255,59,87,.7)', bg:'rgba(255,59,87,.08)'},
-        'SIDEWAYS_UP':    {n:5, col:'var(--info)', bg:'rgba(0,184,255,.12)'},
-        'SIDEWAYS_DOWN':  {n:6, col:'var(--text2)', bg:'rgba(139,148,158,.08)'},
-    };
-    const active = sigMap[sig];
 
-    // Update all 6 cards
+    const DETAILS = {
+        'STRONG BULLISH': {
+            n:1, col:'var(--bull)', bg:'rgba(0,255,136,.15)', bdr:'rgba(0,255,136,.4)',
+            emoji:'🚀', desc:'Price ↑ + VIX ↑ — Rally with rising fear = EXPLOSIVE move. Resistance may break.',
+            action:'❌ Do NOT short. Ride the trend up. Breakout likely.'
+        },
+        'WEAK BULLISH': {
+            n:2, col:'rgba(0,255,136,.7)', bg:'rgba(0,255,136,.07)', bdr:'rgba(0,255,136,.25)',
+            emoji:'📈', desc:'Price ↑ + VIX ↓ — Low-vol drift upward. No urgency or fear behind move.',
+            action:'⚠ Resistance likely to hold. Reversal expected. Use tight stops.'
+        },
+        'STRONG BEARISH': {
+            n:3, col:'var(--bear)', bg:'rgba(255,59,87,.15)', bdr:'rgba(255,59,87,.4)',
+            emoji:'💥', desc:'Price ↓ + VIX ↑ — PANIC SELLING. Fear rising fast. Support may break.',
+            action:'❌ Do NOT buy dips. Hold shorts. Support breakdown likely.'
+        },
+        'WEAK BEARISH': {
+            n:4, col:'rgba(255,59,87,.7)', bg:'rgba(255,59,87,.07)', bdr:'rgba(255,59,87,.25)',
+            emoji:'📉', desc:'Price ↓ + VIX ↓ — Normal correction. No panic. Calm fall.',
+            action:'✅ Support likely to form. Bounce expected. Watch for reversal signals.'
+        },
+        'SIDEWAYS_UP': {
+            n:5, col:'var(--info)', bg:'rgba(0,184,255,.12)', bdr:'rgba(0,184,255,.4)',
+            emoji:'⚡', desc:'Sideways + VIX ↑ — Price trapped but tension building rapidly.',
+            action:'⚠ BIG MOVE LOADING. Wait for direction before entering. Breakout/breakdown imminent.'
+        },
+        'SIDEWAYS_DOWN': {
+            n:6, col:'var(--text2)', bg:'rgba(139,148,158,.08)', bdr:'rgba(139,148,158,.3)',
+            emoji:'😴', desc:'Sideways + VIX ↓ — Flat price + low fear = theta decay market.',
+            action:'✅ Good for option SELLERS (theta). Bad for buyers. No clear direction.'
+        }
+    };
+
+    const active = DETAILS[sig];
+
+    // Fill live outcome box
+    const box = g('vix-outcome-box');
+    if (box && active) {
+        box.style.background  = active.bg;
+        box.style.borderColor = active.bdr;
+        box.firstElementChild.textContent = active.emoji;
+    }
+    const sigEl = g('vix-live-signal');
+    if (sigEl && active) { sigEl.textContent = sig; sigEl.style.color = active.col; }
+
+    const descEl = g('vix-live-desc');
+    if (descEl && active) { descEl.textContent = active.desc; descEl.style.color = active.col; }
+
+    const actEl = g('vix-live-action');
+    if (actEl && active) { actEl.textContent = active.action; actEl.style.color = active.col; }
+
+    // Highlight reference cards
     for (let i = 1; i <= 6; i++) {
         const card = g('vpm-' + i);
         if (!card) continue;
@@ -1899,18 +2007,8 @@ function renderVIXPriceMatrix(vixMat, vix, spot, prevSpot) {
             card.style.opacity = '1';
         } else {
             card.classList.remove('vix-active');
-            card.style.opacity = active ? '0.45' : '1';
+            card.style.opacity = active ? '0.4' : '1';
         }
-    }
-
-    // Update live label
-    const liveEl = g('vix-price-live');
-    if (liveEl && active) {
-        liveEl.innerHTML = `<span style="color:${active.col};background:${active.bg};padding:3px 12px;border-radius:5px;border:1px solid ${active.col.replace(')',',0.3)')}">${sig}</span>`;
-    }
-    const descEl = g('vix-price-desc');
-    if (descEl) {
-        descEl.innerHTML = `<span style="color:${active?active.col:'var(--text2)'}">${vixMat.desc||'—'}</span>`;
     }
 }
 
@@ -1918,38 +2016,45 @@ function renderVIXPriceMatrix(vixMat, vix, spot, prevSpot) {
 // COMBINED OI ANALYSIS — 4 Cases
 // ═══════════════════════════════════════════════════════════════════
 function renderCombinedOI(intel) {
-    const caseNum  = intel.combined_oi_case  || 0;
-    const label    = intel.combined_oi_label || '—';
-    const desc     = intel.combined_oi_desc  || '—';
-    const col_map  = {BULL:'var(--bull)', BEAR:'var(--bear)', NEUTRAL:'var(--text2)', WARN:'var(--warn)'};
-    const colKey   = intel.combined_oi_col   || 'NEUTRAL';
-    const col      = col_map[colKey] || 'var(--text2)';
+    const caseNum = intel.combined_oi_case  || 0;
+    const label   = intel.combined_oi_label || '—';
+    const desc    = intel.combined_oi_desc  || '—';
+    const colMap  = {BULL:'var(--bull)', BEAR:'var(--bear)', NEUTRAL:'var(--text2)', WARN:'var(--warn)'};
+    const col     = colMap[intel.combined_oi_col || 'NEUTRAL'] || 'var(--text2)';
+    const bgMap   = {BULL:'rgba(0,255,136,.1)', BEAR:'rgba(255,59,87,.1)', NEUTRAL:'rgba(139,148,158,.06)', WARN:'rgba(255,184,0,.08)'};
+    const bdrMap  = {BULL:'rgba(0,255,136,.4)', BEAR:'rgba(255,59,87,.4)', NEUTRAL:'rgba(139,148,158,.3)', WARN:'rgba(255,184,0,.4)'};
+    const bg  = bgMap[intel.combined_oi_col  || 'NEUTRAL'];
+    const bdr = bdrMap[intel.combined_oi_col || 'NEUTRAL'];
 
-    // Highlight active case
-    for (let i = 1; i <= 4; i++) {
-        const cell = g('coi-c' + i);
-        if (!cell) continue;
-        if (i === caseNum) {
-            cell.style.background = 'rgba(255,255,255,.07)';
-            cell.style.boxShadow  = '0 0 0 1px ' + col;
-        } else {
-            cell.style.background = '';
-            cell.style.boxShadow  = '';
-            cell.style.opacity    = caseNum ? '0.5' : '1';
-        }
-    }
-
+    // Fill outcome box
+    const box = g('coi-outcome-box');
+    if (box) { box.style.background = bg; box.style.borderColor = bdr; }
     const lblEl = g('coi-active-label');
-    if (lblEl) lblEl.innerHTML = `<span style="color:${col};font-weight:700">${label}</span>`;
+    if (lblEl) { lblEl.textContent = label; lblEl.style.color = col; }
+    const descEl = g('coi-desc');
+    if (descEl) { descEl.textContent = desc; descEl.style.color = col; }
 
     const ceDay = intel.total_ce_chg_day || 0;
     const peDay = intel.total_pe_chg_day || 0;
     const ceDEl = g('coi-ce-day');
     const peDEl = g('coi-pe-day');
-    if (ceDEl) { ceDEl.textContent = (ceDay>=0?'+':'') + ceDay.toFixed(2) + 'L'; ceDEl.style.color = ceDay > 0 ? 'var(--bear)' : 'var(--bull)'; }
-    if (peDEl) { peDEl.textContent = (peDay>=0?'+':'') + peDay.toFixed(2) + 'L'; peDEl.style.color = peDay > 0 ? 'var(--bull)' : 'var(--bear)'; }
-    const descEl = g('coi-desc');
-    if (descEl) { descEl.textContent = desc; descEl.style.color = col; }
+    if (ceDEl) { ceDEl.textContent = (ceDay>=0?'+':'') + ceDay.toFixed(2)+'L'; ceDEl.style.color = ceDay>0?'var(--bear)':'var(--bull)'; }
+    if (peDEl) { peDEl.textContent = (peDay>=0?'+':'') + peDay.toFixed(2)+'L'; peDEl.style.color = peDay>0?'var(--bull)':'var(--bear)'; }
+
+    // Highlight active case card
+    for (let i = 1; i <= 4; i++) {
+        const cell = g('coi-c' + i);
+        if (!cell) continue;
+        if (i === caseNum) {
+            cell.style.background = bg;
+            cell.style.boxShadow  = `0 0 0 2px ${col}`;
+            cell.style.opacity    = '1';
+        } else {
+            cell.style.background = '';
+            cell.style.boxShadow  = '';
+            cell.style.opacity    = caseNum ? '0.4' : '1';
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2188,6 +2293,46 @@ function updateVerdict(intel, idxAction, idxCol) {
     else if (idxAction.includes('POSITIONS') || idxAction.includes('POS BUILD')) { verdict='⚡ BREAKOUT SETUP'; vCol='var(--info)'; vDesc='OI accumulating. Big move loading. Wait for direction.'; }
     if (verdictEl) { verdictEl.textContent = verdict; verdictEl.style.color = vCol; }
     if (vdescEl)   { vdescEl.textContent   = vDesc; }
+}
+
+// ═══ VEGA HISTORY RENDERER ═══════════════════════════════════════════
+function renderVegaHistory(vegaHistory, vegaTrendLabel, vegaTrendCol) {
+    const tbody = g('vega-hist-tbody');
+    const badge = g('vega-trend-badge');
+    if (!tbody) return;
+
+    const COL_MAP = {BULL:'var(--bull)', BEAR:'var(--bear)', NEUTRAL:'var(--text2)'};
+    const col = COL_MAP[vegaTrendCol] || 'var(--text2)';
+
+    if (badge) {
+        const emoji = vegaTrendLabel === 'BULLISH' ? '🟢' : vegaTrendLabel === 'BEARISH' ? '🔴' : '⚪';
+        badge.innerHTML = `<span style="color:${col};font-weight:700">${emoji} ${vegaTrendLabel} — ${vegaTrendLabel==='BULLISH'?'Call premium dominant (bullish expectation)':vegaTrendLabel==='BEARISH'?'Put premium dominant (downside fear)':'Balanced vega'}</span>`;
+    }
+
+    if (!vegaHistory || !vegaHistory.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="loading">Waiting for vega data...</td></tr>';
+        return;
+    }
+
+    // Show newest first
+    const rows = [...vegaHistory].reverse();
+    tbody.innerHTML = rows.map((r, i) => {
+        const diff = r.diff || 0;
+        const trend = diff < -20 ? {lbl:'Bullish', col:'var(--bull)', bg:'rgba(0,255,136,.12)'} :
+                      diff >  20 ? {lbl:'Bearish', col:'var(--bear)', bg:'rgba(255,59,87,.12)'} :
+                                   {lbl:'Sideways Bullish', col:'rgba(0,255,136,.7)', bg:'rgba(0,255,136,.06)'};
+        // Trend change indicator
+        const prevRow = rows[i+1];
+        const prevDiff = prevRow ? (prevRow.diff||0) : diff;
+        const changing = Math.abs(diff - prevDiff) > 5;
+        return `<tr style="border-bottom:1px solid rgba(255,255,255,.03)">
+            <td style="padding:5px 12px;font-family:var(--ui);color:var(--text2)">${r.time}</td>
+            <td style="padding:5px 12px;text-align:right;font-weight:700;color:var(--bear)">${(r.call_vega||0).toFixed(2)}</td>
+            <td style="padding:5px 12px;text-align:right;font-weight:700;color:var(--bull)">${(r.put_vega||0).toFixed(2)}</td>
+            <td style="padding:5px 12px;text-align:right;font-weight:700;color:${diff<0?'var(--bull)':diff>0?'var(--bear)':'var(--text2)'}">${diff.toFixed(2)}</td>
+            <td style="padding:5px 12px;text-align:center"><span style="background:${trend.bg};color:${trend.col};padding:2px 10px;border-radius:5px;font-family:var(--ui);font-weight:700;font-size:11px">${trend.lbl}</span>${changing?'<span style="color:var(--warn);font-size:10px;margin-left:5px">⚡</span>':''}</td>
+        </tr>`;
+    }).join('');
 }
 
 window.onload = () => { doFetch(); };
